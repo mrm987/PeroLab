@@ -1348,7 +1348,7 @@ def extract_archive(archive_path: Path, dest_dir: Path):
 
 
 async def install_local_environment():
-    """로컬 생성 환경 설치"""
+    """로컬 생성 환경 설치 - PyTorch + diffusers"""
     global install_status
     
     install_status = {"installing": True, "progress": 0, "message": "Starting...", "error": None}
@@ -1358,74 +1358,80 @@ async def install_local_environment():
         temp_dir = PYTHON_ENV_DIR / "temp"
         temp_dir.mkdir(exist_ok=True)
         
-        # 1. Python standalone 다운로드 (10%)
-        install_status["message"] = "Downloading Python..."
-        install_status["progress"] = 5
-        
-        python_url = get_python_download_url()
-        python_archive = temp_dir / "python.tar.gz"
-        
-        def python_progress(downloaded, total):
-            install_status["progress"] = 5 + int((downloaded / total) * 15)
-        
-        if not download_file(python_url, python_archive, python_progress):
-            raise Exception("Failed to download Python")
-        
-        # 2. Python 압축 해제 (25%)
-        install_status["message"] = "Extracting Python..."
-        install_status["progress"] = 20
-        
-        extract_archive(python_archive, PYTHON_ENV_DIR)
-        install_status["progress"] = 25
-        
-        # 3. uv 다운로드 (35%)
-        install_status["message"] = "Downloading uv..."
-        install_status["progress"] = 25
-        
-        uv_url = get_uv_download_url()
-        uv_archive = temp_dir / ("uv.zip" if platform.system() == "Windows" else "uv.tar.gz")
-        
-        def uv_progress(downloaded, total):
-            install_status["progress"] = 25 + int((downloaded / total) * 10)
-        
-        if not download_file(uv_url, uv_archive, uv_progress):
-            raise Exception("Failed to download uv")
-        
-        # 4. uv 압축 해제 (40%)
-        install_status["message"] = "Extracting uv..."
-        uv_dir = temp_dir / "uv_extracted"
-        extract_archive(uv_archive, uv_dir)
-        
-        # uv 실행파일 찾기 및 복사
-        if platform.system() == "Windows":
-            uv_exe = None
-            for p in uv_dir.rglob("uv.exe"):
-                uv_exe = p
-                break
-            if uv_exe:
-                shutil.copy(uv_exe, PYTHON_ENV_DIR / "uv.exe")
-        else:
-            uv_exe = None
-            for p in uv_dir.rglob("uv"):
-                if p.is_file():
-                    uv_exe = p
-                    break
-            if uv_exe:
-                dest = PYTHON_ENV_DIR / "uv"
-                shutil.copy(uv_exe, dest)
-                dest.chmod(0o755)
-        
-        install_status["progress"] = 40
-        
-        # 5. PyTorch + diffusers 설치 (40% -> 95%)
-        install_status["message"] = "Installing PyTorch (this may take a few minutes)..."
-        
+        # Python과 uv 경로
         if platform.system() == "Windows":
             python_exe = PYTHON_ENV_DIR / "python" / "python.exe"
             uv_exe = PYTHON_ENV_DIR / "uv.exe"
         else:
             python_exe = PYTHON_ENV_DIR / "python" / "bin" / "python3"
             uv_exe = PYTHON_ENV_DIR / "uv"
+        
+        # Python이 이미 있으면 다운로드 스킵 (배포판에 포함된 경우)
+        if not python_exe.exists():
+            # 1. Python standalone 다운로드 (10%)
+            install_status["message"] = "Downloading Python..."
+            install_status["progress"] = 5
+            
+            python_url = get_python_download_url()
+            python_archive = temp_dir / "python.tar.gz"
+            
+            def python_progress(downloaded, total):
+                install_status["progress"] = 5 + int((downloaded / total) * 15)
+            
+            if not download_file(python_url, python_archive, python_progress):
+                raise Exception("Failed to download Python")
+            
+            # 2. Python 압축 해제 (25%)
+            install_status["message"] = "Extracting Python..."
+            install_status["progress"] = 20
+            
+            extract_archive(python_archive, PYTHON_ENV_DIR)
+        
+        install_status["progress"] = 25
+        
+        # uv가 이미 있으면 다운로드 스킵
+        if not uv_exe.exists():
+            # 3. uv 다운로드 (35%)
+            install_status["message"] = "Downloading uv..."
+            install_status["progress"] = 25
+            
+            uv_url = get_uv_download_url()
+            uv_archive = temp_dir / ("uv.zip" if platform.system() == "Windows" else "uv.tar.gz")
+            
+            def uv_progress(downloaded, total):
+                install_status["progress"] = 25 + int((downloaded / total) * 10)
+            
+            if not download_file(uv_url, uv_archive, uv_progress):
+                raise Exception("Failed to download uv")
+            
+            # 4. uv 압축 해제 (40%)
+            install_status["message"] = "Extracting uv..."
+            uv_dir = temp_dir / "uv_extracted"
+            extract_archive(uv_archive, uv_dir)
+            
+            # uv 실행파일 찾기 및 복사
+            if platform.system() == "Windows":
+                uv_found = None
+                for p in uv_dir.rglob("uv.exe"):
+                    uv_found = p
+                    break
+                if uv_found:
+                    shutil.copy(uv_found, PYTHON_ENV_DIR / "uv.exe")
+            else:
+                uv_found = None
+                for p in uv_dir.rglob("uv"):
+                    if p.is_file():
+                        uv_found = p
+                        break
+                if uv_found:
+                    dest = PYTHON_ENV_DIR / "uv"
+                    shutil.copy(uv_found, dest)
+                    dest.chmod(0o755)
+        
+        install_status["progress"] = 40
+        
+        # 5. PyTorch + diffusers 설치 (40% -> 95%)
+        install_status["message"] = "Installing PyTorch (this may take a few minutes)..."
         
         env = os.environ.copy()
         env["UV_PYTHON"] = str(python_exe)
