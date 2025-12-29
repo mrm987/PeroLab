@@ -1,0 +1,3671 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PeroLab</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --bg: #0f0f1a;
+            --bg-light: #1a1a2e;
+            --bg-lighter: #252542;
+            --accent: #6F29DE;
+            --accent-hover: #8240E8;
+            --accent-dim: #5b21b6;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --border: #374151;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Layout */
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            width: 360px;
+            background: var(--bg-light);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .settings-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        
+        .settings-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text);
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+        
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+        }
+        
+        /* Sections */
+        .section {
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .section:last-child,
+        .sidebar-content > .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .section-title .section-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            text-transform: none;
+            letter-spacing: 0;
+            color: var(--text);
+            cursor: pointer;
+        }
+        
+        .section-title .section-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        /* Form */
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            color: var(--text-dim);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 70px;
+            font-family: inherit;
+        }
+        
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        
+        .size-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .size-preset {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .size-inputs {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .size-inputs input {
+            width: 55px;
+            text-align: center;
+        }
+        
+        .size-x {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-dim);
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .tab:hover:not(.active) {
+            border-color: var(--accent);
+        }
+        
+        .provider-section { display: none; }
+        .provider-section.active { 
+            display: block;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .provider-section .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        /* Checkbox */
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .checkbox-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            accent-color: var(--accent);
+        }
+        
+        .checkbox-row label {
+            margin: 0;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        
+        /* Characters */
+        .characters-section {
+            margin: 12px 0;
+        }
+        
+        .characters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .characters-header label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .add-char-btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-char-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .add-char-btn:disabled {
+            background: var(--bg-lighter);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .characters-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .character-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 6px 8px;
+        }
+        
+        .character-item-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .character-item .char-num {
+            color: #9D6AE8;
+            font-size: 0.75rem;
+            font-weight: bold;
+            font-family: monospace;
+            min-width: 18px;
+        }
+        
+        .character-item .char-label {
+            flex: 1;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+        }
+        
+        .character-item .prompt-preset-btn {
+            padding: 1px 4px;
+            font-size: 0.65rem;
+        }
+        
+        .character-item textarea {
+            width: 100%;
+            min-height: 40px;
+            max-height: 150px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .character-item textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .character-item .delete-char-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px 4px;
+            font-size: 0.9rem;
+            opacity: 0.5;
+        }
+        
+        .character-item .delete-char-btn:hover {
+            opacity: 1;
+            color: #ff6b6b;
+        }
+        
+        /* Prompt Preset Dropdown */
+        .prompt-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .prompt-preset-dropdown {
+            position: relative;
+        }
+        
+        .prompt-preset-btn {
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .prompt-preset-btn:hover {
+            background: var(--bg-light);
+            border-color: var(--text-dim);
+        }
+        
+        .prompt-preset-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            min-width: 200px;
+            max-width: 280px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+            overflow: hidden;
+        }
+        
+        .prompt-preset-menu.show {
+            display: block;
+        }
+        
+        .prompt-preset-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .prompt-preset-item {
+            padding: 6px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .prompt-preset-item:last-child {
+            border-bottom: none;
+        }
+        
+        .prompt-preset-item-name {
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .prompt-preset-item-actions {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .prompt-preset-item-actions button {
+            flex: 1;
+            padding: 3px 8px;
+            font-size: 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            background: var(--bg);
+            color: var(--text);
+        }
+        
+        .prompt-preset-item-actions button:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .prompt-preset-item-actions .delete-btn {
+            flex: 0;
+            padding: 3px 6px;
+            color: var(--text-dim);
+        }
+        
+        .prompt-preset-item-actions .delete-btn:hover {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+            color: white;
+        }
+        
+        .prompt-preset-actions {
+            border-top: 1px solid var(--border);
+            padding: 8px;
+        }
+        
+        .prompt-preset-save-btn {
+            width: 100%;
+            padding: 6px 10px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        
+        .prompt-preset-save-btn:hover {
+            background: var(--bg);
+            border-color: var(--text-dim);
+        }
+        
+        .prompt-preset-empty {
+            padding: 12px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+        
+        /* LoRA */
+        .lora-list {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        
+        .lora-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg);
+            border-radius: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .lora-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+        }
+        
+        .lora-item .lora-name {
+            flex: 1;
+            font-size: 0.8rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .lora-item input[type="number"] {
+            width: 55px;
+            padding: 4px 6px;
+            margin: 0;
+            font-size: 0.8rem;
+        }
+        
+        /* Button */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover { background: var(--accent-hover); }
+        .btn:disabled { background: var(--border); cursor: not-allowed; }
+        .btn:active { transform: scale(0.98); }
+        
+        .btn-secondary {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-top: 8px;
+        }
+        
+        .btn-secondary:hover { background: var(--bg-lighter); }
+        
+        /* Main Area */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Slots Layout */
+        .slots-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        
+        .add-slot-btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.3rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-slot-btn:hover {
+            background: var(--accent-hover);
+        }
+        
+        .header-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .header-btn:hover {
+            background: var(--bg-light);
+            border-color: var(--text-dim);
+        }
+        
+        .header-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        /* Prefix Input */
+        .prefix-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        
+        .prefix-label {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+        
+        .prefix-input {
+            width: 60px;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--text);
+        }
+        
+        .prefix-input:focus {
+            outline: none;
+        }
+        
+        /* Preset Dropdown */
+        .preset-dropdown {
+            position: relative;
+        }
+        
+        .preset-btn {
+            min-width: 120px;
+        }
+        
+        .preset-btn .preset-name {
+            flex: 1;
+            text-align: left;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .preset-btn .dropdown-arrow {
+            font-size: 0.6rem;
+            margin-left: 4px;
+        }
+        
+        .preset-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            min-width: 220px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+            overflow: hidden;
+        }
+        
+        .preset-menu.show {
+            display: block;
+        }
+        
+        .preset-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .preset-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 8px;
+        }
+        
+        .preset-item:hover {
+            background: var(--bg-lighter);
+        }
+        
+        .preset-item.selected {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .preset-item .check {
+            width: 16px;
+            font-size: 0.8rem;
+        }
+        
+        .preset-item .label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .preset-item .edit-btn,
+        .preset-item .delete-btn {
+            background: none;
+            border: none;
+            padding: 2px 4px;
+            cursor: pointer;
+            opacity: 0.5;
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
+        
+        .preset-item .edit-btn:hover,
+        .preset-item .delete-btn:hover {
+            opacity: 1;
+            background: var(--bg);
+        }
+        
+        .preset-item.selected .edit-btn:hover,
+        .preset-item.selected .delete-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .preset-actions {
+            border-top: 1px solid var(--border);
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .preset-action-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+        }
+        
+        .preset-action-btn:hover {
+            background: var(--bg);
+            border-color: var(--text-dim);
+        }
+        
+        .preset-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .slots-container-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slots-container-wrapper::before,
+        .slots-container-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+        
+        .slots-container-wrapper::before {
+            left: 0;
+            background: linear-gradient(to right, var(--bg) 0%, transparent 100%);
+        }
+        
+        .slots-container-wrapper::after {
+            right: 0;
+            background: linear-gradient(to left, var(--bg) 0%, transparent 100%);
+        }
+        
+        .slots-container-wrapper.can-scroll-left::before {
+            opacity: 1;
+        }
+        
+        .slots-container-wrapper.can-scroll-right::after {
+            opacity: 1;
+        }
+        
+        .slots-container {
+            height: 100%;
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            align-items: stretch;
+            user-select: none;
+        }
+        
+        .slots-container::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .slots-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        
+        .slots-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+        
+        .slot {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex-shrink: 0;
+            transition: box-shadow 0.2s;
+        }
+        
+        /* input, textarea는 선택 가능 */
+        .slot input, .slot textarea {
+            user-select: text;
+        }
+        
+        .slot.dragging {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            opacity: 0.9;
+        }
+        
+        .slot-placeholder {
+            background: var(--bg-lighter);
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+        
+        .slot-prompt {
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .slot-prompt-header {
+            display: flex;
+            align-items: center;
+            background: var(--bg-lighter);
+            padding: 6px 8px;
+            gap: 6px;
+        }
+        
+        .slot-number {
+            font-size: 0.75rem;
+            color: #9D6AE8;
+            font-weight: bold;
+            font-family: monospace;
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        
+        .slot-prompt-header input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 4px;
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text);
+            min-width: 0;
+        }
+        
+        .slot-prompt-header input::placeholder {
+            color: var(--text-dim);
+        }
+        
+        .slot-prompt-header input:focus {
+            outline: none;
+        }
+        
+        .slot-drag {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: grab;
+            padding: 2px 4px;
+            font-size: 0.9rem;
+            line-height: 1;
+            border-radius: 4px;
+        }
+        
+        .slot-drag:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        
+        .slot-drag:active {
+            cursor: grabbing;
+        }
+        
+        .slot-delete {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 1.1rem;
+            line-height: 1;
+            border-radius: 4px;
+        }
+        
+        .slot-delete:hover {
+            background: var(--error);
+            color: white;
+        }
+        
+        .slot-prompt textarea {
+            width: 100%;
+            border: none;
+            background: var(--bg-light);
+            padding: 10px;
+            margin: 0;
+            min-height: 70px;
+            resize: none;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+        
+        .slot-prompt textarea:focus {
+            outline: none;
+        }
+        
+        .slot-images {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .slot-images::-webkit-scrollbar {
+            width: 5px;
+        }
+        
+        .slot-images::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        
+        .slot-image-card {
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .slot-image-card:hover {
+            border-color: var(--accent);
+        }
+        
+        .slot-image-card img {
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            display: block;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        
+        .slot-image-card .info {
+            padding: 6px 8px;
+            font-size: 0.7rem;
+        }
+        
+        .slot-image-card .filename {
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .slot-image-card .seed {
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+        
+        .slot-empty {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 20px 10px;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-lighter);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .status-text {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-dim);
+            text-align: center;
+        }
+        
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .empty-state p {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        
+        .empty-state small {
+            opacity: 0.7;
+        }
+        
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .lightbox.active { display: flex; }
+        
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+        
+        .lightbox .close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 2.5rem;
+            color: white;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        
+        .lightbox .close:hover { opacity: 1; }
+        
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 900;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: var(--bg-light);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.25rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .input-group {
+            margin-bottom: 16px;
+        }
+        
+        .input-group label {
+            margin-bottom: 6px;
+        }
+        
+        .input-group small {
+            display: block;
+            margin-top: -8px;
+            margin-bottom: 12px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-badge.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+        
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+        
+        /* Local Environment */
+        .local-env-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-lighter);
+            border-radius: 6px;
+            margin-top: 6px;
+        }
+        
+        .local-env-status .status-icon {
+            font-size: 1.2rem;
+        }
+        
+        .local-env-status.installed {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+        
+        .local-env-status.not-installed {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+        }
+        
+        .local-env-status.installing {
+            background: rgba(111, 41, 222, 0.15);
+            color: var(--accent);
+        }
+        
+        .local-env-status.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+        
+        .local-env-progress {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .local-env-progress-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-lighter);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .local-env-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .local-env-progress-text {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            min-width: 40px;
+        }
+        
+        #localEnvActions .btn {
+            margin-right: 8px;
+        }
+        
+        #localEnvActions .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+        
+        #localEnvActions .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            padding: 12px 24px;
+            border-radius: 8px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1100;
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--error); }
+        .toast.warning { border-color: var(--warning); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🎨 PeroLab</div>
+                <button class="settings-btn" onclick="openSettings()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Provider Tabs -->
+                <div class="section">
+                    <div class="tabs">
+                        <div class="tab active" data-provider="nai">NAI</div>
+                        <div class="tab" data-provider="local">Local</div>
+                    </div>
+                </div>
+                
+                <!-- Prompts -->
+                <div class="section">
+                    <div class="prompt-label-row">
+                        <label for="basePrompt">Base Prompt</label>
+                        <div class="prompt-preset-dropdown" data-category="base">
+                            <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                            <div class="prompt-preset-menu">
+                                <div class="prompt-preset-list"></div>
+                                <div class="prompt-preset-actions">
+                                    <button type="button" class="prompt-preset-save-btn">+ Save Current</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <textarea id="basePrompt" placeholder="1girl, solo, masterpiece..."></textarea>
+                    
+                    <!-- Characters -->
+                    <div class="characters-section">
+                        <div class="characters-header">
+                            <label>Characters</label>
+                            <button type="button" class="add-char-btn" id="addCharBtn" title="Add character">+</button>
+                        </div>
+                        <div class="characters-list" id="charactersList">
+                            <!-- 캐릭터들이 여기에 추가됨 -->
+                        </div>
+                    </div>
+                    
+                    <div class="prompt-label-row">
+                        <label for="negativePrompt">Negative Prompt</label>
+                        <div class="prompt-preset-dropdown" data-category="negative">
+                            <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                            <div class="prompt-preset-menu">
+                                <div class="prompt-preset-list"></div>
+                                <div class="prompt-preset-actions">
+                                    <button type="button" class="prompt-preset-save-btn">+ Save Current</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <textarea id="negativePrompt" rows="2" placeholder="lowres, bad quality..."></textarea>
+                </div>
+                
+                <!-- NAI Settings -->
+                <div class="provider-section active" data-provider="nai">
+                    <div class="section">
+                        <div class="section-title">NAI Settings</div>
+                        
+                        <label>Model</label>
+                        <select id="naiModel">
+                            <option value="nai-diffusion-4-5-full">V4.5 Full</option>
+                            <option value="nai-diffusion-4-curated-preview">V4 Curated</option>
+                            <option value="nai-diffusion-3">V3</option>
+                        </select>
+                        
+                        <div class="row">
+                            <div>
+                                <label>UC Preset</label>
+                                <select id="ucPreset">
+                                    <option value="Heavy">Heavy</option>
+                                    <option value="Light">Light</option>
+                                    <option value="Human Focus">Human Focus</option>
+                                    <option value="None">None</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>SMEA</label>
+                                <select id="smea">
+                                    <option value="none">None</option>
+                                    <option value="SMEA">SMEA</option>
+                                    <option value="SMEA+DYN">SMEA+DYN</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="qualityTags" checked>
+                            <label for="qualityTags">Add Quality Tags</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Local Settings -->
+                <div class="provider-section" data-provider="local">
+                    <div class="section">
+                        <div class="section-title">Local Settings</div>
+                        
+                        <label>Model</label>
+                        <select id="localModel">
+                            <option value="">-- Select Model --</option>
+                        </select>
+                        
+                        <label>LoRAs</label>
+                        <div class="lora-list" id="loraList">
+                            <div style="color: var(--text-dim); font-size: 0.85rem; padding: 8px;">Loading...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title">
+                            <span>Upscale</span>
+                            <label class="section-toggle">
+                                <input type="checkbox" id="enableUpscale">
+                                <span>Active</span>
+                            </label>
+                        </div>
+                        
+                        <div id="upscaleSettings" style="display: none;">
+                            <label>Upscale Model</label>
+                            <select id="upscaleModel">
+                                <option value="">-- Select Model --</option>
+                            </select>
+                            <small>Place .pth files in models/upscale_models/</small>
+                            
+                            <div class="row" style="margin-top: 8px;">
+                                <div>
+                                    <label>Final Scale</label>
+                                    <input type="number" id="downscaleRatio" value="0.7" step="0.05" min="0.3" max="1.0">
+                                    <small>×2 upscale × ratio</small>
+                                </div>
+                                <div>
+                                    <label>Alignment</label>
+                                    <select id="sizeAlignment">
+                                        <option value="none">None</option>
+                                        <option value="8">8px</option>
+                                        <option value="64" selected>64px</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div>
+                                    <label>Steps</label>
+                                    <input type="number" id="upscaleSteps" value="15" min="5" max="50">
+                                </div>
+                                <div>
+                                    <label>CFG</label>
+                                    <input type="number" id="upscaleCfg" value="5.0" step="0.1" min="1" max="20">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div style="flex: 1;">
+                                    <label>Denoise</label>
+                                    <input type="range" id="upscaleDenoise" value="0.5" min="0.1" max="1.0" step="0.05" style="width: 100%;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                                        <span>0.1</span>
+                                        <span id="upscaleDenoiseValue">0.5</span>
+                                        <span>1.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Generation Settings -->
+                <div class="section">
+                    <div class="section-title">Generation</div>
+                    
+                    <div class="input-group">
+                        <label>Size</label>
+                        <div class="size-row">
+                            <select id="sizePreset" class="size-preset">
+                                <optgroup label="Landscape">
+                                    <option value="1536x640">1536 × 640</option>
+                                    <option value="1344x768">1344 × 768</option>
+                                    <option value="1216x832">1216 × 832</option>
+                                    <option value="1152x896">1152 × 896</option>
+                                </optgroup>
+                                <optgroup label="Square">
+                                    <option value="1024x1024">1024 × 1024</option>
+                                </optgroup>
+                                <optgroup label="Portrait">
+                                    <option value="896x1152">896 × 1152</option>
+                                    <option value="832x1216" selected>832 × 1216</option>
+                                    <option value="768x1344">768 × 1344</option>
+                                    <option value="640x1536">640 × 1536</option>
+                                </optgroup>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <div class="size-inputs">
+                                <input type="number" id="width" value="832" step="64">
+                                <span class="size-x">×</span>
+                                <input type="number" id="height" value="1216" step="64">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Steps</label>
+                            <input type="number" id="steps" value="28">
+                        </div>
+                        <div>
+                            <label>CFG</label>
+                            <input type="number" id="cfg" value="5.0" step="0.1">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Sampler</label>
+                            <select id="sampler">
+                                <option value="k_euler_ancestral">Euler Ancestral</option>
+                                <option value="k_euler">Euler</option>
+                                <option value="k_dpmpp_2s_ancestral">DPM++ 2S Ancestral</option>
+                                <option value="k_dpmpp_2m_sde">DPM++ 2M SDE</option>
+                                <option value="k_dpmpp_2m">DPM++ 2M</option>
+                                <option value="k_dpmpp_sde">DPM++ SDE</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Scheduler</label>
+                            <select id="scheduler">
+                                <option value="karras">Karras</option>
+                                <option value="exponential">Exponential</option>
+                                <option value="polyexponential">Polyexponential</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div>
+                            <label>Seed</label>
+                            <input type="number" id="seed" value="-1">
+                        </div>
+                    </div>
+                    
+                    <div class="checkbox-row">
+                        <input type="checkbox" id="randomSeed">
+                        <label for="randomSeed">Random seed every image</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="status-text" id="statusText" style="text-align: left; margin-bottom: 4px;">Ready</div>
+                <div class="progress-bar" style="margin-bottom: 12px;">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div class="row" style="margin-bottom: 8px;">
+                    <div style="flex: 1;">
+                        <button class="btn" id="generateBtn">Queue (0)</button>
+                    </div>
+                    <div style="width: 50px;">
+                        <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="Queue N times">
+                    </div>
+                </div>
+                <div class="row" style="gap: 6px;">
+                    <button class="btn btn-secondary" id="cancelCurrentBtn" title="Cancel current job (after current image)">Cancel</button>
+                    <button class="btn btn-secondary" id="clearQueueBtn" title="Clear waiting queue">Clear Q</button>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main -->
+        <main class="main">
+            <div class="slots-header">
+                <span>Prompt Slots</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div class="preset-dropdown" id="presetDropdown">
+                        <button type="button" class="header-btn preset-btn" id="presetBtn">
+                            <span>📁</span>
+                            <span class="preset-name" id="presetName">Presets</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="preset-menu" id="presetMenu">
+                            <div class="preset-list" id="presetList">
+                                <!-- 프리셋 목록 -->
+                            </div>
+                            <div class="preset-actions">
+                                <button type="button" class="preset-action-btn" id="newPresetBtn">+ New Preset</button>
+                                <button type="button" class="preset-action-btn" id="savePresetBtn">💾 Save</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="prefix-input-wrapper">
+                        <span class="prefix-label">Prefix:</span>
+                        <input type="text" id="savePrefix" value="Name_" placeholder="Name_" class="prefix-input">
+                    </div>
+                    <button type="button" class="header-btn" id="syncScrollBtn" title="Sync scroll across all slots">
+                        <span>🔗</span>
+                        <span>Sync</span>
+                    </button>
+                    <button type="button" class="header-btn" id="clearImagesBtn" title="Clear preview images (files are not deleted)">
+                        <span>🧹</span>
+                        <span>Clear Preview</span>
+                    </button>
+                    <button type="button" class="add-slot-btn" id="addSlotBtn" title="Add slot">+</button>
+                </div>
+            </div>
+            <div class="slots-container-wrapper" id="slotsWrapper">
+                <div class="slots-container" id="slotsContainer">
+                    <!-- 슬롯들이 가로로 배치됨 -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <span class="close">&times;</span>
+        <img src="" alt="">
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" onclick="closeSettings()">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>NAI API Token</label>
+                <input type="password" id="naiToken" placeholder="Enter your NAI token">
+                <small>Get from novelai.net → Account → API</small>
+            </div>
+            
+            <div class="input-group">
+                <label>Status</label>
+                <span class="status-badge" id="naiStatus">Checking...</span>
+            </div>
+            
+            <div class="input-group">
+                <label>Checkpoints Directory</label>
+                <input type="text" id="checkpointsDir" placeholder="./models/checkpoints">
+            </div>
+            
+            <div class="input-group">
+                <label>LoRA Directory</label>
+                <input type="text" id="loraDir" placeholder="./models/loras">
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
+            
+            <div class="input-group">
+                <label>Local Generation Environment</label>
+                <div id="localEnvStatus" class="local-env-status">
+                    <span class="status-text">Checking...</span>
+                </div>
+                <div id="localEnvActions" style="margin-top: 8px;">
+                    <!-- 동적으로 버튼 추가됨 -->
+                </div>
+                <div id="localEnvProgress" class="local-env-progress" style="display: none;">
+                    <div class="local-env-progress-bar">
+                        <div class="local-env-progress-fill" id="localEnvProgressFill"></div>
+                    </div>
+                    <span class="local-env-progress-text" id="localEnvProgressText">0%</span>
+                </div>
+                <small>Python + PyTorch CUDA + diffusers (~3GB, 3-5min)</small>
+            </div>
+            
+            <button class="btn" onclick="saveSettings()">Save Settings</button>
+        </div>
+    </div>
+    
+    <!-- Local Install Modal -->
+    <div class="modal" id="localInstallModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>🖥️ Local Generation</h2>
+                <button class="modal-close" onclick="closeLocalInstallModal()">&times;</button>
+            </div>
+            
+            <p style="color: var(--text-dim); margin-bottom: 16px;">
+                Local generation requires a one-time installation of Python environment with PyTorch CUDA.
+            </p>
+            
+            <div class="input-group">
+                <div id="installModalStatus" class="local-env-status">
+                    <span class="status-text">Checking...</span>
+                </div>
+                <div id="installModalProgress" class="local-env-progress" style="display: none;">
+                    <div class="local-env-progress-bar">
+                        <div class="local-env-progress-fill" id="installModalProgressFill"></div>
+                    </div>
+                    <span class="local-env-progress-text" id="installModalProgressText">0%</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn" id="installModalBtn" onclick="installFromModal()" style="flex: 1;">
+                    ⬇️ Install (~3GB)
+                </button>
+                <button class="btn" onclick="closeLocalInstallModal()" style="background: var(--surface-light);">
+                    Cancel
+                </button>
+            </div>
+            
+            <small style="display: block; margin-top: 12px; color: var(--text-dim);">
+                Installation takes 3-5 minutes depending on your internet speed.
+            </small>
+        </div>
+    </div>
+    
+    <!-- NAI Token Modal -->
+    <div class="modal" id="naiTokenModal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>🔑 NovelAI API Token</h2>
+                <button class="modal-close" onclick="closeNaiTokenModal()">&times;</button>
+            </div>
+            
+            <p style="color: var(--text-dim); margin-bottom: 16px;">
+                Enter your NovelAI API token to use NAI generation.
+            </p>
+            
+            <div class="input-group">
+                <label>API Token</label>
+                <input type="password" id="naiTokenModalInput" placeholder="Enter your NAI token">
+                <small>Get from <a href="https://novelai.net/settings" target="_blank" style="color: var(--primary);">novelai.net</a> → Account Settings → Get Persistent API Token</small>
+            </div>
+            
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn" id="naiTokenModalBtn" onclick="saveNaiTokenFromModal()" style="flex: 1;">
+                    💾 Save & Continue
+                </button>
+                <button class="btn" onclick="closeNaiTokenModal()" style="background: var(--surface-light);">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        const API_BASE = 'http://127.0.0.1:8765';
+        
+        let currentProvider = 'nai';
+        let eventSource = null;
+        let currentIndex = 0;
+        let totalImages = 0;
+        let resetTimer = null;
+        let naiTokenSet = false;  // NAI 토큰 설정 여부
+        
+        // Elements
+        const tabs = document.querySelectorAll('.tab');
+        const providerSections = document.querySelectorAll('.provider-section');
+        const generateBtn = document.getElementById('generateBtn');
+        const cancelCurrentBtn = document.getElementById('cancelCurrentBtn');
+        const clearQueueBtn = document.getElementById('clearQueueBtn');
+        const progressFill = document.getElementById('progressFill');
+        const statusText = document.getElementById('statusText');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = lightbox.querySelector('img');
+        
+        // Slots
+        const slotsContainer = document.getElementById('slotsContainer');
+        const addSlotBtn = document.getElementById('addSlotBtn');
+        let slotCounter = 0;
+        
+        function updateSlotNumbers() {
+            const slots = slotsContainer.querySelectorAll('.slot');
+            slots.forEach((slot, index) => {
+                slot.querySelector('.slot-number').textContent = String(index + 1).padStart(3, '0');
+            });
+        }
+        
+        function createSlot(name = '', content = '') {
+            const slotId = slotCounter++;
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            slot.dataset.slotIndex = slotId;
+            slot.innerHTML = `
+                <div class="slot-prompt">
+                    <div class="slot-prompt-header">
+                        <span class="slot-number">001</span>
+                        <input type="text" placeholder="name (optional)" value="${name}" class="slot-name">
+                        <button type="button" class="slot-drag" title="Drag to reorder" tabindex="-1">☰</button>
+                        <button type="button" class="slot-delete" tabindex="-1">×</button>
+                    </div>
+                    <textarea placeholder="tags..." class="slot-tags">${content}</textarea>
+                </div>
+                <div class="slot-images">
+                    <div class="slot-empty">Images will appear here</div>
+                </div>
+            `;
+            
+            slot.querySelector('.slot-delete').onclick = () => {
+                if (slotsContainer.querySelectorAll('.slot').length > 1) {
+                    slot.remove();
+                    updateSlotNumbers();
+                    updateQueueButton();
+                    autoSaveSettings();
+                }
+            };
+            
+            slot.querySelector('textarea').oninput = updateQueueButton;
+            
+            // 탭 키로 같은 타입 필드 간 이동
+            const nameInput = slot.querySelector('.slot-name');
+            const tagsInput = slot.querySelector('.slot-tags');
+            
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const slots = [...slotsContainer.querySelectorAll('.slot')];
+                    const currentIdx = slots.indexOf(slot);
+                    const nextIdx = e.shiftKey 
+                        ? (currentIdx - 1 + slots.length) % slots.length 
+                        : (currentIdx + 1) % slots.length;
+                    slots[nextIdx].querySelector('.slot-name').focus();
+                }
+            });
+            
+            tagsInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const slots = [...slotsContainer.querySelectorAll('.slot')];
+                    const currentIdx = slots.indexOf(slot);
+                    const nextIdx = e.shiftKey 
+                        ? (currentIdx - 1 + slots.length) % slots.length 
+                        : (currentIdx + 1) % slots.length;
+                    slots[nextIdx].querySelector('.slot-tags').focus();
+                }
+            });
+            
+            // 드래그 핸들
+            const dragHandle = slot.querySelector('.slot-drag');
+            dragHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startSlotDrag(slot, e);
+            });
+            
+            return slot;
+        }
+        
+        // 슬롯 드래그 앤 드롭
+        let draggedSlot = null;
+        let dragStartX = 0;
+        let slotStartX = 0;
+        let placeholder = null;
+        
+        function startSlotDrag(slot, e) {
+            draggedSlot = slot;
+            dragStartX = e.clientX;
+            
+            const rect = slot.getBoundingClientRect();
+            slotStartX = rect.left;
+            
+            // 플레이스홀더 생성
+            placeholder = document.createElement('div');
+            placeholder.className = 'slot-placeholder';
+            placeholder.style.width = rect.width + 'px';
+            placeholder.style.height = rect.height + 'px';
+            
+            // 드래그 중 스타일
+            slot.classList.add('dragging');
+            slot.style.position = 'fixed';
+            slot.style.left = rect.left + 'px';
+            slot.style.top = rect.top + 'px';
+            slot.style.width = rect.width + 'px';
+            slot.style.zIndex = '1000';
+            
+            slot.parentNode.insertBefore(placeholder, slot);
+            document.body.appendChild(slot);
+            
+            document.addEventListener('mousemove', onSlotDrag);
+            document.addEventListener('mouseup', endSlotDrag);
+        }
+        
+        function onSlotDrag(e) {
+            if (!draggedSlot) return;
+            
+            const dx = e.clientX - dragStartX;
+            draggedSlot.style.left = (slotStartX + dx) + 'px';
+            
+            // 플레이스홀더 위치 업데이트
+            const slots = [...slotsContainer.querySelectorAll('.slot:not(.dragging)')];
+            const draggedRect = draggedSlot.getBoundingClientRect();
+            const draggedCenter = draggedRect.left + draggedRect.width / 2;
+            
+            for (let i = 0; i < slots.length; i++) {
+                const slotRect = slots[i].getBoundingClientRect();
+                const slotCenter = slotRect.left + slotRect.width / 2;
+                
+                if (draggedCenter < slotCenter) {
+                    slotsContainer.insertBefore(placeholder, slots[i]);
+                    return;
+                }
+            }
+            slotsContainer.appendChild(placeholder);
+        }
+        
+        function endSlotDrag() {
+            if (!draggedSlot) return;
+            
+            // 플레이스홀더 위치에 슬롯 삽입
+            draggedSlot.classList.remove('dragging');
+            draggedSlot.style.position = '';
+            draggedSlot.style.left = '';
+            draggedSlot.style.top = '';
+            draggedSlot.style.width = '';
+            draggedSlot.style.zIndex = '';
+            
+            slotsContainer.insertBefore(draggedSlot, placeholder);
+            placeholder.remove();
+            
+            draggedSlot = null;
+            placeholder = null;
+            
+            document.removeEventListener('mousemove', onSlotDrag);
+            document.removeEventListener('mouseup', endSlotDrag);
+            
+            updateSlotNumbers();
+            autoSaveSettings();
+        }
+        
+        function addSlot(name = '', content = '') {
+            const slot = createSlot(name, content);
+            slotsContainer.appendChild(slot);
+            setupSlotImageScroll(slot);
+            updateSlotNumbers();
+            updateQueueButton();
+        }
+        
+        function getSlotList() {
+            const slots = slotsContainer.querySelectorAll('.slot');
+            const list = [];
+            
+            slots.forEach((slot, index) => {
+                const name = slot.querySelector('.slot-name').value.trim();
+                const content = slot.querySelector('.slot-tags').value.trim();
+                // 현재 위치 기반 인덱스 사용
+                list.push({ name, content, slotIndex: index });
+            });
+            
+            return list;
+        }
+        
+        function updateQueueButton() {
+            const list = getSlotList();
+            const count = list.length || 1;
+            generateBtn.textContent = `Queue (${count})`;
+        }
+        
+        function addImageToSlot(slotIndex, data) {
+            // slotIndex로 슬롯 찾기
+            const slots = slotsContainer.querySelectorAll('.slot');
+            if (slotIndex >= slots.length) return;
+            
+            const slot = slots[slotIndex];
+            const imagesContainer = slot.querySelector('.slot-images');
+            
+            // 빈 상태 제거
+            const empty = imagesContainer.querySelector('.slot-empty');
+            if (empty) empty.remove();
+            
+            const card = document.createElement('div');
+            card.className = 'slot-image-card';
+            card.innerHTML = `
+                <img src="data:image/png;base64,${data.image}" alt="" draggable="false">
+                <div class="info">
+                    <div class="filename" title="${data.filename}">${data.filename}</div>
+                    <div class="seed">Seed: ${data.seed}</div>
+                </div>
+            `;
+            
+            // 드래그와 클릭 구분
+            const img = card.querySelector('img');
+            let imgMouseDownX = 0;
+            let imgMouseDownY = 0;
+            
+            img.addEventListener('mousedown', (e) => {
+                imgMouseDownX = e.clientX;
+                imgMouseDownY = e.clientY;
+            });
+            
+            img.addEventListener('mouseup', (e) => {
+                const dx = Math.abs(e.clientX - imgMouseDownX);
+                const dy = Math.abs(e.clientY - imgMouseDownY);
+                // 5px 이내면 클릭으로 간주
+                if (dx < 5 && dy < 5) {
+                    lightboxImg.src = `data:image/png;base64,${data.image}`;
+                    lightbox.classList.add('active');
+                }
+            });
+            
+            // 최신 이미지를 위에 추가
+            imagesContainer.insertBefore(card, imagesContainer.firstChild);
+        }
+        
+        function clearSlotImages() {
+            const slots = slotsContainer.querySelectorAll('.slot');
+            slots.forEach(slot => {
+                const imagesContainer = slot.querySelector('.slot-images');
+                imagesContainer.innerHTML = '<div class="slot-empty">Images will appear here</div>';
+            });
+        }
+        
+        addSlotBtn.onclick = () => {
+            addSlot();
+            autoSaveSettings();
+        };
+        
+        // === Preset System ===
+        const presetDropdown = document.getElementById('presetDropdown');
+        const presetBtn = document.getElementById('presetBtn');
+        const presetMenu = document.getElementById('presetMenu');
+        const presetList = document.getElementById('presetList');
+        const presetNameSpan = document.getElementById('presetName');
+        const newPresetBtn = document.getElementById('newPresetBtn');
+        const savePresetBtn = document.getElementById('savePresetBtn');
+        
+        let currentPreset = null; // { filename, name }
+        let presets = [];
+        
+        // 드롭다운 토글
+        presetBtn.onclick = (e) => {
+            e.stopPropagation();
+            presetMenu.classList.toggle('show');
+            if (presetMenu.classList.contains('show')) {
+                loadPresetList();
+            }
+        };
+        
+        // 외부 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            if (!presetDropdown.contains(e.target)) {
+                presetMenu.classList.remove('show');
+            }
+        });
+        
+        // 프리셋 목록 로드
+        async function loadPresetList() {
+            try {
+                const res = await fetch(`${API_BASE}/api/presets`);
+                const data = await res.json();
+                presets = data.presets;
+                renderPresetList();
+            } catch (e) {
+                console.error('Failed to load presets:', e);
+            }
+        }
+        
+        // 프리셋 목록 렌더링
+        function renderPresetList() {
+            if (presets.length === 0) {
+                presetList.innerHTML = '<div class="preset-empty">No presets saved</div>';
+                return;
+            }
+            
+            presetList.innerHTML = presets.map(p => `
+                <div class="preset-item ${currentPreset?.filename === p.filename ? 'selected' : ''}" data-filename="${p.filename}">
+                    <span class="check">${currentPreset?.filename === p.filename ? '✓' : ''}</span>
+                    <span class="label">${p.name}</span>
+                    <button class="edit-btn" title="Rename">✏️</button>
+                    <button class="delete-btn" title="Delete">🗑️</button>
+                </div>
+            `).join('');
+            
+            // 이벤트 바인딩
+            presetList.querySelectorAll('.preset-item').forEach(item => {
+                const filename = item.dataset.filename;
+                
+                item.querySelector('.label').onclick = () => loadPreset(filename);
+                
+                item.querySelector('.edit-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    renamePreset(filename);
+                };
+                
+                item.querySelector('.delete-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    deletePreset(filename);
+                };
+            });
+        }
+        
+        // 프리셋 로드
+        async function loadPreset(filename) {
+            try {
+                const res = await fetch(`${API_BASE}/api/presets/${filename}`);
+                const data = await res.json();
+                
+                // 현재 슬롯 모두 제거
+                slotsContainer.innerHTML = '';
+                
+                // 프리셋 슬롯들로 교체
+                data.slots.forEach(s => {
+                    addSlot(s.name, s.content);
+                });
+                
+                // 최소 1개 슬롯
+                if (data.slots.length === 0) {
+                    addSlot();
+                }
+                
+                // Prefix 적용
+                document.getElementById('savePrefix').value = data.prefix || 'Name_';
+                
+                currentPreset = { filename, name: data.name };
+                presetNameSpan.textContent = data.name;
+                presetMenu.classList.remove('show');
+                
+                showToast(`Loaded: ${data.name}`, 'success');
+            } catch (e) {
+                showToast('Failed to load preset', 'error');
+            }
+        }
+        
+        // 새 프리셋 저장
+        newPresetBtn.onclick = async () => {
+            const name = prompt('Enter preset name:');
+            if (!name) return;
+            
+            const slots = getSlotList().map(s => ({ name: s.name, content: s.content }));
+            const prefix = document.getElementById('savePrefix').value || 'Name_';
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/presets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, slots, prefix })
+                });
+                const data = await res.json();
+                
+                currentPreset = { filename: data.filename, name: data.name };
+                presetNameSpan.textContent = data.name;
+                
+                loadPresetList();
+                showToast(`Saved: ${name}`, 'success');
+            } catch (e) {
+                showToast('Failed to save preset', 'error');
+            }
+        };
+        
+        // 현재 프리셋에 덮어쓰기
+        savePresetBtn.onclick = async () => {
+            if (!currentPreset) {
+                showToast('No preset selected', 'warning');
+                return;
+            }
+            
+            const slots = getSlotList().map(s => ({ name: s.name, content: s.content }));
+            const prefix = document.getElementById('savePrefix').value || 'Name_';
+            
+            try {
+                await fetch(`${API_BASE}/api/presets/${currentPreset.filename}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: currentPreset.name, slots, prefix })
+                });
+                
+                showToast(`Saved: ${currentPreset.name}`, 'success');
+                presetMenu.classList.remove('show');
+            } catch (e) {
+                showToast('Failed to save preset', 'error');
+            }
+        };
+        
+        // 프리셋 이름 변경
+        async function renamePreset(filename) {
+            const preset = presets.find(p => p.filename === filename);
+            if (!preset) return;
+            
+            const newName = prompt('Enter new name:', preset.name);
+            if (!newName || newName === preset.name) return;
+            
+            try {
+                // 기존 데이터 로드
+                const res = await fetch(`${API_BASE}/api/presets/${filename}`);
+                const data = await res.json();
+                
+                // 이름만 변경해서 저장 (prefix 유지)
+                await fetch(`${API_BASE}/api/presets/${filename}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, slots: data.slots, prefix: data.prefix || 'Name_' })
+                });
+                
+                if (currentPreset?.filename === filename) {
+                    currentPreset.name = newName;
+                    presetNameSpan.textContent = newName;
+                }
+                
+                loadPresetList();
+                showToast('Renamed', 'success');
+            } catch (e) {
+                showToast('Failed to rename', 'error');
+            }
+        }
+        
+        // 프리셋 삭제
+        async function deletePreset(filename) {
+            const preset = presets.find(p => p.filename === filename);
+            if (!preset) return;
+            
+            if (!confirm(`Delete "${preset.name}"?`)) return;
+            
+            try {
+                await fetch(`${API_BASE}/api/presets/${filename}`, { method: 'DELETE' });
+                
+                if (currentPreset?.filename === filename) {
+                    currentPreset = null;
+                    presetNameSpan.textContent = 'Presets';
+                }
+                
+                loadPresetList();
+                showToast('Deleted', 'success');
+            } catch (e) {
+                showToast('Failed to delete', 'error');
+            }
+        }
+        
+        // Sync scroll 토글
+        const syncScrollBtn = document.getElementById('syncScrollBtn');
+        let syncScrollEnabled = false;
+        let isSyncScrolling = false;
+        
+        syncScrollBtn.onclick = () => {
+            syncScrollEnabled = !syncScrollEnabled;
+            syncScrollBtn.classList.toggle('active', syncScrollEnabled);
+        };
+        
+        function setupSlotImageScroll(slot) {
+            const imagesContainer = slot.querySelector('.slot-images');
+            
+            imagesContainer.addEventListener('scroll', () => {
+                if (!syncScrollEnabled || isSyncScrolling) return;
+                
+                isSyncScrolling = true;
+                const scrollTop = imagesContainer.scrollTop;
+                const scrollRatio = imagesContainer.scrollTop / (imagesContainer.scrollHeight - imagesContainer.clientHeight || 1);
+                
+                // 다른 모든 슬롯의 이미지 영역도 같이 스크롤
+                slotsContainer.querySelectorAll('.slot').forEach(otherSlot => {
+                    if (otherSlot === slot) return;
+                    const otherImages = otherSlot.querySelector('.slot-images');
+                    const maxScroll = otherImages.scrollHeight - otherImages.clientHeight;
+                    otherImages.scrollTop = scrollRatio * maxScroll;
+                });
+                
+                setTimeout(() => { isSyncScrolling = false; }, 10);
+            });
+        }
+        
+        // 스크롤 그라데이션 업데이트
+        const slotsWrapper = document.getElementById('slotsWrapper');
+        
+        function updateScrollGradients() {
+            const { scrollLeft, scrollWidth, clientWidth } = slotsContainer;
+            const canScrollLeft = scrollLeft > 5;
+            const canScrollRight = scrollLeft < scrollWidth - clientWidth - 5;
+            
+            slotsWrapper.classList.toggle('can-scroll-left', canScrollLeft);
+            slotsWrapper.classList.toggle('can-scroll-right', canScrollRight);
+        }
+        
+        slotsContainer.addEventListener('scroll', updateScrollGradients);
+        // 초기화 및 슬롯 추가/삭제 시 업데이트를 위한 observer
+        const resizeObserver = new ResizeObserver(updateScrollGradients);
+        resizeObserver.observe(slotsContainer);
+        
+        // 가로 스크롤 드래그 (오버스크롤 바운스 포함)
+        let isScrollDragging = false;
+        let scrollStartX = 0;
+        let scrollLeft = 0;
+        let overscrollOffset = 0;
+        
+        slotsContainer.addEventListener('mousedown', (e) => {
+            // 텍스트 입력란, 버튼, 드래그 핸들만 제외
+            if (e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'TEXTAREA' || 
+                e.target.tagName === 'BUTTON' ||
+                e.target.classList.contains('slot-drag') ||
+                e.target.classList.contains('slot-delete')) {
+                return;
+            }
+            
+            isScrollDragging = true;
+            scrollStartX = e.pageX - slotsContainer.offsetLeft;
+            scrollLeft = slotsContainer.scrollLeft;
+            overscrollOffset = 0;
+            slotsContainer.style.cursor = 'grabbing';
+            slotsContainer.style.transition = 'none';
+        });
+        
+        slotsContainer.addEventListener('mousemove', (e) => {
+            if (!isScrollDragging) return;
+            e.preventDefault();
+            const x = e.pageX - slotsContainer.offsetLeft;
+            const walk = (x - scrollStartX) * 1.5;
+            
+            const maxScroll = slotsContainer.scrollWidth - slotsContainer.clientWidth;
+            const newScrollLeft = scrollLeft - walk;
+            
+            // 스크롤 가능 범위 체크
+            if (maxScroll <= 0) {
+                // 스크롤 불가 - 오버스크롤 효과만
+                overscrollOffset = walk * 0.3; // 저항감 있게
+                overscrollOffset = Math.max(-50, Math.min(50, overscrollOffset));
+                slotsContainer.style.transform = `translateX(${overscrollOffset}px)`;
+            } else if (newScrollLeft < 0) {
+                // 왼쪽 끝 넘어감
+                slotsContainer.scrollLeft = 0;
+                overscrollOffset = -newScrollLeft * 0.3;
+                overscrollOffset = Math.min(50, overscrollOffset);
+                slotsContainer.style.transform = `translateX(${overscrollOffset}px)`;
+            } else if (newScrollLeft > maxScroll) {
+                // 오른쪽 끝 넘어감
+                slotsContainer.scrollLeft = maxScroll;
+                overscrollOffset = -(newScrollLeft - maxScroll) * 0.3;
+                overscrollOffset = Math.max(-50, overscrollOffset);
+                slotsContainer.style.transform = `translateX(${overscrollOffset}px)`;
+            } else {
+                // 정상 스크롤
+                slotsContainer.scrollLeft = newScrollLeft;
+                overscrollOffset = 0;
+                slotsContainer.style.transform = '';
+            }
+        });
+        
+        function endScrollDrag() {
+            if (!isScrollDragging) return;
+            isScrollDragging = false;
+            slotsContainer.style.cursor = '';
+            
+            // 오버스크롤 바운스백
+            if (overscrollOffset !== 0) {
+                slotsContainer.style.transition = 'transform 0.3s ease-out';
+                slotsContainer.style.transform = '';
+                overscrollOffset = 0;
+            }
+        }
+        
+        slotsContainer.addEventListener('mouseup', endScrollDrag);
+        slotsContainer.addEventListener('mouseleave', endScrollDrag);
+        
+        // Tab switching
+        let localEnvInstalled = false;  // Local 환경 설치 여부
+        
+        // NAI / Local 샘플러/스케줄러 옵션
+        const NAI_SAMPLERS = [
+            { value: 'k_euler_ancestral', label: 'Euler Ancestral' },
+            { value: 'k_euler', label: 'Euler' },
+            { value: 'k_dpmpp_2s_ancestral', label: 'DPM++ 2S Ancestral' },
+            { value: 'k_dpmpp_2m_sde', label: 'DPM++ 2M SDE' },
+            { value: 'k_dpmpp_2m', label: 'DPM++ 2M' },
+            { value: 'k_dpmpp_sde', label: 'DPM++ SDE' },
+        ];
+        const NAI_SCHEDULERS = [
+            { value: 'karras', label: 'Karras' },
+            { value: 'exponential', label: 'Exponential' },
+            { value: 'polyexponential', label: 'Polyexponential' },
+        ];
+        const LOCAL_SAMPLERS = [
+            { value: 'euler_ancestral', label: 'Euler Ancestral' },
+            { value: 'euler', label: 'Euler' },
+            { value: 'dpmpp_2m', label: 'DPM++ 2M' },
+            { value: 'dpmpp_2m_sde', label: 'DPM++ 2M SDE' },
+            { value: 'dpmpp_sde', label: 'DPM++ SDE' },
+            { value: 'dpmpp_3m_sde', label: 'DPM++ 3M SDE' },
+            { value: 'dpmpp_2s_ancestral', label: 'DPM++ 2S Ancestral' },
+            { value: 'ddim', label: 'DDIM' },
+            { value: 'uni_pc', label: 'UniPC' },
+            { value: 'lcm', label: 'LCM' },
+        ];
+        const LOCAL_SCHEDULERS = [
+            { value: 'normal', label: 'Normal' },
+            { value: 'karras', label: 'Karras' },
+            { value: 'exponential', label: 'Exponential' },
+            { value: 'sgm_uniform', label: 'SGM Uniform' },
+            { value: 'simple', label: 'Simple' },
+            { value: 'ddim_uniform', label: 'DDIM Uniform' },
+            { value: 'beta', label: 'Beta' },
+        ];
+        
+        function updateSamplerSchedulerOptions(provider) {
+            const samplerSelect = document.getElementById('sampler');
+            const schedulerSelect = document.getElementById('scheduler');
+            
+            const samplers = provider === 'nai' ? NAI_SAMPLERS : LOCAL_SAMPLERS;
+            const schedulers = provider === 'nai' ? NAI_SCHEDULERS : LOCAL_SCHEDULERS;
+            
+            // 현재 선택 저장
+            const currentSampler = samplerSelect.value;
+            const currentScheduler = schedulerSelect.value;
+            
+            // 옵션 교체
+            samplerSelect.innerHTML = samplers.map(s => 
+                `<option value="${s.value}">${s.label}</option>`
+            ).join('');
+            schedulerSelect.innerHTML = schedulers.map(s => 
+                `<option value="${s.value}">${s.label}</option>`
+            ).join('');
+            
+            // 기존 선택 복원 시도, 없으면 첫 번째
+            if (samplers.some(s => s.value === currentSampler)) {
+                samplerSelect.value = currentSampler;
+            }
+            if (schedulers.some(s => s.value === currentScheduler)) {
+                schedulerSelect.value = currentScheduler;
+            }
+        }
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Local 탭 클릭 시 설치 안 됐으면 팝업
+                if (tab.dataset.provider === 'local' && !localEnvInstalled) {
+                    showLocalInstallModal();
+                    return;
+                }
+                
+                currentProvider = tab.dataset.provider;
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                providerSections.forEach(s => {
+                    s.classList.toggle('active', s.dataset.provider === currentProvider);
+                });
+                updateSamplerSchedulerOptions(currentProvider);
+                autoSaveSettings();
+            });
+        });
+        
+        // === Prompt Presets ===
+        async function loadPromptPresets(category) {
+            try {
+                const res = await fetch(`${API_BASE}/api/prompts/${category}`);
+                const data = await res.json();
+                return data.presets;
+            } catch (e) {
+                console.error('Failed to load prompt presets:', e);
+                return [];
+            }
+        }
+        
+        async function getPromptPreset(category, filename) {
+            try {
+                const res = await fetch(`${API_BASE}/api/prompts/${category}/${filename}`);
+                const data = await res.json();
+                return data.content;
+            } catch (e) {
+                console.error('Failed to get prompt preset:', e);
+                return null;
+            }
+        }
+        
+        async function savePromptPreset(category, name, content) {
+            try {
+                const res = await fetch(`${API_BASE}/api/prompts/${category}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, content })
+                });
+                const data = await res.json();
+                showToast(`Saved: ${name}`, 'success');
+                return data;
+            } catch (e) {
+                showToast('Failed to save', 'error');
+                return null;
+            }
+        }
+        
+        async function deletePromptPreset(category, filename) {
+            try {
+                await fetch(`${API_BASE}/api/prompts/${category}/${filename}`, { method: 'DELETE' });
+                showToast('Deleted', 'success');
+                return true;
+            } catch (e) {
+                showToast('Failed to delete', 'error');
+                return false;
+            }
+        }
+        
+        function setupPromptPresetDropdown(dropdown, textarea) {
+            const category = dropdown.dataset.category;
+            const btn = dropdown.querySelector('.prompt-preset-btn');
+            const menu = dropdown.querySelector('.prompt-preset-menu');
+            const list = dropdown.querySelector('.prompt-preset-list');
+            const saveBtn = dropdown.querySelector('.prompt-preset-save-btn');
+            
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                // 다른 메뉴 닫기
+                document.querySelectorAll('.prompt-preset-menu.show').forEach(m => {
+                    if (m !== menu) m.classList.remove('show');
+                });
+                menu.classList.toggle('show');
+                
+                if (menu.classList.contains('show')) {
+                    // 목록 로드
+                    const presets = await loadPromptPresets(category);
+                    if (presets.length === 0) {
+                        list.innerHTML = '<div class="prompt-preset-empty">No saved presets</div>';
+                    } else {
+                        list.innerHTML = presets.map(p => `
+                            <div class="prompt-preset-item" data-filename="${p.filename}">
+                                <div class="prompt-preset-item-name" title="${p.name}">${p.name}</div>
+                                <div class="prompt-preset-item-actions">
+                                    <button class="add-btn">Add</button>
+                                    <button class="replace-btn">Replace</button>
+                                    <button class="delete-btn">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        // 이벤트 바인딩
+                        list.querySelectorAll('.prompt-preset-item').forEach(item => {
+                            const filename = item.dataset.filename;
+                            
+                            item.querySelector('.add-btn').onclick = async (e) => {
+                                e.stopPropagation();
+                                const content = await getPromptPreset(category, filename);
+                                if (content !== null) {
+                                    if (textarea.value.trim()) {
+                                        textarea.value = textarea.value.trim() + '\n\n' + content;
+                                    } else {
+                                        textarea.value = content;
+                                    }
+                                    menu.classList.remove('show');
+                                }
+                            };
+                            
+                            item.querySelector('.replace-btn').onclick = async (e) => {
+                                e.stopPropagation();
+                                const content = await getPromptPreset(category, filename);
+                                if (content !== null) {
+                                    textarea.value = content;
+                                    menu.classList.remove('show');
+                                }
+                            };
+                            
+                            item.querySelector('.delete-btn').onclick = async (e) => {
+                                e.stopPropagation();
+                                if (confirm('Delete this preset?')) {
+                                    if (await deletePromptPreset(category, filename)) {
+                                        item.remove();
+                                        if (list.querySelectorAll('.prompt-preset-item').length === 0) {
+                                            list.innerHTML = '<div class="prompt-preset-empty">No saved presets</div>';
+                                        }
+                                    }
+                                }
+                            };
+                        });
+                    }
+                }
+            };
+            
+            saveBtn.onclick = async (e) => {
+                e.stopPropagation();
+                const content = textarea.value.trim();
+                if (!content) {
+                    showToast('Nothing to save', 'warning');
+                    return;
+                }
+                const name = prompt('Enter preset name:');
+                if (!name) return;
+                
+                if (await savePromptPreset(category, name, content)) {
+                    menu.classList.remove('show');
+                }
+            };
+        }
+        
+        // Base/Negative 프롬프트 프리셋 초기화
+        document.querySelectorAll('.section > .prompt-label-row .prompt-preset-dropdown').forEach(dropdown => {
+            const category = dropdown.dataset.category;
+            let textarea;
+            if (category === 'base') {
+                textarea = document.getElementById('basePrompt');
+            } else if (category === 'negative') {
+                textarea = document.getElementById('negativePrompt');
+            }
+            if (textarea) {
+                setupPromptPresetDropdown(dropdown, textarea);
+            }
+        });
+        
+        // 외부 클릭 시 프롬프트 프리셋 메뉴 닫기
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.prompt-preset-dropdown')) {
+                document.querySelectorAll('.prompt-preset-menu.show').forEach(m => m.classList.remove('show'));
+            }
+        });
+        
+        // === Characters ===
+        const charactersList = document.getElementById('charactersList');
+        const addCharBtn = document.getElementById('addCharBtn');
+        
+        function createCharacterItem(content = '') {
+            const item = document.createElement('div');
+            item.className = 'character-item';
+            
+            // 헤더 (번호 + 라벨 + 프리셋 + 삭제)
+            const header = document.createElement('div');
+            header.className = 'character-item-header';
+            
+            const charNum = document.createElement('span');
+            charNum.className = 'char-num';
+            
+            const charLabel = document.createElement('span');
+            charLabel.className = 'char-label';
+            charLabel.textContent = 'Character';
+            
+            // 프리셋 드롭다운
+            const presetDropdown = document.createElement('div');
+            presetDropdown.className = 'prompt-preset-dropdown';
+            presetDropdown.dataset.category = 'character';
+            presetDropdown.innerHTML = `
+                <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                <div class="prompt-preset-menu">
+                    <div class="prompt-preset-list"></div>
+                    <div class="prompt-preset-actions">
+                        <button type="button" class="prompt-preset-save-btn">+ Save Current</button>
+                    </div>
+                </div>
+            `;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button';
+            deleteBtn.className = 'delete-char-btn';
+            deleteBtn.textContent = '×';
+            deleteBtn.onclick = () => {
+                item.remove();
+                updateCharacterNumbers();
+                autoSaveSettings();
+            };
+            
+            header.appendChild(charNum);
+            header.appendChild(charLabel);
+            header.appendChild(presetDropdown);
+            header.appendChild(deleteBtn);
+            
+            // 프롬프트 입력
+            const textarea = document.createElement('textarea');
+            textarea.value = content;
+            textarea.placeholder = 'Character prompt...';
+            textarea.rows = 2;
+            
+            item.appendChild(header);
+            item.appendChild(textarea);
+            
+            // 프리셋 드롭다운 이벤트 연결
+            setupPromptPresetDropdown(presetDropdown, textarea);
+            
+            return item;
+        }
+        
+        function updateCharacterNumbers() {
+            const items = charactersList.querySelectorAll('.character-item');
+            items.forEach((item, index) => {
+                item.querySelector('.char-num').textContent = index + 1;
+            });
+            // 최대 6개 제한
+            updateAddCharBtn();
+        }
+        
+        function updateAddCharBtn() {
+            const count = charactersList.querySelectorAll('.character-item').length;
+            addCharBtn.disabled = count >= 6;
+            addCharBtn.title = count >= 6 ? 'Maximum 6 characters' : 'Add character';
+        }
+        
+        function addCharacter(content = '') {
+            const count = charactersList.querySelectorAll('.character-item').length;
+            if (count >= 6) {
+                showToast('Maximum 6 characters allowed', 'warning');
+                return;
+            }
+            const item = createCharacterItem(content);
+            charactersList.appendChild(item);
+            updateCharacterNumbers();
+            item.querySelector('textarea').focus();
+        }
+        
+        function getCharacterPrompts() {
+            const items = charactersList.querySelectorAll('.character-item');
+            return Array.from(items).map(item => item.querySelector('textarea').value).filter(v => v.trim());
+        }
+        
+        addCharBtn.onclick = () => {
+            addCharacter();
+            autoSaveSettings();
+        };
+        
+        // Load resources
+        async function loadResources() {
+            try {
+                const [modelsRes, lorasRes, upscaleRes, configRes] = await Promise.all([
+                    fetch(`${API_BASE}/api/models`),
+                    fetch(`${API_BASE}/api/loras`),
+                    fetch(`${API_BASE}/api/upscale_models`),
+                    fetch(`${API_BASE}/api/config`)
+                ]);
+                
+                const { models } = await modelsRes.json();
+                const { loras } = await lorasRes.json();
+                const upscaleData = await upscaleRes.json();
+                const config = await configRes.json();
+                
+                // Models
+                const modelSelect = document.getElementById('localModel');
+                modelSelect.innerHTML = '<option value="">-- Select Model --</option>';
+                models.forEach(m => {
+                    modelSelect.innerHTML += `<option value="${m}">${m}</option>`;
+                });
+                
+                // LoRAs
+                const loraList = document.getElementById('loraList');
+                if (loras.length === 0) {
+                    loraList.innerHTML = '<div style="color: var(--text-dim); font-size: 0.85rem; padding: 8px;">No LoRAs found</div>';
+                } else {
+                    loraList.innerHTML = loras.map(l => `
+                        <div class="lora-item">
+                            <input type="checkbox" data-lora="${l}">
+                            <span class="lora-name" title="${l}">${l}</span>
+                            <input type="number" value="1.0" step="0.1" min="0" max="2">
+                        </div>
+                    `).join('');
+                }
+                
+                // Upscale Models
+                const upscaleSelect = document.getElementById('upscaleModel');
+                upscaleSelect.innerHTML = '<option value="">-- Select Model --</option>';
+                (upscaleData.models || []).forEach(m => {
+                    upscaleSelect.innerHTML += `<option value="${m}">${m}</option>`;
+                });
+                
+                // Config
+                document.getElementById('checkpointsDir').value = config.checkpoints_dir || '';
+                document.getElementById('loraDir').value = config.lora_dir || '';
+                updateNaiStatus(config.nai_token_set);
+                
+            } catch (e) {
+                console.error('Failed to load:', e);
+                statusText.textContent = 'Backend not running!';
+                showToast('Backend not connected', 'error');
+            }
+        }
+        
+        function updateNaiStatus(hasToken) {
+            naiTokenSet = hasToken;
+            const badge = document.getElementById('naiStatus');
+            if (hasToken) {
+                badge.textContent = 'Connected';
+                badge.className = 'status-badge success';
+            } else {
+                badge.textContent = 'Token not set';
+                badge.className = 'status-badge warning';
+            }
+        }
+        
+        // NAI Token Modal
+        function showNaiTokenModal() {
+            document.getElementById('naiTokenModal').classList.add('active');
+            document.getElementById('naiTokenModalInput').focus();
+        }
+        
+        function closeNaiTokenModal() {
+            document.getElementById('naiTokenModal').classList.remove('active');
+        }
+        
+        async function saveNaiTokenFromModal() {
+            const token = document.getElementById('naiTokenModalInput').value.trim();
+            if (!token) {
+                showToast('Please enter a token', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('naiTokenModalBtn');
+            btn.textContent = '⏳ Saving...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nai_token: token })
+                });
+                
+                if (res.ok) {
+                    showToast('Token saved', 'success');
+                    naiTokenSet = true;
+                    updateNaiStatus(true);
+                    closeNaiTokenModal();
+                    
+                    // Settings 모달의 토큰 필드도 업데이트
+                    document.getElementById('naiToken').value = token;
+                    
+                    // 생성 진행
+                    addToQueue();
+                } else {
+                    showToast('Failed to save token', 'error');
+                }
+            } catch (e) {
+                showToast('Failed to save token', 'error');
+            }
+            
+            btn.textContent = '💾 Save & Continue';
+            btn.disabled = false;
+        }
+        
+        // 모달 외부 클릭 및 Enter 키
+        document.getElementById('naiTokenModal').addEventListener('click', (e) => {
+            if (e.target.id === 'naiTokenModal') closeNaiTokenModal();
+        });
+        document.getElementById('naiTokenModalInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') saveNaiTokenFromModal();
+        });
+        
+        function getSelectedLoras() {
+            const loras = [];
+            document.querySelectorAll('.lora-item').forEach(item => {
+                const cb = item.querySelector('input[type="checkbox"]');
+                const scale = item.querySelector('input[type="number"]');
+                if (cb.checked) {
+                    loras.push({ name: cb.dataset.lora, scale: parseFloat(scale.value) });
+                }
+            });
+            return loras;
+        }
+        
+        // Generate
+        async function addToQueue() {
+            // NAI 모드인데 토큰 없으면 팝업
+            if (currentProvider === 'nai' && !naiTokenSet) {
+                showNaiTokenModal();
+                return;
+            }
+            
+            // Complete 후 리셋 타이머 취소
+            if (resetTimer) {
+                clearTimeout(resetTimer);
+                resetTimer = null;
+            }
+            
+            // Complete 상태였다면 새로 시작
+            if (totalImages > 0 && totalImages === currentIndex) {
+                currentIndex = 0;
+                totalImages = 0;
+            }
+            
+            const slotList = getSlotList();
+            const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
+            
+            // 모든 슬롯 등록 (빈 슬롯도 포함)
+            const promptCount = slotList.length || 1;
+            
+            // 백엔드용 데이터 변환
+            const promptData = slotList.length > 0 
+                ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex }))
+                : [{ name: '', content: '', slotIndex: 0 }];
+            
+            const request = {
+                provider: currentProvider,
+                base_prompt: document.getElementById('basePrompt').value,
+                negative_prompt: document.getElementById('negativePrompt').value,
+                character_prompts: getCharacterPrompts(),
+                prompt_list: promptData,
+                width: parseInt(document.getElementById('width').value),
+                height: parseInt(document.getElementById('height').value),
+                steps: parseInt(document.getElementById('steps').value),
+                cfg: parseFloat(document.getElementById('cfg').value),
+                seed: parseInt(document.getElementById('seed').value),
+                random_seed_per_image: document.getElementById('randomSeed').checked,
+                sampler: document.getElementById('sampler').value,
+                scheduler: document.getElementById('scheduler').value,
+                save_prefix: document.getElementById('savePrefix').value || 'Name_',
+            };
+            
+            if (currentProvider === 'nai') {
+                request.nai_model = document.getElementById('naiModel').value;
+                request.smea = document.getElementById('smea').value;
+                request.uc_preset = document.getElementById('ucPreset').value;
+                request.quality_tags = document.getElementById('qualityTags').checked;
+            } else {
+                request.model = document.getElementById('localModel').value;
+                request.loras = getSelectedLoras();
+                if (!request.model) {
+                    showToast('Select a model', 'error');
+                    return;
+                }
+                
+                // Upscale settings
+                request.enable_upscale = document.getElementById('enableUpscale').checked;
+                if (request.enable_upscale) {
+                    request.upscale_model = document.getElementById('upscaleModel').value;
+                    request.downscale_ratio = parseFloat(document.getElementById('downscaleRatio').value);
+                    request.upscale_steps = parseInt(document.getElementById('upscaleSteps').value);
+                    request.upscale_cfg = parseFloat(document.getElementById('upscaleCfg').value);
+                    request.upscale_denoise = parseFloat(document.getElementById('upscaleDenoise').value);
+                    request.size_alignment = document.getElementById('sizeAlignment').value;
+                    
+                    if (!request.upscale_model) {
+                        showToast('Select an upscale model', 'error');
+                        return;
+                    }
+                }
+            }
+            
+            // N번 큐에 등록
+            for (let i = 0; i < repeatCount; i++) {
+                // 즉시 UI 업데이트
+                totalImages += promptCount;
+                updateProgress();
+                
+                try {
+                    await fetch(`${API_BASE}/api/generate/multi`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(request)
+                    });
+                } catch (e) {
+                    totalImages -= promptCount; // 실패 시 롤백
+                    updateProgress();
+                    showToast(`Error: ${e.message}`, 'error');
+                }
+                
+                // 매번 새로운 시드
+                request.seed = Math.floor(Math.random() * 2147483647);
+            }
+            
+            showToast(`${repeatCount * promptCount} images queued`, 'success');
+            
+            // 다음 생성을 위한 새 랜덤 시드
+            document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+        }
+        
+        function updateProgress() {
+            if (totalImages === 0) {
+                statusText.textContent = 'Ready';
+                progressFill.style.width = '0%';
+            } else {
+                statusText.textContent = `${currentIndex}/${totalImages}`;
+                progressFill.style.width = `${(currentIndex / totalImages) * 100}%`;
+            }
+        }
+        
+        async function cancelCurrent() {
+            try {
+                const response = await fetch(`${API_BASE}/api/cancel-current`, { method: 'POST' });
+                const result = await response.json();
+                showToast(result.message, result.success ? 'warning' : 'error');
+            } catch (e) {
+                showToast(`Error: ${e.message}`, 'error');
+            }
+        }
+        
+        async function clearQueue() {
+            try {
+                const response = await fetch(`${API_BASE}/api/clear-queue`, { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    // 대기 이미지 수 제거
+                    totalImages -= result.cleared_images;
+                    if (totalImages < currentIndex) totalImages = currentIndex;
+                    updateProgress();
+                    showToast(`Cleared ${result.cleared_images} images`, 'warning');
+                }
+            } catch (e) {
+                showToast(`Error: ${e.message}`, 'error');
+            }
+        }
+        
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource(`${API_BASE}/api/stream`);
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleSSEMessage(data);
+                } catch (e) {
+                    console.error('SSE parse error:', e);
+                }
+            };
+            
+            eventSource.onerror = () => {
+                setTimeout(connectSSE, 2000);
+            };
+        }
+        
+        function handleSSEMessage(data) {
+            switch (data.type) {
+                case 'status':
+                    break;
+                    
+                case 'job_start':
+                    break;
+                    
+                case 'image':
+                    currentIndex++;
+                    updateProgress();
+                    addImageToSlot(data.prompt_idx, data);
+                    break;
+                    
+                case 'job_done':
+                    if (data.queue_length === 0) {
+                        // SSE 누락 보정: 완료 시 강제 동기화
+                        currentIndex = totalImages;
+                        statusText.textContent = 'Complete!';
+                        progressFill.style.width = '100%';
+                        showToast('All done', 'success');
+                        // 기존 타이머 취소 후 새 타이머 설정
+                        if (resetTimer) clearTimeout(resetTimer);
+                        resetTimer = setTimeout(() => {
+                            // 새 작업이 추가되지 않았을 때만 리셋
+                            if (totalImages === currentIndex) {
+                                currentIndex = 0;
+                                totalImages = 0;
+                                updateProgress();
+                            }
+                        }, 2000);
+                    }
+                    break;
+                    
+                case 'job_cancelled':
+                    totalImages -= data.cancelled_images;
+                    if (totalImages < currentIndex) totalImages = currentIndex;
+                    updateProgress();
+                    showToast('Job cancelled', 'warning');
+                    break;
+                    
+                case 'queue_cleared':
+                    totalImages -= data.cleared_images;
+                    if (totalImages < currentIndex) totalImages = currentIndex;
+                    updateProgress();
+                    break;
+                    
+                case 'error':
+                    currentIndex++;
+                    updateProgress();
+                    showToast(`Error: ${data.error || 'Generation failed'}`, 'error');
+                    console.error('Generation error:', data.error);
+                    break;
+            }
+        }
+        
+        function clearResults() {
+            clearSlotImages();
+            statusText.textContent = 'Ready';
+            progressFill.style.width = '0%';
+            currentIndex = 0;
+            totalImages = 0;
+        }
+        
+        // Lightbox
+        lightbox.onclick = (e) => {
+            if (e.target === lightbox || e.target.classList.contains('close')) {
+                lightbox.classList.remove('active');
+            }
+        };
+        
+        // Settings
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+            checkLocalEnvStatus();
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'settingsModal') closeSettings();
+        });
+        document.getElementById('localInstallModal').addEventListener('click', (e) => {
+            if (e.target.id === 'localInstallModal') closeLocalInstallModal();
+        });
+        
+        async function saveSettings() {
+            const config = {
+                nai_token: document.getElementById('naiToken').value || null,
+                checkpoints_dir: document.getElementById('checkpointsDir').value || null,
+                lora_dir: document.getElementById('loraDir').value || null,
+            };
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                if (res.ok) {
+                    showToast('Settings saved', 'success');
+                    closeSettings();
+                    loadResources();
+                }
+            } catch (e) {
+                showToast('Failed to save', 'error');
+            }
+        }
+        
+        // Local Environment
+        let localEnvPollInterval = null;
+        
+        async function checkLocalEnvStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/local/status`);
+                const data = await res.json();
+                updateLocalEnvUI(data);
+                return data;
+            } catch (e) {
+                console.error('Failed to check local env status:', e);
+                return null;
+            }
+        }
+        
+        function updateLocalEnvUI(data) {
+            const statusEl = document.getElementById('localEnvStatus');
+            const actionsEl = document.getElementById('localEnvActions');
+            const progressEl = document.getElementById('localEnvProgress');
+            const progressFillEl = document.getElementById('localEnvProgressFill');
+            const progressTextEl = document.getElementById('localEnvProgressText');
+            
+            if (data.installing) {
+                statusEl.className = 'local-env-status installing';
+                statusEl.innerHTML = `<span class="status-icon">⏳</span><span class="status-text">${data.message || 'Installing...'}</span>`;
+                actionsEl.innerHTML = '';
+                progressEl.style.display = 'flex';
+                progressFillEl.style.width = `${data.progress}%`;
+                progressTextEl.textContent = `${data.progress}%`;
+                
+                // 폴링 시작
+                if (!localEnvPollInterval) {
+                    localEnvPollInterval = setInterval(checkLocalEnvStatus, 1000);
+                }
+            } else if (data.error) {
+                statusEl.className = 'local-env-status error';
+                statusEl.innerHTML = `<span class="status-icon">❌</span><span class="status-text">Error: ${data.error}</span>`;
+                actionsEl.innerHTML = `<button class="btn" onclick="installLocalEnv()">Retry Install</button>`;
+                progressEl.style.display = 'none';
+                stopLocalEnvPolling();
+            } else if (data.installed) {
+                statusEl.className = 'local-env-status installed';
+                statusEl.innerHTML = `<span class="status-icon">✅</span><span class="status-text">Installed</span>`;
+                actionsEl.innerHTML = `<button class="btn btn-danger" onclick="uninstallLocalEnv()">Uninstall</button>`;
+                progressEl.style.display = 'none';
+                stopLocalEnvPolling();
+                
+                // Local 탭 활성화
+                enableLocalTab(true);
+                
+                // 저장된 provider가 local이었으면 자동 전환
+                if (window._pendingProvider === 'local') {
+                    window._pendingProvider = null;
+                    currentProvider = 'local';
+                    tabs.forEach(t => t.classList.toggle('active', t.dataset.provider === 'local'));
+                    providerSections.forEach(s => s.classList.toggle('active', s.dataset.provider === 'local'));
+                    // 샘플러/스케줄러도 Local 옵션으로 변경
+                    updateSamplerSchedulerOptions('local');
+                    // 저장된 값 복원
+                    if (window._pendingSampler) {
+                        const samplerSelect = document.getElementById('sampler');
+                        if ([...samplerSelect.options].some(o => o.value === window._pendingSampler)) {
+                            samplerSelect.value = window._pendingSampler;
+                        }
+                        window._pendingSampler = null;
+                    }
+                    if (window._pendingScheduler) {
+                        const schedulerSelect = document.getElementById('scheduler');
+                        if ([...schedulerSelect.options].some(o => o.value === window._pendingScheduler)) {
+                            schedulerSelect.value = window._pendingScheduler;
+                        }
+                        window._pendingScheduler = null;
+                    }
+                };
+            } else {
+                statusEl.className = 'local-env-status not-installed';
+                statusEl.innerHTML = `<span class="status-icon">⚠️</span><span class="status-text">Not installed</span>`;
+                actionsEl.innerHTML = `<button class="btn" onclick="installLocalEnv()">Install Local Engine</button>`;
+                progressEl.style.display = 'none';
+                stopLocalEnvPolling();
+                
+                // Local 탭 비활성화
+                enableLocalTab(false);
+            }
+        }
+        
+        function stopLocalEnvPolling() {
+            if (localEnvPollInterval) {
+                clearInterval(localEnvPollInterval);
+                localEnvPollInterval = null;
+            }
+        }
+        
+        function enableLocalTab(enabled) {
+            localEnvInstalled = enabled;
+            const localTab = document.querySelector('.tab[data-provider="local"]');
+            if (localTab) {
+                if (enabled) {
+                    localTab.classList.remove('disabled');
+                    localTab.style.opacity = '1';
+                } else {
+                    localTab.classList.add('disabled');
+                    localTab.style.opacity = '0.6';
+                }
+                // pointerEvents는 항상 auto로 - 클릭 감지 필요
+                localTab.style.pointerEvents = 'auto';
+            }
+        }
+        
+        // Local Install Modal
+        function showLocalInstallModal() {
+            document.getElementById('localInstallModal').classList.add('active');
+            updateInstallModalStatus();
+        }
+        
+        function closeLocalInstallModal() {
+            document.getElementById('localInstallModal').classList.remove('active');
+        }
+        
+        function updateInstallModalStatus() {
+            const statusEl = document.getElementById('installModalStatus');
+            const progressEl = document.getElementById('installModalProgress');
+            const btn = document.getElementById('installModalBtn');
+            
+            fetch(`${API_BASE}/api/local/status`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.installed) {
+                        statusEl.className = 'local-env-status installed';
+                        statusEl.innerHTML = '<span class="status-text">✅ Installed</span>';
+                        progressEl.style.display = 'none';
+                        btn.textContent = '✓ Already Installed';
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        // 잠시 후 팝업 닫고 탭 전환
+                        setTimeout(() => {
+                            closeLocalInstallModal();
+                            localEnvInstalled = true;
+                            // Local 탭으로 전환
+                            currentProvider = 'local';
+                            tabs.forEach(t => t.classList.toggle('active', t.dataset.provider === 'local'));
+                            providerSections.forEach(s => s.classList.toggle('active', s.dataset.provider === 'local'));
+                        }, 500);
+                    } else if (data.installing) {
+                        statusEl.className = 'local-env-status installing';
+                        statusEl.innerHTML = `<span class="status-text">⏳ ${data.message || 'Installing...'}</span>`;
+                        progressEl.style.display = 'flex';
+                        document.getElementById('installModalProgressFill').style.width = `${data.progress || 0}%`;
+                        document.getElementById('installModalProgressText').textContent = `${data.progress || 0}%`;
+                        btn.textContent = '⏳ Installing...';
+                        btn.disabled = true;
+                        btn.style.opacity = '0.5';
+                        // 계속 폴링
+                        setTimeout(updateInstallModalStatus, 1000);
+                    } else if (data.error) {
+                        statusEl.className = 'local-env-status error';
+                        statusEl.innerHTML = `<span class="status-text">❌ ${data.error}</span>`;
+                        progressEl.style.display = 'none';
+                        btn.textContent = '🔄 Retry Install';
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    } else {
+                        statusEl.className = 'local-env-status not-installed';
+                        statusEl.innerHTML = '<span class="status-text">⚠️ Not installed</span>';
+                        progressEl.style.display = 'none';
+                        btn.textContent = '⬇️ Install (~3GB)';
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    }
+                })
+                .catch(() => {
+                    statusEl.className = 'local-env-status error';
+                    statusEl.innerHTML = '<span class="status-text">❌ Backend not connected</span>';
+                });
+        }
+        
+        async function installFromModal() {
+            const btn = document.getElementById('installModalBtn');
+            btn.textContent = '⏳ Starting...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/local/install`, { method: 'POST' });
+                if (res.ok) {
+                    showToast('Installation started', 'success');
+                    updateInstallModalStatus();
+                    checkLocalEnvStatus();  // Settings 모달도 업데이트
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Failed to start installation', 'error');
+                    btn.textContent = '⬇️ Install (~3GB)';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                showToast('Failed to start installation', 'error');
+                btn.textContent = '⬇️ Install (~3GB)';
+                btn.disabled = false;
+            }
+        }
+        
+        async function installLocalEnv() {
+            try {
+                const res = await fetch(`${API_BASE}/api/local/install`, { method: 'POST' });
+                if (res.ok) {
+                    showToast('Installation started', 'success');
+                    checkLocalEnvStatus();
+                } else {
+                    const data = await res.json();
+                    showToast(data.detail || 'Failed to start installation', 'error');
+                }
+            } catch (e) {
+                showToast('Failed to start installation', 'error');
+            }
+        }
+        
+        async function uninstallLocalEnv() {
+            if (!confirm('Uninstall local generation engine? This will free up ~3GB of disk space.')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/api/local/uninstall`, { method: 'DELETE' });
+                if (res.ok) {
+                    showToast('Uninstalled', 'success');
+                    checkLocalEnvStatus();
+                }
+            } catch (e) {
+                showToast('Failed to uninstall', 'error');
+            }
+        }
+        
+        // Toast
+        function showToast(msg, type = '') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show ' + type;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Event listeners
+        generateBtn.onclick = addToQueue;
+        cancelCurrentBtn.onclick = cancelCurrent;
+        clearQueueBtn.onclick = clearQueue;
+        document.getElementById('clearImagesBtn').onclick = clearResults;
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                lightbox.classList.remove('active');
+                closeSettings();
+            }
+            if (e.ctrlKey && e.key === 'Enter') {
+                addToQueue();
+            }
+        });
+        
+        // 탭 활성화 시 SSE 재연결 (백그라운드 throttling 대응)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                connectSSE();
+            }
+        });
+        
+        // Size Preset
+        const sizePreset = document.getElementById('sizePreset');
+        const widthInput = document.getElementById('width');
+        const heightInput = document.getElementById('height');
+        
+        sizePreset.onchange = () => {
+            const value = sizePreset.value;
+            if (value !== 'custom') {
+                const [w, h] = value.split('x').map(Number);
+                widthInput.value = w;
+                heightInput.value = h;
+            }
+        };
+        
+        // Width/Height 직접 수정 시 Custom으로 변경
+        function checkCustomSize() {
+            const w = widthInput.value;
+            const h = heightInput.value;
+            const currentValue = `${w}x${h}`;
+            
+            // 프리셋에 있는 값인지 확인
+            const options = [...sizePreset.options];
+            const match = options.find(opt => opt.value === currentValue);
+            
+            if (match) {
+                sizePreset.value = currentValue;
+            } else {
+                sizePreset.value = 'custom';
+            }
+        }
+        
+        widthInput.onchange = checkCustomSize;
+        heightInput.onchange = checkCustomSize;
+        
+        // Upscale toggle
+        document.getElementById('enableUpscale').onchange = function() {
+            document.getElementById('upscaleSettings').style.display = this.checked ? 'block' : 'none';
+        };
+        
+        // Upscale denoise slider value display
+        document.getElementById('upscaleDenoise').oninput = function() {
+            document.getElementById('upscaleDenoiseValue').textContent = this.value;
+        };
+        
+        // ============================================================
+        // Settings Persistence (localStorage)
+        // ============================================================
+        const SETTINGS_KEY = 'nai_generator_settings';
+        
+        function saveAppSettings() {
+            const settings = {
+                // Provider
+                provider: currentProvider,
+                
+                // Prompts
+                basePrompt: document.getElementById('basePrompt').value,
+                negativePrompt: document.getElementById('negativePrompt').value,
+                
+                // Size
+                sizePreset: document.getElementById('sizePreset').value,
+                width: document.getElementById('width').value,
+                height: document.getElementById('height').value,
+                
+                // Generation
+                steps: document.getElementById('steps').value,
+                cfg: document.getElementById('cfg').value,
+                sampler: document.getElementById('sampler').value,
+                scheduler: document.getElementById('scheduler').value,
+                randomSeed: document.getElementById('randomSeed').checked,
+                
+                // NAI
+                naiModel: document.getElementById('naiModel').value,
+                smea: document.getElementById('smea').value,
+                ucPreset: document.getElementById('ucPreset').value,
+                qualityTags: document.getElementById('qualityTags').checked,
+                
+                // Local
+                localModel: document.getElementById('localModel').value,
+                
+                // Upscale
+                enableUpscale: document.getElementById('enableUpscale').checked,
+                upscaleModel: document.getElementById('upscaleModel').value,
+                downscaleRatio: document.getElementById('downscaleRatio').value,
+                sizeAlignment: document.getElementById('sizeAlignment').value,
+                upscaleSteps: document.getElementById('upscaleSteps').value,
+                upscaleCfg: document.getElementById('upscaleCfg').value,
+                upscaleDenoise: document.getElementById('upscaleDenoise').value,
+                
+                // Output
+                savePrefix: document.getElementById('savePrefix').value,
+                repeatCount: document.getElementById('repeatCount').value,
+                
+                // Slots
+                slots: getSlotList(),
+                
+                // Character prompts
+                characterPrompts: getCharacterPrompts(),
+            };
+            
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        }
+        
+        function loadAppSettings() {
+            const saved = localStorage.getItem(SETTINGS_KEY);
+            if (!saved) return;
+            
+            try {
+                const settings = JSON.parse(saved);
+                
+                // Provider - local은 설치 상태 확인 후 적용
+                if (settings.provider) {
+                    if (settings.provider === 'local') {
+                        // local은 나중에 checkLocalEnvStatus에서 설치 확인 후 적용
+                        window._pendingProvider = 'local';
+                        // 일단 NAI로 설정
+                        currentProvider = 'nai';
+                    } else {
+                        currentProvider = settings.provider;
+                    }
+                    tabs.forEach(t => t.classList.toggle('active', t.dataset.provider === currentProvider));
+                    providerSections.forEach(s => s.classList.toggle('active', s.dataset.provider === currentProvider));
+                }
+                
+                // Prompts
+                if (settings.basePrompt !== undefined) document.getElementById('basePrompt').value = settings.basePrompt;
+                if (settings.negativePrompt !== undefined) document.getElementById('negativePrompt').value = settings.negativePrompt;
+                
+                // Size
+                if (settings.sizePreset) document.getElementById('sizePreset').value = settings.sizePreset;
+                if (settings.width) document.getElementById('width').value = settings.width;
+                if (settings.height) document.getElementById('height').value = settings.height;
+                
+                // Generation
+                if (settings.steps) document.getElementById('steps').value = settings.steps;
+                if (settings.cfg) document.getElementById('cfg').value = settings.cfg;
+                
+                // 샘플러/스케줄러는 provider에 따라 옵션이 다르므로 pending으로 저장
+                window._pendingSampler = settings.sampler;
+                window._pendingScheduler = settings.scheduler;
+                
+                if (settings.randomSeed !== undefined) document.getElementById('randomSeed').checked = settings.randomSeed;
+                
+                // NAI
+                if (settings.naiModel) document.getElementById('naiModel').value = settings.naiModel;
+                if (settings.smea) document.getElementById('smea').value = settings.smea;
+                if (settings.ucPreset) document.getElementById('ucPreset').value = settings.ucPreset;
+                if (settings.qualityTags !== undefined) document.getElementById('qualityTags').checked = settings.qualityTags;
+                
+                // Local - 모델은 loadResources 후에 설정해야 함
+                window._pendingLocalModel = settings.localModel;
+                window._pendingUpscaleModel = settings.upscaleModel;
+                
+                // Upscale
+                if (settings.enableUpscale !== undefined) {
+                    document.getElementById('enableUpscale').checked = settings.enableUpscale;
+                    document.getElementById('upscaleSettings').style.display = settings.enableUpscale ? 'block' : 'none';
+                }
+                if (settings.downscaleRatio) document.getElementById('downscaleRatio').value = settings.downscaleRatio;
+                if (settings.sizeAlignment) document.getElementById('sizeAlignment').value = settings.sizeAlignment;
+                if (settings.upscaleSteps) document.getElementById('upscaleSteps').value = settings.upscaleSteps;
+                if (settings.upscaleCfg) document.getElementById('upscaleCfg').value = settings.upscaleCfg;
+                if (settings.upscaleDenoise) {
+                    document.getElementById('upscaleDenoise').value = settings.upscaleDenoise;
+                    document.getElementById('upscaleDenoiseValue').textContent = settings.upscaleDenoise;
+                }
+                
+                // Output
+                if (settings.savePrefix) document.getElementById('savePrefix').value = settings.savePrefix;
+                if (settings.repeatCount) document.getElementById('repeatCount').value = settings.repeatCount;
+                
+                // Slots - 기존 슬롯 제거 후 복원
+                if (settings.slots && settings.slots.length > 0) {
+                    slotsContainer.innerHTML = '';
+                    settings.slots.forEach(slot => {
+                        addSlot(slot.name || '', slot.content || '');
+                    });
+                }
+                
+                // Character prompts
+                if (settings.characterPrompts && settings.characterPrompts.length > 0) {
+                    window._pendingCharacterPrompts = settings.characterPrompts;
+                }
+                
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
+        
+        // 설정 변경 시 자동 저장 (debounce)
+        let saveTimeout = null;
+        function autoSaveSettings() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(saveAppSettings, 500);
+        }
+        
+        // 주요 입력 요소에 자동 저장 연결
+        function setupAutoSave() {
+            const inputs = [
+                'basePrompt', 'negativePrompt', 'width', 'height', 'steps', 'cfg',
+                'sampler', 'scheduler', 'seed', 'randomSeed', 'naiModel', 'smea',
+                'ucPreset', 'qualityTags', 'localModel', 'enableUpscale', 'upscaleModel',
+                'downscaleRatio', 'sizeAlignment', 'upscaleSteps', 'upscaleCfg',
+                'upscaleDenoise', 'savePrefix', 'repeatCount', 'sizePreset'
+            ];
+            
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', autoSaveSettings);
+                    if (el.tagName === 'TEXTAREA' || el.type === 'text' || el.type === 'number') {
+                        el.addEventListener('input', autoSaveSettings);
+                    }
+                }
+            });
+            
+            // 슬롯 변경 감지
+            slotsContainer.addEventListener('input', autoSaveSettings);
+            slotsContainer.addEventListener('change', autoSaveSettings);
+            
+            // 캐릭터 프롬프트 변경 감지
+            charactersList.addEventListener('input', autoSaveSettings);
+            charactersList.addEventListener('change', autoSaveSettings);
+        }
+        
+        // Init
+        loadAppSettings();  // 저장된 설정 먼저 로드
+        
+        // 현재 provider에 맞게 샘플러/스케줄러 옵션 설정 및 복원
+        updateSamplerSchedulerOptions(currentProvider);
+        if (window._pendingSampler) {
+            const samplerSelect = document.getElementById('sampler');
+            // 현재 옵션에 있는 값만 복원
+            if ([...samplerSelect.options].some(o => o.value === window._pendingSampler)) {
+                samplerSelect.value = window._pendingSampler;
+                window._pendingSampler = null;
+            }
+            // 없으면 pending 유지 (local 전환 시 복원)
+        }
+        if (window._pendingScheduler) {
+            const schedulerSelect = document.getElementById('scheduler');
+            if ([...schedulerSelect.options].some(o => o.value === window._pendingScheduler)) {
+                schedulerSelect.value = window._pendingScheduler;
+                window._pendingScheduler = null;
+            }
+        }
+        
+        loadResources().then(() => {
+            // 모델 선택 복원 (loadResources 완료 후)
+            if (window._pendingLocalModel) {
+                document.getElementById('localModel').value = window._pendingLocalModel;
+            }
+            if (window._pendingUpscaleModel) {
+                document.getElementById('upscaleModel').value = window._pendingUpscaleModel;
+            }
+            // 캐릭터 프롬프트 복원
+            if (window._pendingCharacterPrompts) {
+                window._pendingCharacterPrompts.forEach(content => {
+                    if (content.trim()) addCharacter(content);
+                });
+                window._pendingCharacterPrompts = null;
+            }
+        });
+        connectSSE();
+        checkLocalEnvStatus();
+        setupAutoSave();
+        
+        // 슬롯이 없으면 하나 추가
+        if (slotsContainer.children.length === 0) {
+            addSlot();
+        }
+        
+        // 시드가 비어있으면 랜덤 생성
+        if (!document.getElementById('seed').value) {
+            document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+        }
+        
+        // 초기 그라데이션 업데이트
+        setTimeout(updateScrollGradients, 100);
+        
+        // 페이지 떠날 때 저장
+        window.addEventListener('beforeunload', saveAppSettings);
+    </script>
+</body>
+</html>
