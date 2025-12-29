@@ -22,7 +22,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli
+        run: cargo install tauri-cli --version "^1"
 
       - name: Build Tauri App
         run: |
