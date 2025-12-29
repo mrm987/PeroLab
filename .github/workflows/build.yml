@@ -43,17 +43,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path web
           Copy-Item "index.html" -Destination "web/"
 
-      - name: Download Default Icons
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path "src-tauri/icons"
-          $base = "https://raw.githubusercontent.com/tauri-apps/tauri/tauri-v1.5.0/tooling/cli/templates/app/icons"
-          Invoke-WebRequest -Uri "$base/32x32.png" -OutFile "src-tauri/icons/32x32.png"
-          Invoke-WebRequest -Uri "$base/128x128.png" -OutFile "src-tauri/icons/128x128.png"
-          Invoke-WebRequest -Uri "$base/128x128@2x.png" -OutFile "src-tauri/icons/128x128@2x.png"
-          Invoke-WebRequest -Uri "$base/icon.ico" -OutFile "src-tauri/icons/icon.ico"
-          Invoke-WebRequest -Uri "$base/icon.icns" -OutFile "src-tauri/icons/icon.icns"
-
       - name: Build Tauri App
         run: |
           cd src-tauri
