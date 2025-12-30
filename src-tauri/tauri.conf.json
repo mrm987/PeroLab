@@ -83,7 +83,8 @@
         "width": 1400,
         "minWidth": 1000,
         "minHeight": 700,
-        "center": true
+        "center": true,
+        "devtools": true
       }
     ]
   }
