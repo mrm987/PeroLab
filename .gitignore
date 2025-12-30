@@ -13,6 +13,7 @@ ENV/
 python_env/
 config.json
 outputs/
+vibe_cache/
 *.log
 
 # 모델 파일 (용량 큼)
