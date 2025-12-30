@@ -674,7 +674,7 @@
         .anlas-info #anlasBalance { font-weight: 600; color: var(--text); }
         .anlas-info .anlas-separator { opacity: 0.3; margin: 0 2px; }
         .anlas-info .anlas-cost-label { opacity: 0.7; }
-        .anlas-info #anlasCost { color: var(--accent); font-weight: 600; }
+        .anlas-info #anlasCost { color: #9D6AE8; font-weight: 600; }
 
         .anlas-refresh {
             background: none;
@@ -3689,6 +3689,7 @@
                 document.getElementById('charRefSettings').style.display = 'none';
             }
             saveAppSettings();
+            updateAnlasCost();
         };
 
         document.getElementById('addVibeBtn').onclick = function() {
@@ -3711,6 +3712,7 @@
                 });
                 renderVibeList();
                 saveAppSettings();
+                updateAnlasCost();
             };
             input.click();
         };
@@ -3762,6 +3764,7 @@
                     vibeList.splice(parseInt(this.dataset.idx), 1);
                     renderVibeList();
                     saveAppSettings();
+                    updateAnlasCost();
                 };
             });
             container.querySelectorAll('.vibe-strength').forEach(slider => {
@@ -3795,6 +3798,7 @@
                 document.getElementById('vibeTransferSettings').style.display = 'none';
             }
             saveAppSettings();
+            updateAnlasCost();
         };
 
         document.getElementById('uploadCharRefBtn').onclick = function() {
@@ -3814,6 +3818,7 @@
             document.getElementById('charRefPreview').style.display = 'block';
             document.getElementById('uploadCharRefBtn').textContent = '이미지 변경';
             saveAppSettings();
+            updateAnlasCost();
         };
 
         document.getElementById('removeCharRefBtn').onclick = function() {
@@ -3822,6 +3827,7 @@
             document.getElementById('uploadCharRefBtn').textContent = '이미지 선택';
             document.getElementById('charRefInput').value = '';
             saveAppSettings();
+            updateAnlasCost();
         };
 
         document.getElementById('charRefFidelity').oninput = function() {
@@ -3893,8 +3899,14 @@
                 });
                 const data = await response.json();
 
-                document.getElementById('anlasCost').textContent = data.total_cost.toLocaleString();
-                document.getElementById('anlasFreeTag').style.display = data.is_free ? 'inline' : 'none';
+                if (data.is_free) {
+                    document.getElementById('anlasCost').style.display = 'none';
+                    document.getElementById('anlasFreeTag').style.display = 'inline';
+                } else {
+                    document.getElementById('anlasCost').style.display = 'inline';
+                    document.getElementById('anlasCost').textContent = data.total_cost.toLocaleString();
+                    document.getElementById('anlasFreeTag').style.display = 'none';
+                }
             } catch (e) {
                 document.getElementById('anlasCost').textContent = '?';
             }

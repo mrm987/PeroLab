@@ -91,8 +91,123 @@ def lazy_imports():
         Image = _Image
 
 # ============================================================
-# Model Cache
+# Character Reference Helper Functions
 # ============================================================
+ACCEPTED_CR_SIZES = [(1024, 1536), (1536, 1024), (1472, 1472)]
+
+def _choose_cr_canvas(w: int, h: int) -> tuple:
+    """캐릭터 레퍼런스용 캔버스 크기 선택 (원본 비율에 가장 가까운 것)"""
+    aspect = w / h
+    best = None
+    best_diff = float('inf')
+    for cw, ch in ACCEPTED_CR_SIZES:
+        diff = abs((cw / ch) - aspect)
+        if diff < best_diff:
+            best_diff = diff
+            best = (cw, ch)
+    return best
+
+def pad_image_to_canvas_base64(base64_image: str, target_size: tuple) -> str:
+    """base64 이미지를 캔버스 크기에 맞게 letterbox 패딩 후 base64 반환"""
+    from PIL import Image as PILImage
+    
+    # base64 디코딩
+    image_data = base64.b64decode(base64_image)
+    pil_img = PILImage.open(io.BytesIO(image_data))
+    
+    # RGBA/RGB 처리
+    if pil_img.mode == 'RGBA':
+        mode = 'RGBA'
+    else:
+        pil_img = pil_img.convert('RGB')
+        mode = 'RGB'
+    
+    W, H = pil_img.size
+    tw, th = target_size
+    
+    # 비율 유지하면서 리사이즈
+    scale = min(tw / W, th / H)
+    new_w = max(1, int(W * scale))
+    new_h = max(1, int(H * scale))
+    pil_resized = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+    
+    # 캔버스에 중앙 배치
+    if mode == 'RGBA':
+        canvas = PILImage.new('RGBA', (tw, th), (0, 0, 0, 0))
+    else:
+        canvas = PILImage.new('RGB', (tw, th), (0, 0, 0))
+    
+    offset = ((tw - new_w) // 2, (th - new_h) // 2)
+    canvas.paste(pil_resized, offset)
+    
+    # base64로 인코딩
+    buffer = io.BytesIO()
+    canvas.save(buffer, format='PNG')
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+def get_image_size_from_base64(base64_image: str) -> tuple:
+    """base64 이미지의 크기 반환 (width, height)"""
+    from PIL import Image as PILImage
+    image_data = base64.b64decode(base64_image)
+    pil_img = PILImage.open(io.BytesIO(image_data))
+    return pil_img.size
+
+def resize_image_base64(base64_image: str, max_size: int = 1024) -> str:
+    """base64 이미지를 최대 크기로 리사이즈 (비율 유지)"""
+    from PIL import Image as PILImage
+    
+    image_data = base64.b64decode(base64_image)
+    pil_img = PILImage.open(io.BytesIO(image_data))
+    
+    # RGB로 변환
+    if pil_img.mode == 'RGBA':
+        # RGBA면 흰 배경에 합성
+        background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+        background.paste(pil_img, mask=pil_img.split()[3])
+        pil_img = background
+    elif pil_img.mode != 'RGB':
+        pil_img = pil_img.convert('RGB')
+    
+    W, H = pil_img.size
+    
+    # 이미 작으면 그대로
+    if W <= max_size and H <= max_size:
+        buffer = io.BytesIO()
+        pil_img.save(buffer, format='PNG')
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    
+    # 비율 유지하면서 리사이즈
+    scale = min(max_size / W, max_size / H)
+    new_w = int(W * scale)
+    new_h = int(H * scale)
+    pil_resized = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+    
+    buffer = io.BytesIO()
+    pil_resized.save(buffer, format='PNG')
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+def resize_image_to_size_base64(base64_image: str, target_width: int, target_height: int) -> str:
+    """base64 이미지를 지정된 크기로 리사이즈 (Vibe Transfer용) - JPEG 압축"""
+    from PIL import Image as PILImage
+    
+    image_data = base64.b64decode(base64_image)
+    pil_img = PILImage.open(io.BytesIO(image_data))
+    
+    # RGB로 변환
+    if pil_img.mode == 'RGBA':
+        background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
+        background.paste(pil_img, mask=pil_img.split()[3])
+        pil_img = background
+    elif pil_img.mode != 'RGB':
+        pil_img = pil_img.convert('RGB')
+    
+    # 지정된 크기로 리사이즈
+    pil_resized = pil_img.resize((target_width, target_height), PILImage.LANCZOS)
+    
+    # JPEG로 압축 (품질 95)
+    buffer = io.BytesIO()
+    pil_resized.save(buffer, format='JPEG', quality=95)
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
 class ModelCache:
     def __init__(self):
         self.pipe = None
@@ -349,6 +464,12 @@ class MultiGenerateRequest(BaseModel):
     loras: List[dict] = []
     output_folder: str = ""  # 비어있으면 outputs에 직접 저장, 있으면 outputs/폴더명에 저장
     
+    # NAI Vibe Transfer
+    vibe_transfer: List[dict] = []
+    
+    # NAI Character Reference
+    character_reference: Optional[dict] = None
+    
     # Upscale (Local only)
     enable_upscale: bool = False
     upscale_model: str = ""
@@ -436,7 +557,7 @@ async def call_nai_api(req: GenerateRequest):
         "uncond_scale": 1.0,
         "negative_prompt": req.negative_prompt,
         "prompt": req.prompt,
-        "reference_image_multiple": [v["image"] for v in req.vibe_transfer] if req.vibe_transfer else [],
+        "reference_image_multiple": [],  # 아래에서 처리
         "reference_information_extracted_multiple": [v.get("info_extracted", 1.0) for v in req.vibe_transfer] if req.vibe_transfer else [],
         "reference_strength_multiple": [v.get("strength", 0.6) for v in req.vibe_transfer] if req.vibe_transfer else [],
         "extra_noise_seed": int(seed),
@@ -456,16 +577,47 @@ async def call_nai_api(req: GenerateRequest):
                 "base_caption": req.negative_prompt,
                 "char_captions": [{"char_caption": "", "centers": [{"x": 0.5, "y": 0.5}]} for _ in req.character_prompts] if req.character_prompts else []
             }
-        }
+        },
+        "skip_cfg_above_sigma": None
     }
+    
+    # k_euler_ancestral + non-native scheduler 조합에서 필수 파라미터
+    if nai_sampler == "k_euler_ancestral" and nai_scheduler != "native":
+        params["deliberate_euler_ancestral_bug"] = False
+        params["prefer_brownian"] = True
 
-    # Character Reference (V4.5 only)
+    # Vibe Transfer 이미지 처리 (원본 그대로 - NAI 웹 방식)
+    # 주의: bedovyy 노드는 리사이즈하지만, NAI 웹은 원본 그대로 전송
+    if req.vibe_transfer:
+        vibe_images = []
+        for i, v in enumerate(req.vibe_transfer):
+            try:
+                orig_size = get_image_size_from_base64(v["image"])
+                print(f"[NAI] Vibe {i+1}: {orig_size[0]}x{orig_size[1]}, base64 len: {len(v['image'])}")
+                vibe_images.append(v["image"])  # 리사이즈 없이 원본 사용
+            except Exception as e:
+                print(f"[NAI] Vibe {i+1} error: {e}")
+                vibe_images.append(v["image"])
+        params["reference_image_multiple"] = vibe_images
+
+    # Character Reference (V4.5 only) - 이미지를 특정 캔버스 크기로 패딩
     if req.character_reference and req.character_reference.get("image"):
         fidelity = req.character_reference.get("fidelity", 0.5)
         style_aware = req.character_reference.get("style_aware", True)
         caption_type = "character&style" if style_aware else "character"
 
-        params["director_reference_images"] = [req.character_reference["image"]]
+        # 이미지 크기 확인 후 캔버스 패딩
+        raw_image = req.character_reference["image"]
+        try:
+            w_raw, h_raw = get_image_size_from_base64(raw_image)
+            canvas_w, canvas_h = _choose_cr_canvas(w_raw, h_raw)
+            padded_image = pad_image_to_canvas_base64(raw_image, (canvas_w, canvas_h))
+            print(f"[NAI] Character Reference: {w_raw}x{h_raw} -> padded to {canvas_w}x{canvas_h}")
+        except Exception as e:
+            print(f"[NAI] Character Reference padding failed, using original: {e}")
+            padded_image = raw_image
+
+        params["director_reference_images"] = [padded_image]
         params["director_reference_descriptions"] = [{
             "use_coords": False,
             "use_order": False,
@@ -485,6 +637,31 @@ async def call_nai_api(req: GenerateRequest):
         "action": "generate",
         "parameters": params
     }
+    
+    # 디버깅: payload를 파일로 저장 (이미지 데이터 제외)
+    debug_params = {k: v for k, v in params.items()}
+    if "reference_image_multiple" in debug_params:
+        debug_params["reference_image_multiple"] = [f"<base64 len={len(img)}>" for img in debug_params["reference_image_multiple"]]
+    if "director_reference_images" in debug_params:
+        debug_params["director_reference_images"] = [f"<base64 len={len(img)}>" for img in debug_params["director_reference_images"]]
+    debug_payload = {"input": req.prompt[:100], "model": req.nai_model, "action": "generate", "parameters": debug_params}
+    with open("nai_debug_payload.json", "w", encoding="utf-8") as f:
+        json.dump(debug_payload, f, indent=2, ensure_ascii=False)
+    print(f"[NAI] Debug payload saved to nai_debug_payload.json")
+    
+    # 디버깅 로그
+    vibe_count = len(params.get("reference_image_multiple", []))
+    has_char_ref = "director_reference_images" in params
+    print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={req.nai_model}")
+    print(f"[NAI] Vibe Transfer: {vibe_count} images, Character Reference: {has_char_ref}")
+    
+    # Vibe 상세 로그
+    if vibe_count > 0:
+        for i, img in enumerate(params["reference_image_multiple"]):
+            print(f"[NAI] Vibe {i+1}: base64 length={len(img)}, info={params['reference_information_extracted_multiple'][i]}, strength={params['reference_strength_multiple'][i]}")
+    
+    if has_char_ref:
+        print(f"[NAI] CharRef: base64 length = {len(params['director_reference_images'][0])}")
     
     headers = {
         "Authorization": f"Bearer {token}",
@@ -855,6 +1032,9 @@ async def process_job(job):
             quality_tags=req.quality_tags,
             model=req.model,
             loras=req.loras,
+            # NAI Vibe Transfer & Character Reference
+            vibe_transfer=req.vibe_transfer,
+            character_reference=req.character_reference,
             # Upscale params
             enable_upscale=req.enable_upscale,
             upscale_model=req.upscale_model,
@@ -1018,20 +1198,20 @@ async def get_nai_subscription():
 def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = False,
                          vibe_count: int = 0, has_char_ref: bool = False) -> int:
     """NAI 이미지 생성 Anlas 소모량 계산"""
-    # Opus 구독자는 일정 조건에서 무료
-    # 기본 해상도(1024x1024 이하)에서 28 steps 이하면 무료
-
     pixels = width * height
-    base_pixels = 1024 * 1024  # 기준 해상도
+    base_pixels = 1024 * 1024
 
-    # Opus 무료 조건 체크
+    # Opus 무료 조건: 1MP 이하, 28 steps 이하, vibe/char_ref 없음
     if is_opus and pixels <= base_pixels and steps <= 28 and vibe_count <= 0 and not has_char_ref:
         return 0
 
-    # 기본 비용 계산 (해상도 기반)
-    if pixels <= 640 * 640:
+    # 기본 비용 계산
+    if is_opus and pixels <= base_pixels and steps <= 28:
+        # Opus는 기본 생성 무료, 추가 기능만 비용
+        base_cost = 0
+    elif pixels <= 640 * 640:
         base_cost = 4
-    elif pixels <= 832 * 1216:  # Portrait/Landscape
+    elif pixels <= 832 * 1216:
         base_cost = 8
     elif pixels <= 1024 * 1024:
         base_cost = 10
@@ -1042,16 +1222,19 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
     elif pixels <= 1536 * 1024:
         base_cost = 16
     else:
-        # 큰 해상도
         base_cost = int(pixels / base_pixels * 20)
 
     # Steps 보정 (28 초과시)
-    if steps > 28:
+    if steps > 28 and base_cost > 0:
         base_cost = int(base_cost * (steps / 28))
 
-    # Vibe Transfer 추가 비용 (4개 초과시 개당 2 Anlas)
-    if vibe_count > 4:
-        base_cost += (vibe_count - 4) * 2
+    # Vibe Transfer (첫 사용 시 2 Anlas, 이후 무료)
+    if vibe_count >= 1:
+        base_cost += 2
+
+    # Character Reference (Opus 기준 5 Anlas)
+    if has_char_ref:
+        base_cost += 5
 
     return base_cost
 
