@@ -46,8 +46,6 @@ jobs:
           # 앱 파일 복사
           Copy-Item "backend.py" -Destination "dist/PeroPix/"
           Copy-Item "index.html" -Destination "dist/PeroPix/"
-          Copy-Item "PeroPix.bat" -Destination "dist/PeroPix/"
-          Copy-Item "PeroPix-App.bat" -Destination "dist/PeroPix/"
 
           # prompts 폴더 복사
           Copy-Item -Recurse "prompts" -Destination "dist/PeroPix/"
@@ -62,30 +60,20 @@ jobs:
           # README 복사
           Copy-Item "README.md" -Destination "dist/PeroPix/" -ErrorAction SilentlyContinue
 
-          # 런처 배치파일 생성 (임베디드 Python 사용)
-          @"
-@echo off
-title PeroPix
-cd /d "%~dp0"
-echo Starting PeroPix...
-start "" "http://127.0.0.1:8765"
-python\python.exe backend.py
-"@ | Out-File -FilePath "dist/PeroPix/PeroPix.bat" -Encoding ASCII
+      - name: Create Launcher Scripts
+        shell: pwsh
+        run: |
+          # PeroPix.bat 생성
+          $bat1 = "@echo off`r`ntitle PeroPix`r`ncd /d `"%~dp0`"`r`necho Starting PeroPix...`r`nstart `"`" `"http://127.0.0.1:8765`"`r`npython\python.exe backend.py"
+          [System.IO.File]::WriteAllText("dist/PeroPix/PeroPix.bat", $bat1)
 
-          @"
-@echo off
-title PeroPix Server
-cd /d "%~dp0"
-echo Starting PeroPix...
-start /B python\python.exe backend.py
-timeout /t 2 /nobreak >nul
-start "" chrome --app=http://127.0.0.1:8765 2>nul || start "" msedge --app=http://127.0.0.1:8765 2>nul || start "" "http://127.0.0.1:8765"
-echo Press any key to stop server...
-pause >nul
-taskkill /F /IM python.exe >nul 2>&1
-"@ | Out-File -FilePath "dist/PeroPix/PeroPix-App.bat" -Encoding ASCII
+          # PeroPix-App.bat 생성
+          $bat2 = "@echo off`r`ntitle PeroPix Server`r`ncd /d `"%~dp0`"`r`necho Starting PeroPix...`r`nstart /B python\python.exe backend.py`r`ntimeout /t 2 /nobreak >nul`r`nstart `"`" chrome --app=http://127.0.0.1:8765 2>nul || start `"`" msedge --app=http://127.0.0.1:8765 2>nul || start `"`" `"http://127.0.0.1:8765`"`r`necho Press any key to stop server...`r`npause >nul`r`ntaskkill /F /IM python.exe >nul 2>&1"
+          [System.IO.File]::WriteAllText("dist/PeroPix/PeroPix-App.bat", $bat2)
 
-          # zip 압축
+      - name: Create ZIP Archive
+        shell: pwsh
+        run: |
           Compress-Archive -Path "dist/PeroPix/*" -DestinationPath "PeroPix-Windows.zip"
 
       - name: Upload Release Asset
