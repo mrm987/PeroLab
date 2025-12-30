@@ -22,11 +22,6 @@ models/loras/*.safetensors
 models/upscale_models/*.pth
 models/upscale_models/*.safetensors
 
-# PyInstaller
-build/
-dist/
-*.spec
-
 # IDE
 .idea/
 .vscode/
@@ -38,8 +33,5 @@ dist/
 Thumbs.db
 
 # Build outputs
-*.msi
-*.exe
-*.dmg
-*.AppImage
+dist/
 *.zip

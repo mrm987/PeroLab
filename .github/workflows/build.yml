@@ -13,75 +13,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
+      - name: Download Embedded Python
+        shell: pwsh
+        run: |
+          # Python embeddable 다운로드
+          $pythonUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+          Invoke-WebRequest -Uri $pythonUrl -OutFile python-embed.zip
+
+          # 압축 해제
+          New-Item -ItemType Directory -Force -Path "dist/PeroPix/python"
+          Expand-Archive -Path python-embed.zip -DestinationPath "dist/PeroPix/python"
+
+          # pip 설치를 위해 python311._pth 수정
+          $pthFile = "dist/PeroPix/python/python311._pth"
+          $content = Get-Content $pthFile
+          $content = $content -replace '#import site', 'import site'
+          Set-Content $pthFile $content
+
+          # get-pip.py 다운로드 및 실행
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
+          & "dist/PeroPix/python/python.exe" get-pip.py --no-warn-script-location
 
       - name: Install Dependencies
+        shell: pwsh
         run: |
-          pip install pyinstaller pywebview fastapi uvicorn httpx pillow numpy pydantic aiofiles
-
-      - name: Build with PyInstaller
-        run: |
-          python -c "
-          import subprocess
-          import sys
-
-          options = [
-              'app.py',
-              '--name=PeroPix',
-              '--onedir',
-              '--windowed',
-              '--noconfirm',
-              '--add-data=index.html;.',
-              # backend.py를 모듈로 포함
-              '--hidden-import=backend',
-              # uvicorn 관련
-              '--hidden-import=uvicorn',
-              '--hidden-import=uvicorn.logging',
-              '--hidden-import=uvicorn.loops',
-              '--hidden-import=uvicorn.loops.auto',
-              '--hidden-import=uvicorn.protocols',
-              '--hidden-import=uvicorn.protocols.http',
-              '--hidden-import=uvicorn.protocols.http.auto',
-              '--hidden-import=uvicorn.protocols.websockets',
-              '--hidden-import=uvicorn.protocols.websockets.auto',
-              '--hidden-import=uvicorn.lifespan',
-              '--hidden-import=uvicorn.lifespan.on',
-              # FastAPI 관련
-              '--hidden-import=fastapi',
-              '--hidden-import=starlette',
-              '--hidden-import=starlette.responses',
-              '--hidden-import=starlette.routing',
-              '--hidden-import=starlette.middleware',
-              '--hidden-import=starlette.middleware.cors',
-              # pywebview
-              '--hidden-import=webview',
-              '--hidden-import=clr',
-              # 기타
-              '--hidden-import=PIL',
-              '--hidden-import=PIL.Image',
-              '--hidden-import=numpy',
-              '--hidden-import=httpx',
-              '--hidden-import=pydantic',
-              '--hidden-import=aiofiles',
-              '--collect-all=uvicorn',
-              '--collect-all=fastapi',
-              '--collect-all=starlette',
-          ]
-
-          cmd = [sys.executable, '-m', 'PyInstaller'] + options
-          subprocess.run(cmd, check=True)
-          "
+          $pythonExe = "dist/PeroPix/python/python.exe"
+          & $pythonExe -m pip install --no-warn-script-location fastapi uvicorn httpx pillow numpy pydantic aiofiles
 
       - name: Prepare Release Package
         shell: pwsh
         run: |
-          # index.html 복사 (add-data가 제대로 안 될 경우 대비)
-          Copy-Item "index.html" -Destination "dist/PeroPix/_internal/" -ErrorAction SilentlyContinue
-          Copy-Item "index.html" -Destination "dist/PeroPix/" -ErrorAction SilentlyContinue
+          # 앱 파일 복사
+          Copy-Item "backend.py" -Destination "dist/PeroPix/"
+          Copy-Item "index.html" -Destination "dist/PeroPix/"
+          Copy-Item "PeroPix.bat" -Destination "dist/PeroPix/"
+          Copy-Item "PeroPix-App.bat" -Destination "dist/PeroPix/"
 
           # prompts 폴더 복사
           Copy-Item -Recurse "prompts" -Destination "dist/PeroPix/"
@@ -95,6 +61,29 @@ jobs:
 
           # README 복사
           Copy-Item "README.md" -Destination "dist/PeroPix/" -ErrorAction SilentlyContinue
+
+          # 런처 배치파일 생성 (임베디드 Python 사용)
+          @"
+@echo off
+title PeroPix
+cd /d "%~dp0"
+echo Starting PeroPix...
+start "" "http://127.0.0.1:8765"
+python\python.exe backend.py
+"@ | Out-File -FilePath "dist/PeroPix/PeroPix.bat" -Encoding ASCII
+
+          @"
+@echo off
+title PeroPix Server
+cd /d "%~dp0"
+echo Starting PeroPix...
+start /B python\python.exe backend.py
+timeout /t 2 /nobreak >nul
+start "" chrome --app=http://127.0.0.1:8765 2>nul || start "" msedge --app=http://127.0.0.1:8765 2>nul || start "" "http://127.0.0.1:8765"
+echo Press any key to stop server...
+pause >nul
+taskkill /F /IM python.exe >nul 2>&1
+"@ | Out-File -FilePath "dist/PeroPix/PeroPix-App.bat" -Encoding ASCII
 
           # zip 압축
           Compress-Archive -Path "dist/PeroPix/*" -DestinationPath "PeroPix-Windows.zip"
