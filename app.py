@@ -48,13 +48,17 @@ def start_backend():
         import uvicorn
         from backend import app
 
-        uvicorn.run(
+        # PyInstaller frozen 환경에서 uvicorn 로깅 설정 문제 해결
+        config = uvicorn.Config(
             app,
             host="127.0.0.1",
             port=8765,
             log_level="info",
-            access_log=False
+            access_log=False,
+            log_config=None,  # 기본 로깅 설정 비활성화 (frozen 환경 호환)
         )
+        server = uvicorn.Server(config)
+        server.run()
     except Exception as e:
         backend_error = str(e)
         print(f"Backend error: {e}")

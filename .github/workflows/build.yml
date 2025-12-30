@@ -21,7 +21,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install pyinstaller pywebview fastapi uvicorn httpx pillow numpy pydantic
+          pip install pyinstaller pywebview fastapi uvicorn httpx pillow numpy pydantic aiofiles
 
       - name: Build with PyInstaller
         run: |
@@ -36,7 +36,10 @@ jobs:
               '--windowed',
               '--noconfirm',
               '--add-data=index.html;.',
-              '--add-data=backend.py;.',
+              # backend.py를 모듈로 포함
+              '--hidden-import=backend',
+              # uvicorn 관련
+              '--hidden-import=uvicorn',
               '--hidden-import=uvicorn.logging',
               '--hidden-import=uvicorn.loops',
               '--hidden-import=uvicorn.loops.auto',
@@ -47,7 +50,26 @@ jobs:
               '--hidden-import=uvicorn.protocols.websockets.auto',
               '--hidden-import=uvicorn.lifespan',
               '--hidden-import=uvicorn.lifespan.on',
+              # FastAPI 관련
+              '--hidden-import=fastapi',
+              '--hidden-import=starlette',
+              '--hidden-import=starlette.responses',
+              '--hidden-import=starlette.routing',
+              '--hidden-import=starlette.middleware',
+              '--hidden-import=starlette.middleware.cors',
+              # pywebview
               '--hidden-import=webview',
+              '--hidden-import=clr',
+              # 기타
+              '--hidden-import=PIL',
+              '--hidden-import=PIL.Image',
+              '--hidden-import=numpy',
+              '--hidden-import=httpx',
+              '--hidden-import=pydantic',
+              '--hidden-import=aiofiles',
+              '--collect-all=uvicorn',
+              '--collect-all=fastapi',
+              '--collect-all=starlette',
           ]
 
           cmd = [sys.executable, '-m', 'PyInstaller'] + options
@@ -57,6 +79,10 @@ jobs:
       - name: Prepare Release Package
         shell: pwsh
         run: |
+          # index.html 복사 (add-data가 제대로 안 될 경우 대비)
+          Copy-Item "index.html" -Destination "dist/PeroPix/_internal/" -ErrorAction SilentlyContinue
+          Copy-Item "index.html" -Destination "dist/PeroPix/" -ErrorAction SilentlyContinue
+
           # prompts 폴더 복사
           Copy-Item -Recurse "prompts" -Destination "dist/PeroPix/"
 
