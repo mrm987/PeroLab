@@ -190,12 +190,13 @@
         
         .size-row {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             align-items: center;
         }
 
         .size-preset {
-            flex: 1;
+            flex: 1 1 150px;
             min-width: 120px;
         }
 
@@ -203,12 +204,13 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            flex-shrink: 0;
+            flex: 0 0 auto;
         }
 
         .size-inputs input {
-            width: 70px;
+            width: 65px;
             text-align: center;
+            padding: 10px 8px;
         }
 
         .size-x {
@@ -742,8 +744,24 @@
             border: 1px solid var(--border);
             margin-top: 8px;
         }
-        
+
         .btn-secondary:hover { background: var(--bg-lighter); }
+
+        /* Inline button row (for vibe buttons, etc.) */
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .btn-row .btn {
+            width: auto;
+            margin-top: 0;
+            padding: 10px 16px;
+        }
+        .btn-row .btn-icon {
+            padding: 10px 12px;
+            flex-shrink: 0;
+        }
         
         /* Main Area */
         .main {
@@ -1519,23 +1537,34 @@
         .slot-image-card .save-gallery-btn:hover { background: var(--primary); opacity: 1; }
         .slot-image-card .save-gallery-btn.saved { color: gold; opacity: 1; }
 
+        /* Info row layout */
+        .slot-image-card .info-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .slot-image-card .info-row .filename {
+            flex: 1;
+            min-width: 0;
+        }
+
         /* Load settings button */
         .slot-image-card .load-settings-btn {
-            position: absolute;
-            bottom: 40px;
-            right: 8px;
-            background: rgba(0,0,0,0.7);
-            border: none;
-            color: white;
-            padding: 4px 8px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            padding: 2px 6px;
             border-radius: 4px;
             cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s;
-            font-size: 11px;
+            font-size: 12px;
+            flex-shrink: 0;
+            transition: all 0.2s;
         }
-        .slot-image-card:hover .load-settings-btn { opacity: 1; }
-        .slot-image-card .load-settings-btn:hover { background: var(--primary); opacity: 1; }
+        .slot-image-card .load-settings-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
 
         /* Settings Modal */
         .modal {
@@ -1837,11 +1866,11 @@
 
                             <div id="vibeList" class="vibe-list"></div>
 
-                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <div class="btn-row">
                                 <button type="button" class="btn btn-secondary" id="addVibeBtn" style="flex: 1;">
                                     + 바이브 추가
                                 </button>
-                                <button type="button" class="btn btn-secondary" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기">
+                                <button type="button" class="btn btn-secondary btn-icon" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기">
                                     📁
                                 </button>
                             </div>
@@ -2637,9 +2666,11 @@
             card.innerHTML = `
                 <img src="${imgSrc}" alt="" draggable="false">
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
-                <button type="button" class="load-settings-btn" title="이 이미지의 설정 불러오기">📋 Load</button>
                 <div class="info">
-                    <div class="filename" title="${data.filename}">${data.filename}</div>
+                    <div class="info-row">
+                        <div class="filename" title="${data.filename}">${data.filename}</div>
+                        <button type="button" class="load-settings-btn" title="이 이미지의 설정 불러오기">📋</button>
+                    </div>
                     <div class="seed">Seed: ${data.seed}</div>
                 </div>
             `;
@@ -4172,19 +4203,30 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // 설정 불러오기 확인 팝업
+        // 설정 불러오기 확인 팝업 (드롭 모달 재사용)
         function showLoadSettingsConfirm(metadata) {
-            const details = `
-Prompt: ${metadata.prompt?.substring(0, 100)}${metadata.prompt?.length > 100 ? '...' : ''}
-Seed: ${metadata.seed}
-Size: ${metadata.width}x${metadata.height}
-Steps: ${metadata.steps}, CFG: ${metadata.cfg}
-Model: ${metadata.nai_model || metadata.model || 'N/A'}
-            `.trim();
+            const dropModal = document.getElementById('dropModal');
+            document.getElementById('dropModalTitle').textContent = '📋 설정 불러오기';
+            document.getElementById('dropModalPreview').src = '';
+            document.getElementById('dropModalPreview').style.display = 'none';
 
-            if (confirm(`이 이미지의 설정을 불러오시겠습니까?\n\n${details}`)) {
-                applyMetadataSettings(metadata);
-            }
+            const metadataDiv = document.getElementById('dropModalMetadata');
+            metadataDiv.innerHTML = `
+                <div><strong>Prompt:</strong> ${(metadata.prompt || '').substring(0, 100)}${(metadata.prompt || '').length > 100 ? '...' : ''}</div>
+                <div><strong>Negative:</strong> ${(metadata.negative_prompt || '').substring(0, 50)}${(metadata.negative_prompt || '').length > 50 ? '...' : ''}</div>
+                <div><strong>Seed:</strong> ${metadata.seed || 'N/A'}</div>
+                <div><strong>Size:</strong> ${metadata.width}x${metadata.height}</div>
+                <div><strong>Steps:</strong> ${metadata.steps}, <strong>CFG:</strong> ${metadata.cfg}</div>
+                <div><strong>Sampler:</strong> ${metadata.sampler}</div>
+                <div><strong>Model:</strong> ${metadata.nai_model || metadata.model || 'N/A'}</div>
+            `;
+
+            document.getElementById('dropModalConfirm').textContent = '설정 적용';
+
+            // 임시 데이터 저장
+            window._pendingLoadMetadata = metadata;
+
+            dropModal.classList.add('active');
         }
 
         // 메타데이터 설정 적용
@@ -5202,9 +5244,20 @@ Model: ${metadata.nai_model || metadata.model || 'N/A'}
         document.getElementById('dropModalCancel').onclick = () => {
             dropModal.classList.remove('active');
             pendingDropData = null;
+            window._pendingLoadMetadata = null;
+            document.getElementById('dropModalPreview').style.display = '';
         };
 
         document.getElementById('dropModalConfirm').onclick = () => {
+            // 설정 불러오기 처리
+            if (window._pendingLoadMetadata) {
+                applyMetadataSettings(window._pendingLoadMetadata);
+                window._pendingLoadMetadata = null;
+                dropModal.classList.remove('active');
+                document.getElementById('dropModalPreview').style.display = '';
+                return;
+            }
+
             if (!pendingDropData) return;
 
             if (pendingDropData.type === 'vibe') {
