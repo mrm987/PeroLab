@@ -1543,9 +1543,9 @@ async def get_gallery():
                 except:
                     pass
 
-            # 썸네일 생성
+            # 썸네일 생성 (고해상도 디스플레이용 2x)
             thumb = image.copy()
-            thumb.thumbnail((300, 300), Image.LANCZOS)
+            thumb.thumbnail((520, 520), Image.LANCZOS)
             buffer = io.BytesIO()
             thumb.save(buffer, format="PNG")
             thumb_base64 = base64.b64encode(buffer.getvalue()).decode()
