@@ -72,7 +72,7 @@
         .sidebar-resize-handle:hover,
         .sidebar-resize-handle.active {
             opacity: 1;
-            background: rgba(157, 106, 232, 0.5);
+            background: rgba(74, 122, 184, 0.6);
         }
         
         .sidebar-header {
@@ -1175,7 +1175,7 @@
         .slot-resize-handle:hover,
         .slot-resize-handle.active {
             opacity: 1;
-            background: rgba(157, 106, 232, 0.5);
+            background: rgba(74, 122, 184, 0.6);
         }
 
         .slot-resize-handle.left {
@@ -2335,6 +2335,18 @@
         </div>
     </div>
 
+    <!-- Generic Confirm Modal -->
+    <div class="drop-modal" id="confirmModal">
+        <div class="drop-modal-content" style="max-width: 400px;">
+            <h3 id="confirmModalTitle">확인</h3>
+            <div id="confirmModalMessage" class="metadata" style="margin: 16px 0;"></div>
+            <div class="buttons">
+                <button type="button" class="btn btn-secondary" id="confirmModalCancel">취소</button>
+                <button type="button" class="btn" id="confirmModalOk">확인</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
@@ -3123,22 +3135,28 @@
         async function deletePreset(filename) {
             const preset = presets.find(p => p.filename === filename);
             if (!preset) return;
-            
-            if (!confirm(`Delete "${preset.name}"?`)) return;
-            
-            try {
-                await fetch(`${API_BASE}/api/presets/${filename}`, { method: 'DELETE' });
-                
-                if (currentPreset?.filename === filename) {
-                    currentPreset = null;
-                    presetNameSpan.textContent = 'Presets';
-                }
-                
-                loadPresetList();
-                showToast('삭제됨', 'success');
-            } catch (e) {
-                showToast('삭제 실패', 'error');
-            }
+
+            showConfirmModal(
+                '🗑️ 프리셋 삭제',
+                `<p>"${preset.name}" 프리셋을 삭제하시겠습니까?</p>`,
+                async () => {
+                    try {
+                        await fetch(`${API_BASE}/api/presets/${filename}`, { method: 'DELETE' });
+
+                        if (currentPreset?.filename === filename) {
+                            currentPreset = null;
+                            presetNameSpan.textContent = 'Presets';
+                        }
+
+                        loadPresetList();
+                        showToast('삭제됨', 'success');
+                    } catch (e) {
+                        showToast('삭제 실패', 'error');
+                    }
+                },
+                '삭제',
+                true
+            );
         }
         
         // Sync scroll 토글
@@ -3462,14 +3480,20 @@
                             
                             item.querySelector('.delete-btn').onclick = async (e) => {
                                 e.stopPropagation();
-                                if (confirm('이 프리셋을 삭제하시겠습니까?')) {
-                                    if (await deletePromptPreset(category, filename)) {
-                                        item.remove();
-                                        if (list.querySelectorAll('.prompt-preset-item').length === 0) {
-                                            list.innerHTML = '<div class="prompt-preset-empty">저장된 프리셋 없음</div>';
+                                showConfirmModal(
+                                    '🗑️ 프리셋 삭제',
+                                    '<p>이 프리셋을 삭제하시겠습니까?</p>',
+                                    async () => {
+                                        if (await deletePromptPreset(category, filename)) {
+                                            item.remove();
+                                            if (list.querySelectorAll('.prompt-preset-item').length === 0) {
+                                                list.innerHTML = '<div class="prompt-preset-empty">저장된 프리셋 없음</div>';
+                                            }
                                         }
-                                    }
-                                }
+                                    },
+                                    '삭제',
+                                    true
+                                );
                             };
                         });
                     }
@@ -4365,19 +4389,23 @@
         }
         
         async function uninstallLocalEnv() {
-            if (!confirm('로컬 생성 엔진을 제거하시겠습니까? 약 3GB 디스크 공간이 확보됩니다.')) {
-                return;
-            }
-            
-            try {
-                const res = await fetch(`${API_BASE}/api/local/uninstall`, { method: 'DELETE' });
-                if (res.ok) {
-                    showToast('제거됨', 'success');
-                    checkLocalEnvStatus();
-                }
-            } catch (e) {
-                showToast('제거 실패', 'error');
-            }
+            showConfirmModal(
+                '🗑️ 로컬 엔진 제거',
+                '<p>로컬 생성 엔진을 제거하시겠습니까?</p><p style="color: var(--text-dim); font-size: 0.9rem;">약 3GB 디스크 공간이 확보됩니다.</p>',
+                async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/local/uninstall`, { method: 'DELETE' });
+                        if (res.ok) {
+                            showToast('제거됨', 'success');
+                            checkLocalEnvStatus();
+                        }
+                    } catch (e) {
+                        showToast('제거 실패', 'error');
+                    }
+                },
+                '제거',
+                true
+            );
         }
         
         // Toast
@@ -4386,6 +4414,33 @@
             toast.textContent = msg;
             toast.className = 'toast show ' + type;
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Generic Confirm Modal
+        function showConfirmModal(title, message, onConfirm, confirmText = '확인', isDanger = false) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').innerHTML = message;
+            const okBtn = document.getElementById('confirmModalOk');
+            okBtn.textContent = confirmText;
+            okBtn.className = isDanger ? 'btn btn-danger' : 'btn';
+            okBtn.style.background = isDanger ? 'var(--error)' : '';
+
+            // 이벤트 리스너 정리 후 재설정
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            const newCancelBtn = document.getElementById('confirmModalCancel').cloneNode(true);
+            document.getElementById('confirmModalCancel').parentNode.replaceChild(newCancelBtn, document.getElementById('confirmModalCancel'));
+
+            newOkBtn.onclick = () => {
+                modal.classList.remove('active');
+                if (onConfirm) onConfirm();
+            };
+            newCancelBtn.onclick = () => {
+                modal.classList.remove('active');
+            };
+
+            modal.classList.add('active');
         }
 
         // 설정 불러오기 확인 팝업 (드롭 모달 재사용)
@@ -5341,7 +5396,7 @@
                     }
                 };
 
-                // 전체 설정 적용
+                // 전체 설정 적용 (확인 팝업)
                 item.querySelector('.apply-all-btn').onclick = async (e) => {
                     e.stopPropagation();
                     try {
@@ -5349,21 +5404,22 @@
                         const result = await response.json();
                         if (result.success && result.metadata) {
                             const meta = result.metadata;
-                            if (meta.prompt) document.getElementById('basePrompt').value = meta.prompt;
-                            if (meta.uc) document.getElementById('negativePrompt').value = meta.uc;
-                            if (meta.seed) document.getElementById('seed').value = meta.seed;
-                            if (meta.width) document.getElementById('width').value = meta.width;
-                            if (meta.height) document.getElementById('height').value = meta.height;
-                            if (meta.steps) document.getElementById('steps').value = meta.steps;
-                            if (meta.scale) document.getElementById('cfg').value = meta.scale;
-                            if (meta.sampler) {
-                                const samplerSelect = document.getElementById('sampler');
-                                if ([...samplerSelect.options].some(o => o.value === meta.sampler)) {
-                                    samplerSelect.value = meta.sampler;
-                                }
-                            }
-                            saveAppSettings();
-                            showToast('설정 적용됨', 'success');
+                            // 메타데이터 형식 변환 (showLoadSettingsConfirm 호환)
+                            const normalizedMeta = {
+                                prompt: meta.prompt || '',
+                                negative_prompt: meta.uc || '',
+                                seed: meta.seed,
+                                width: meta.width,
+                                height: meta.height,
+                                steps: meta.steps,
+                                cfg: meta.scale,
+                                sampler: meta.sampler,
+                                scheduler: meta.noise_schedule || 'native',
+                                nai_model: meta.request_type || '',
+                                smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
+                                uc_preset: meta.ucPreset || meta.uc_preset || ''
+                            };
+                            showLoadSettingsConfirm(normalizedMeta);
                         } else {
                             showToast('메타데이터 없음', 'warning');
                         }
@@ -5375,26 +5431,33 @@
                 // 삭제
                 item.querySelector('.delete-btn').onclick = async (e) => {
                     e.stopPropagation();
-                    if (!confirm('이 이미지를 갤러리에서 삭제하시겠습니까?')) return;
-                    try {
-                        const response = await fetch(`${API_BASE}/api/gallery/${img.filename}`, {
-                            method: 'DELETE'
-                        });
-                        const result = await response.json();
-                        if (result.success) {
-                            item.remove();
-                            showToast('삭제됨', 'success');
-                            // 갤러리가 비었는지 확인
-                            if (galleryGrid.children.length === 0) {
-                                galleryEmpty.style.display = 'flex';
-                                galleryGrid.style.display = 'none';
+                    showConfirmModal(
+                        '🗑️ 이미지 삭제',
+                        '<p>이 이미지를 갤러리에서 삭제하시겠습니까?</p>',
+                        async () => {
+                            try {
+                                const response = await fetch(`${API_BASE}/api/gallery/${img.filename}`, {
+                                    method: 'DELETE'
+                                });
+                                const result = await response.json();
+                                if (result.success) {
+                                    item.remove();
+                                    showToast('삭제됨', 'success');
+                                    // 갤러리가 비었는지 확인
+                                    if (galleryGrid.children.length === 0) {
+                                        galleryEmpty.style.display = 'flex';
+                                        galleryGrid.style.display = 'none';
+                                    }
+                                } else {
+                                    showToast('삭제 실패', 'error');
+                                }
+                            } catch (err) {
+                                showToast('삭제 오류: ' + err.message, 'error');
                             }
-                        } else {
-                            showToast('삭제 실패', 'error');
-                        }
-                    } catch (err) {
-                        showToast('삭제 오류: ' + err.message, 'error');
-                    }
+                        },
+                        '삭제',
+                        true
+                    );
                 };
 
                 galleryGrid.appendChild(item);
