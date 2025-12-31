@@ -1286,13 +1286,13 @@ async def process_job(job):
             else:
                 image, actual_seed = call_local_diffusers(single_req)
             
-            # 파일명용 태그 결정: name > 첫 태그
+            # 파일명용 태그 결정: name > 첫 태그 (sanitize_filename 사용)
             file_tag = ""
             if prompt_name:
-                file_tag = "".join(c for c in prompt_name if c.isalnum() or c in "_-")[:20]
+                file_tag = sanitize_filename(prompt_name, max_length=20)
             elif extra_prompt:
-                tag = extra_prompt.split(",")[0].split()[0].strip()
-                file_tag = "".join(c for c in tag if c.isalnum() or c in "_-")[:20]
+                tag = extra_prompt.split(",")[0].strip()
+                file_tag = sanitize_filename(tag, max_length=20)
             
             image_idx += 1
 
