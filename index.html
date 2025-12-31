@@ -432,7 +432,34 @@
             align-items: center;
             margin-bottom: 4px;
         }
-        
+
+        .prompt-label-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mode-toggle {
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+
+        .mode-toggle:hover {
+            border-color: var(--accent);
+            background: var(--bg);
+        }
+
+        .mode-toggle.furry {
+            background: var(--bg);
+            border-color: var(--accent);
+        }
+
         .prompt-preset-dropdown {
             position: relative;
         }
@@ -1796,7 +1823,10 @@
                 <!-- Prompts -->
                 <div class="section">
                     <div class="prompt-label-row">
-                        <label for="basePrompt">Base Prompt</label>
+                        <div class="prompt-label-left">
+                            <button type="button" id="modeToggle" class="mode-toggle" title="Anime Mode">🌸</button>
+                            <label for="basePrompt">Base Prompt</label>
+                        </div>
                         <div class="prompt-preset-dropdown" data-category="base">
                             <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
                             <div class="prompt-preset-menu">
@@ -4304,6 +4334,30 @@
         clearQueueBtn.onclick = clearQueue;
         document.getElementById('clearImagesBtn').onclick = clearResults;
 
+        // Anime/Furry Mode Toggle
+        let currentMode = 'anime'; // 'anime' or 'furry'
+        const modeToggle = document.getElementById('modeToggle');
+
+        function setMode(mode) {
+            currentMode = mode;
+            if (mode === 'furry') {
+                modeToggle.textContent = '🐾';
+                modeToggle.title = 'Furry Mode';
+                modeToggle.classList.add('furry');
+                document.getElementById('ucPreset').value = 'Furry Focus';
+            } else {
+                modeToggle.textContent = '🌸';
+                modeToggle.title = 'Anime Mode';
+                modeToggle.classList.remove('furry');
+                document.getElementById('ucPreset').value = 'Heavy';
+            }
+            saveSettings();
+        }
+
+        modeToggle.onclick = () => {
+            setMode(currentMode === 'anime' ? 'furry' : 'anime');
+        };
+
         // 폴더 열기 버튼 핸들러
         async function openFolder(folderType, subfolder = '') {
             try {
@@ -4718,6 +4772,7 @@
                 smea: document.getElementById('smea').value,
                 ucPreset: document.getElementById('ucPreset').value,
                 qualityTags: document.getElementById('qualityTags').checked,
+                animeFurryMode: currentMode,
 
                 // Vibe Transfer
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
@@ -4802,6 +4857,14 @@
                 if (settings.smea) document.getElementById('smea').value = settings.smea;
                 if (settings.ucPreset) document.getElementById('ucPreset').value = settings.ucPreset;
                 if (settings.qualityTags !== undefined) document.getElementById('qualityTags').checked = settings.qualityTags;
+                if (settings.animeFurryMode) {
+                    currentMode = settings.animeFurryMode;
+                    if (currentMode === 'furry') {
+                        modeToggle.textContent = '🐾';
+                        modeToggle.title = 'Furry Mode';
+                        modeToggle.classList.add('furry');
+                    }
+                }
 
                 // Vibe Transfer
                 if (settings.enableVibeTransfer !== undefined) {
