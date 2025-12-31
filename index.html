@@ -3707,7 +3707,7 @@
                 request.smea = document.getElementById('smea').value;
                 request.uc_preset = document.getElementById('ucPreset').value;
                 request.quality_tags = document.getElementById('qualityTags').checked;
-                request.furry_mode = currentMode === 'furry';
+                request.furry_mode = furryModeEnabled;
 
                 // Vibe Transfer
                 if (document.getElementById('enableVibeTransfer').checked && vibeList.length > 0) {
@@ -4336,12 +4336,12 @@
         document.getElementById('clearImagesBtn').onclick = clearResults;
 
         // Anime/Furry Mode Toggle
-        let currentMode = 'anime'; // 'anime' or 'furry'
+        let furryModeEnabled = false;
         const modeToggle = document.getElementById('modeToggle');
 
-        function setMode(mode) {
-            currentMode = mode;
-            if (mode === 'furry') {
+        function setFurryMode(enabled) {
+            furryModeEnabled = enabled;
+            if (enabled) {
                 modeToggle.textContent = '🐾';
                 modeToggle.title = 'Furry Mode';
                 modeToggle.classList.add('furry');
@@ -4354,7 +4354,7 @@
         }
 
         modeToggle.onclick = () => {
-            setMode(currentMode === 'anime' ? 'furry' : 'anime');
+            setFurryMode(!furryModeEnabled);
         };
 
         // 폴더 열기 버튼 핸들러
@@ -4771,7 +4771,7 @@
                 smea: document.getElementById('smea').value,
                 ucPreset: document.getElementById('ucPreset').value,
                 qualityTags: document.getElementById('qualityTags').checked,
-                animeFurryMode: currentMode,
+                furryModeEnabled: furryModeEnabled,
 
                 // Vibe Transfer
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
@@ -4856,13 +4856,11 @@
                 if (settings.smea) document.getElementById('smea').value = settings.smea;
                 if (settings.ucPreset) document.getElementById('ucPreset').value = settings.ucPreset;
                 if (settings.qualityTags !== undefined) document.getElementById('qualityTags').checked = settings.qualityTags;
-                if (settings.animeFurryMode) {
-                    currentMode = settings.animeFurryMode;
-                    if (currentMode === 'furry') {
-                        modeToggle.textContent = '🐾';
-                        modeToggle.title = 'Furry Mode';
-                        modeToggle.classList.add('furry');
-                    }
+                if (settings.furryModeEnabled) {
+                    furryModeEnabled = true;
+                    modeToggle.textContent = '🐾';
+                    modeToggle.title = 'Furry Mode';
+                    modeToggle.classList.add('furry');
                 }
 
                 // Vibe Transfer
