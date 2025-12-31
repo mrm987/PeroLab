@@ -575,29 +575,46 @@ def get_next_vibe_number() -> int:
     return max_num + 1
 
 
-def get_cached_vibe(cache_key: str) -> Optional[str]:
-    """캐시된 vibe 데이터 반환 (PNG 메타데이터에서 읽기)"""
-    from PIL import Image as PILImage
-    from PIL.PngImagePlugin import PngInfo
+# Vibe 캐시 (메모리)
+_vibe_key_map_cache = None
+_vibe_key_map_mtime = 0
+_vibe_data_cache = {}  # cache_key -> vibe_data
 
-    # 먼저 키 매핑 파일 확인
+def get_cached_vibe(cache_key: str) -> Optional[str]:
+    """캐시된 vibe 데이터 반환 (PNG 메타데이터에서 읽기, 메모리 캐시 사용)"""
+    global _vibe_key_map_cache, _vibe_key_map_mtime, _vibe_data_cache
+    from PIL import Image as PILImage
+
+    # 메모리 캐시에서 먼저 확인
+    if cache_key in _vibe_data_cache:
+        return _vibe_data_cache[cache_key]
+
+    # 키 매핑 파일을 메모리 캐시에서 읽기
     key_map_file = VIBE_CACHE_DIR / "key_map.json"
     if key_map_file.exists():
         try:
-            key_map = json.loads(key_map_file.read_text(encoding='utf-8'))
-            if cache_key in key_map:
-                png_file = VIBE_CACHE_DIR / key_map[cache_key]
+            current_mtime = key_map_file.stat().st_mtime
+            if _vibe_key_map_cache is None or current_mtime > _vibe_key_map_mtime:
+                _vibe_key_map_cache = json.loads(key_map_file.read_text(encoding='utf-8'))
+                _vibe_key_map_mtime = current_mtime
+
+            if _vibe_key_map_cache and cache_key in _vibe_key_map_cache:
+                png_file = VIBE_CACHE_DIR / _vibe_key_map_cache[cache_key]
                 if png_file.exists():
                     img = PILImage.open(png_file)
                     if 'vibe_data' in img.info:
-                        return img.info['vibe_data']
+                        vibe_data = img.info['vibe_data']
+                        _vibe_data_cache[cache_key] = vibe_data  # 메모리 캐시에 저장
+                        return vibe_data
         except:
             pass
 
     # 레거시 .vibe 파일 확인
     legacy_file = VIBE_CACHE_DIR / f"{cache_key}.vibe"
     if legacy_file.exists():
-        return legacy_file.read_text(encoding='utf-8')
+        vibe_data = legacy_file.read_text(encoding='utf-8')
+        _vibe_data_cache[cache_key] = vibe_data
+        return vibe_data
 
     return None
 
