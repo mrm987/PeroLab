@@ -38,12 +38,33 @@
         
         /* Sidebar */
         .sidebar {
-            width: 540px;
+            width: var(--sidebar-width, 540px);
+            min-width: 360px;
+            max-width: 800px;
             background: var(--bg-light);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        .sidebar-resize-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 6px;
+            cursor: ew-resize;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+        }
+
+        .sidebar-resize-handle:hover,
+        .sidebar-resize-handle.active {
+            opacity: 1;
+            background: rgba(157, 106, 232, 0.5);
         }
         
         .sidebar-header {
@@ -172,23 +193,24 @@
             gap: 8px;
             align-items: center;
         }
-        
+
         .size-preset {
             flex: 1;
-            min-width: 0;
+            min-width: 120px;
         }
-        
+
         .size-inputs {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            flex-shrink: 0;
         }
-        
+
         .size-inputs input {
-            width: 55px;
+            width: 70px;
             text-align: center;
         }
-        
+
         .size-x {
             color: var(--text-dim);
             font-size: 0.85rem;
@@ -1797,11 +1819,11 @@
 
                             <div id="vibeList" class="vibe-list"></div>
 
-                            <div style="display: flex; gap: 6px; margin-top: 8px;">
-                                <button type="button" class="btn btn-secondary" id="addVibeBtn" style="flex: 1; padding: 5px 10px; min-width: 0;">
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <button type="button" class="btn btn-secondary" id="addVibeBtn" style="flex: 1;">
                                     + 바이브 추가
                                 </button>
-                                <button type="button" class="btn btn-secondary" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기" style="padding: 5px 6px; font-size: 12px;">
+                                <button type="button" class="btn btn-secondary" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기">
                                     📁
                                 </button>
                             </div>
@@ -2045,8 +2067,9 @@
                     <button class="btn btn-secondary" id="clearQueueBtn" title="Clear waiting queue">Clear Q</button>
                 </div>
             </div>
+            <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
         </aside>
-        
+
         <!-- Main -->
         <main class="main">
             <div class="slots-header">
@@ -2337,6 +2360,47 @@
             leftHandle.addEventListener('mousedown', (e) => startResize(e, true));
             rightHandle.addEventListener('mousedown', (e) => startResize(e, false));
         }
+
+        // 사이드바 너비 관리
+        let currentSidebarWidth = 540;
+        const MIN_SIDEBAR_WIDTH = 360;
+        const MAX_SIDEBAR_WIDTH = 800;
+
+        function setSidebarWidth(width) {
+            currentSidebarWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width));
+            document.documentElement.style.setProperty('--sidebar-width', currentSidebarWidth + 'px');
+            autoSaveSettings();
+        }
+
+        // 사이드바 리사이즈 핸들 설정
+        (function setupSidebarResize() {
+            const handle = document.getElementById('sidebarResizeHandle');
+            if (!handle) return;
+
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startWidth = currentSidebarWidth;
+
+                document.body.classList.add('resizing-slot');
+                handle.classList.add('active');
+
+                function onMouseMove(e) {
+                    const deltaX = e.clientX - startX;
+                    setSidebarWidth(startWidth + deltaX);
+                }
+
+                function onMouseUp() {
+                    document.body.classList.remove('resizing-slot');
+                    handle.classList.remove('active');
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        })();
 
         function createSlot(name = '', content = '') {
             const slotId = slotCounter++;
@@ -4526,6 +4590,7 @@
                 // Slots
                 slots: getSlotList(),
                 slotWidth: currentSlotWidth,
+                sidebarWidth: currentSidebarWidth,
 
                 // Character prompts
                 characterPrompts: getCharacterPrompts(),
@@ -4642,6 +4707,11 @@
                 // Slot width
                 if (settings.slotWidth) {
                     setSlotWidth(settings.slotWidth);
+                }
+
+                // Sidebar width
+                if (settings.sidebarWidth) {
+                    setSidebarWidth(settings.sidebarWidth);
                 }
 
                 // Character prompts
