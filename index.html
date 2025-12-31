@@ -103,7 +103,21 @@
             overflow-y: auto;
             padding: 16px 20px;
         }
-        
+
+        .sidebar-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .sidebar-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        .sidebar-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
         .sidebar-footer {
             padding: 16px 20px;
             border-top: 1px solid var(--border);
@@ -190,25 +204,23 @@
         
         .size-row {
             display: flex;
-            flex-wrap: wrap;
             gap: 8px;
             align-items: center;
         }
 
         .size-preset {
-            flex: 1 1 150px;
-            min-width: 120px;
+            flex: 1;
         }
 
         .size-inputs {
             display: flex;
             align-items: center;
             gap: 6px;
-            flex: 0 0 auto;
+            flex: 1;
         }
 
         .size-inputs input {
-            width: 65px;
+            flex: 1;
             text-align: center;
             padding: 10px 8px;
         }
