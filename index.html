@@ -8,25 +8,26 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         :root {
-            /* Background - Dark Navy */
-            --bg: #0D1520;
-            --bg-light: #1E3A5F;
-            --bg-lighter: #2D4A6F;
-            /* Accent - Gold */
-            --accent: #C9A227;
-            --accent-hover: #E5C466;
-            --accent-dim: #A68620;
+            /* Background */
+            --bg: #0f1318;
+            --bg-light: #162030;
+            --bg-lighter: #1E2A3A;
+            /* Accent - Navy Blue */
+            --accent: #4A7AB8;
+            --accent-hover: #5B98D4;
+            --accent-dim: #2D4A6F;
+            /* Accent - Gold (CTA, 강조) */
+            --accent-gold: #F5B942;
+            --accent-gold-hover: #FFD06A;
             /* Text */
-            --text: #F5EDE0;
-            --text-dim: #8B9BAB;
+            --text: #FFFFFF;
+            --text-dim: #7A8BA0;
             /* Border */
-            --border: #4A6B8A;
-            /* Status */
-            --success: #22c55e;
-            --error: #ef4444;
-            --warning: #E5C466;
-            /* Special */
-            --eye-blue: #5B98D4;
+            --border: #243044;
+            /* Semantic */
+            --success: #4CAF82;
+            --error: #E57373;
+            --warning: #F5B942;
         }
         
         body {
@@ -381,7 +382,7 @@
         }
         
         .character-item .char-num {
-            color: var(--accent);
+            color: var(--accent-gold);
             font-size: 0.75rem;
             font-weight: bold;
             font-family: monospace;
@@ -785,7 +786,7 @@
         .anlas-info #anlasBalance { font-weight: 600; color: var(--text); }
         .anlas-info .anlas-separator { opacity: 0.3; margin: 0 2px; }
         .anlas-info .anlas-cost-label { opacity: 0.7; }
-        .anlas-info #anlasCost { color: var(--accent); font-weight: 600; }
+        .anlas-info #anlasCost { color: var(--accent-gold); font-weight: 600; }
 
         .anlas-refresh {
             background: none;
@@ -1221,7 +1222,7 @@
         
         .slot-number {
             font-size: 0.75rem;
-            color: var(--accent);
+            color: var(--accent-gold);
             font-weight: bold;
             font-family: monospace;
             background: var(--bg);
@@ -1455,7 +1456,7 @@
             z-index: 9999;
             justify-content: center;
             align-items: center;
-            border: 4px dashed #3b82f6;
+            border: 4px dashed var(--accent);
             pointer-events: none;
         }
         .drop-overlay.active { display: flex; }
@@ -4781,10 +4782,10 @@
                 if (vibeCacheInfo && vibes.length > 0) {
                     if (data.cached_vibes > 0 && data.uncached_vibes === 0) {
                         vibeCacheInfo.textContent = `✓ ${data.cached_vibes}개 캐시됨 (무료)`;
-                        vibeCacheInfo.style.color = '#4ade80';
+                        vibeCacheInfo.style.color = '#4CAF82';
                     } else if (data.uncached_vibes > 0) {
                         vibeCacheInfo.textContent = `${data.uncached_vibes}개 인코딩 필요 (+${data.vibe_encoding_cost} Anlas)`;
-                        vibeCacheInfo.style.color = '#fbbf24';
+                        vibeCacheInfo.style.color = '#F5B942';
                     }
                     vibeCacheInfo.style.display = 'block';
                 } else if (vibeCacheInfo) {
