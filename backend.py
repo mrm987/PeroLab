@@ -560,10 +560,10 @@ def get_next_vibe_number() -> int:
     max_num = 0
     for f in existing:
         try:
-            # 파일명: 0.6_0.7_0000001.png -> 마지막 숫자 추출
+            # 파일명: 0000001_0.6_0.7.png -> 첫 번째 숫자 추출
             parts = f.stem.split('_')
             if len(parts) >= 3:
-                num = int(parts[-1])
+                num = int(parts[0])
                 max_num = max(max_num, num)
         except:
             pass
@@ -631,9 +631,9 @@ def save_vibe_cache(cache_key: str, encoded_vibe: str, original_image_base64: st
     metadata.add_text("info_extracted", str(info_extracted))
     metadata.add_text("strength", str(strength))
 
-    # 파일명 생성: {strength}_{info_extracted}_{number}.png
+    # 파일명 생성: {number}_{strength}_{info_extracted}.png
     number = get_next_vibe_number()
-    filename = f"{strength:.1f}_{info_extracted:.1f}_{number:07d}.png"
+    filename = f"{number:07d}_{strength:.1f}_{info_extracted:.1f}.png"
     filepath = VIBE_CACHE_DIR / filename
 
     # PNG 저장
