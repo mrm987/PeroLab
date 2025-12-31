@@ -3457,21 +3457,28 @@
         const charactersList = document.getElementById('charactersList');
         const addCharBtn = document.getElementById('addCharBtn');
         
-        function createCharacterItem(content = '') {
+        function createCharacterItem(content = '', collapsed = false) {
             const item = document.createElement('div');
             item.className = 'character-item';
-            
-            // 헤더 (번호 + 라벨 + 프리셋 + 삭제)
+
+            // 헤더 (접기 + 번호 + 라벨 + 프리셋 + 삭제)
             const header = document.createElement('div');
             header.className = 'character-item-header';
-            
+
+            // 접기 버튼
+            const collapseBtn = document.createElement('button');
+            collapseBtn.type = 'button';
+            collapseBtn.className = 'collapse-toggle' + (collapsed ? ' collapsed' : '');
+            collapseBtn.textContent = '▼';
+            collapseBtn.title = '접기/펼치기';
+
             const charNum = document.createElement('span');
             charNum.className = 'char-num';
-            
+
             const charLabel = document.createElement('span');
             charLabel.className = 'char-label';
             charLabel.textContent = 'Character';
-            
+
             // 프리셋 드롭다운
             const presetDropdown = document.createElement('div');
             presetDropdown.className = 'prompt-preset-dropdown';
@@ -3485,7 +3492,7 @@
                     </div>
                 </div>
             `;
-            
+
             const deleteBtn = document.createElement('button');
             deleteBtn.type = 'button';
             deleteBtn.className = 'delete-char-btn';
@@ -3495,24 +3502,37 @@
                 updateCharacterNumbers();
                 autoSaveSettings();
             };
-            
+
+            header.appendChild(collapseBtn);
             header.appendChild(charNum);
             header.appendChild(charLabel);
             header.appendChild(presetDropdown);
             header.appendChild(deleteBtn);
-            
-            // 프롬프트 입력
+
+            // 프롬프트 입력 (접을 수 있는 영역)
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'collapsible-content' + (collapsed ? ' collapsed' : '');
+
             const textarea = document.createElement('textarea');
             textarea.value = content;
             textarea.placeholder = 'Character prompt...';
             textarea.rows = 2;
-            
+
+            contentDiv.appendChild(textarea);
+
+            // 접기 버튼 이벤트
+            collapseBtn.onclick = () => {
+                collapseBtn.classList.toggle('collapsed');
+                contentDiv.classList.toggle('collapsed');
+                autoSaveSettings();
+            };
+
             item.appendChild(header);
-            item.appendChild(textarea);
-            
+            item.appendChild(contentDiv);
+
             // 프리셋 드롭다운 이벤트 연결
             setupPromptPresetDropdown(presetDropdown, textarea);
-            
+
             return item;
         }
         
@@ -3546,6 +3566,15 @@
         function getCharacterPrompts() {
             const items = charactersList.querySelectorAll('.character-item');
             return Array.from(items).map(item => item.querySelector('textarea').value).filter(v => v.trim());
+        }
+
+        function getCharacterPromptsWithLayout() {
+            const items = charactersList.querySelectorAll('.character-item');
+            return Array.from(items).map(item => ({
+                content: item.querySelector('textarea').value,
+                collapsed: item.querySelector('.collapsible-content').classList.contains('collapsed'),
+                height: item.querySelector('textarea').style.height || null
+            }));
         }
         
         addCharBtn.onclick = () => {
@@ -4861,8 +4890,8 @@
                 slotWidth: currentSlotWidth,
                 sidebarWidth: currentSidebarWidth,
 
-                // Character prompts
-                characterPrompts: getCharacterPrompts(),
+                // Character prompts (with layout)
+                characterPromptsLayout: getCharacterPromptsWithLayout(),
             };
             
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -5005,9 +5034,13 @@
                     setSidebarWidth(settings.sidebarWidth);
                 }
 
-                // Character prompts
-                if (settings.characterPrompts && settings.characterPrompts.length > 0) {
-                    window._pendingCharacterPrompts = settings.characterPrompts;
+                // Character prompts (new format with layout)
+                if (settings.characterPromptsLayout && settings.characterPromptsLayout.length > 0) {
+                    window._pendingCharacterPromptsLayout = settings.characterPromptsLayout;
+                }
+                // Legacy format (just strings)
+                else if (settings.characterPrompts && settings.characterPrompts.length > 0) {
+                    window._pendingCharacterPromptsLayout = settings.characterPrompts.map(c => ({ content: c, collapsed: false, height: null }));
                 }
                 
             } catch (e) {
@@ -5089,12 +5122,22 @@
             if (window._pendingUpscaleModel) {
                 document.getElementById('upscaleModel').value = window._pendingUpscaleModel;
             }
-            // 캐릭터 프롬프트 복원
-            if (window._pendingCharacterPrompts) {
-                window._pendingCharacterPrompts.forEach(content => {
-                    if (content.trim()) addCharacter(content);
+            // 캐릭터 프롬프트 복원 (레이아웃 포함)
+            if (window._pendingCharacterPromptsLayout) {
+                window._pendingCharacterPromptsLayout.forEach(charData => {
+                    const content = charData.content || '';
+                    const collapsed = charData.collapsed || false;
+                    const height = charData.height || null;
+                    if (content.trim() || collapsed) {
+                        const item = createCharacterItem(content, collapsed);
+                        if (height) {
+                            item.querySelector('textarea').style.height = height;
+                        }
+                        charactersList.appendChild(item);
+                    }
                 });
-                window._pendingCharacterPrompts = null;
+                updateCharacterNumbers();
+                window._pendingCharacterPromptsLayout = null;
             }
         });
         connectSSE();
