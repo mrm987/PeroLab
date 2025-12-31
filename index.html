@@ -877,6 +877,21 @@
             color: var(--text-dim);
             font-size: 0.9rem;
             flex-shrink: 0;
+            overflow-x: auto;
+            gap: 12px;
+        }
+        .slots-header::-webkit-scrollbar {
+            height: 6px;
+        }
+        .slots-header::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .slots-header::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        .slots-header::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
         }
         
         .add-slot-btn {
@@ -1558,6 +1573,19 @@
             width: 100%;
             flex-direction: column;
         }
+        .gallery-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .gallery-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .gallery-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        .gallery-container::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
         .gallery-toolbar {
             display: flex;
             justify-content: flex-end;
@@ -1580,21 +1608,27 @@
         }
         .gallery-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
             width: 100%;
             align-items: start;
             align-content: start;
+            padding-bottom: 8px;
         }
         .gallery-item {
             background: var(--bg-light);
             border-radius: 12px;
             overflow: hidden;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
             height: fit-content;
+            position: relative;
         }
-        .gallery-item:hover { transform: translateY(-4px); }
+        .gallery-item:hover {
+            transform: translateY(-4px);
+            z-index: 1;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
         .gallery-item img {
             width: 100%;
             aspect-ratio: 1;
