@@ -1544,16 +1544,9 @@
             background: var(--bg-light);
         }
         .mode-btn.active {
-            color: white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        #slotModeBtn.active {
             background: var(--accent-gold);
             color: #000;
-        }
-        #galleryModeBtn.active {
-            background: var(--primary);
-            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         /* Gallery */
@@ -1564,6 +1557,26 @@
             padding: 16px;
             width: 100%;
             flex-direction: column;
+        }
+        .gallery-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+        .gallery-folder-btn {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .gallery-folder-btn:hover {
+            background: var(--bg-lighter);
+            border-color: var(--accent-gold);
         }
         .gallery-grid {
             display: grid;
@@ -1605,10 +1618,6 @@
             text-overflow: ellipsis;
             flex: 1;
             min-width: 0;
-            cursor: pointer;
-        }
-        .gallery-item-info .filename:hover {
-            color: var(--accent-gold);
         }
         .gallery-item-info .filename-input {
             flex: 1;
@@ -2302,8 +2311,8 @@
         <main class="main">
             <div class="slots-header">
                 <div class="mode-toggle">
-                    <button type="button" class="mode-btn active" id="slotModeBtn">🎰 슬롯 모드</button>
-                    <button type="button" class="mode-btn" id="galleryModeBtn">🖼️ 갤러리</button>
+                    <button type="button" class="mode-btn active" id="slotModeBtn">슬롯 모드</button>
+                    <button type="button" class="mode-btn" id="galleryModeBtn">갤러리</button>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div class="preset-dropdown" id="presetDropdown">
@@ -2347,6 +2356,11 @@
                 </div>
             </div>
             <div class="gallery-container" id="galleryContainer" style="display: none;">
+                <div class="gallery-toolbar">
+                    <button type="button" class="gallery-folder-btn" id="openGalleryFolderBtn" title="갤러리 폴더 열기">
+                        📂 폴더 열기
+                    </button>
+                </div>
                 <div class="gallery-grid" id="galleryGrid">
                     <!-- 갤러리 이미지들 -->
                 </div>
@@ -5366,6 +5380,19 @@
             loadGallery();
         };
 
+        // 갤러리 폴더 열기
+        document.getElementById('openGalleryFolderBtn').onclick = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/gallery/open-folder`, { method: 'POST' });
+                const result = await response.json();
+                if (!result.success) {
+                    showToast('폴더 열기 실패', 'error');
+                }
+            } catch (err) {
+                showToast('폴더 열기 오류', 'error');
+            }
+        };
+
         async function loadGallery() {
             try {
                 const response = await fetch(`${API_BASE}/api/gallery`);
@@ -5423,12 +5450,12 @@
                     }
                 };
 
-                // 이미지 클릭 - 라이트박스
-                item.querySelector('img').onclick = showLightbox;
-
-                // 파일명 클릭 - 라이트박스
-                item.querySelector('.filename').onclick = (e) => {
-                    e.stopPropagation();
+                // 카드 클릭 - 라이트박스 (버튼 제외)
+                item.onclick = (e) => {
+                    // 버튼이나 입력 필드 클릭시 무시
+                    if (e.target.closest('.gallery-item-actions') || e.target.closest('.rename-btn') || e.target.tagName === 'INPUT') {
+                        return;
+                    }
                     showLightbox();
                 };
 

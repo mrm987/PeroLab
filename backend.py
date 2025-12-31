@@ -1692,6 +1692,28 @@ async def rename_gallery_image(filename: str, request: Request):
         return {"success": False, "error": str(e)}
 
 
+@app.post("/api/gallery/open-folder")
+async def open_gallery_folder():
+    """갤러리 폴더 열기"""
+    import subprocess
+    import platform
+
+    try:
+        folder_path = str(GALLERY_DIR.absolute())
+        system = platform.system()
+
+        if system == "Windows":
+            subprocess.Popen(["explorer", folder_path])
+        elif system == "Darwin":  # macOS
+            subprocess.Popen(["open", folder_path])
+        else:  # Linux
+            subprocess.Popen(["xdg-open", folder_path])
+
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @app.get("/")
 async def serve_index():
     """Serve index.html"""
