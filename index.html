@@ -198,13 +198,27 @@
             min-height: 70px;
             font-family: inherit;
         }
-        
+
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        textarea::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
         
         .size-row {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             align-items: center;
         }
 
@@ -2113,11 +2127,12 @@
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
 
-                <div class="row" style="margin-bottom: 8px;">
+                <div class="row" style="margin-bottom: 8px; align-items: center;">
                     <div style="flex: 1;">
                         <button class="btn" id="generateBtn">Queue (0)</button>
                     </div>
-                    <div style="width: 50px;">
+                    <span style="color: var(--text-dim); font-size: 0.9rem;">×</span>
+                    <div style="width: 60px;">
                         <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="Queue N times">
                     </div>
                 </div>
