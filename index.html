@@ -802,11 +802,11 @@
         .free-tag {
             background: #22c55e;
             color: white;
-            font-size: 0.55rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            padding: 1px 3px;
-            border-radius: 2px;
-            margin-left: 2px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-left: 4px;
         }
 
         /* Button */
@@ -1864,11 +1864,11 @@
                     <div class="prompt-label-row">
                         <div class="prompt-label-left">
                             <button type="button" class="collapse-toggle" data-target="basePromptContent" title="접기/펼치기">▼</button>
-                            <button type="button" id="modeToggle" class="mode-toggle" title="Anime Mode">🌸</button>
+                            <button type="button" id="modeToggle" class="mode-toggle" title="아니메 모드">🌸</button>
                             <label for="basePrompt">Base Prompt</label>
                         </div>
                         <div class="prompt-preset-dropdown" data-category="base">
-                            <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                            <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">📁 ▼</button>
                             <div class="prompt-preset-menu">
                                 <div class="prompt-preset-list"></div>
                                 <div class="prompt-preset-actions">
@@ -1886,7 +1886,7 @@
                         <div class="characters-header">
                             <button type="button" class="collapse-toggle" data-target="charactersContent" title="접기/펼치기">▼</button>
                             <label>Characters</label>
-                            <button type="button" class="add-char-btn" id="addCharBtn" title="Add character">+</button>
+                            <button type="button" class="add-char-btn" id="addCharBtn" title="캐릭터 추가">+</button>
                         </div>
                         <div id="charactersContent" class="collapsible-content">
                             <div class="characters-list" id="charactersList">
@@ -1901,7 +1901,7 @@
                             <label for="negativePrompt">Negative Prompt</label>
                         </div>
                         <div class="prompt-preset-dropdown" data-category="negative">
-                            <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                            <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">📁 ▼</button>
                             <div class="prompt-preset-menu">
                                 <div class="prompt-preset-list"></div>
                                 <div class="prompt-preset-actions">
@@ -2203,23 +2203,23 @@
                     <span id="anlasFreeTag" class="free-tag" style="display: none;">FREE</span>
                 </div>
 
-                <div class="status-text" id="statusText" style="text-align: left; margin-bottom: 4px;">Ready</div>
+                <div class="status-text" id="statusText" style="text-align: left; margin-bottom: 4px;">준비</div>
                 <div class="progress-bar" style="margin-bottom: 12px;">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
 
-                <div class="row" style="margin-bottom: 8px; align-items: center;">
+                <div style="display: flex; margin-bottom: 8px; align-items: center; gap: 8px;">
                     <div style="flex: 1;">
                         <button class="btn" id="generateBtn">Queue (0)</button>
                     </div>
                     <span style="color: var(--text-dim); font-size: 0.9rem;">×</span>
                     <div style="width: 60px;">
-                        <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="Queue N times">
+                        <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="반복 횟수">
                     </div>
                 </div>
                 <div class="row" style="gap: 6px;">
-                    <button class="btn btn-secondary" id="cancelCurrentBtn" title="Cancel current job (after current image)">Cancel</button>
-                    <button class="btn btn-secondary" id="clearQueueBtn" title="Clear waiting queue">Clear Q</button>
+                    <button class="btn btn-secondary" id="cancelCurrentBtn" title="현재 작업 취소 (진행중인 이미지 완료 후)">Cancel</button>
+                    <button class="btn btn-secondary" id="clearQueueBtn" title="대기열 비우기">Clear Q</button>
                 </div>
             </div>
             <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
@@ -2251,21 +2251,21 @@
                     </div>
                     <div class="prefix-input-wrapper">
                         <span class="prefix-label">📁 Sub Folder:</span>
-                        <input type="text" id="outputFolder" value="" placeholder="optional" class="prefix-input">
+                        <input type="text" id="outputFolder" value="" placeholder="선택사항" class="prefix-input">
                     </div>
                     <button type="button" class="header-btn" id="openOutputFolderBtn" title="출력 폴더 열기">
                         <span>📁</span>
                         <span>Open Folder</span>
                     </button>
-                    <button type="button" class="header-btn" id="syncScrollBtn" title="Sync scroll across all slots">
+                    <button type="button" class="header-btn" id="syncScrollBtn" title="전체 슬롯 스크롤 동기화">
                         <span>🔗</span>
                         <span>Scroll Sync</span>
                     </button>
-                    <button type="button" class="header-btn" id="clearImagesBtn" title="Clear preview images (files are not deleted)">
+                    <button type="button" class="header-btn" id="clearImagesBtn" title="미리보기 이미지 지우기 (파일은 삭제되지 않음)">
                         <span>🧹</span>
                         <span>Clear Preview</span>
                     </button>
-                    <button type="button" class="add-slot-btn" id="addSlotBtn" title="Add slot">+</button>
+                    <button type="button" class="add-slot-btn" id="addSlotBtn" title="슬롯 추가">+</button>
                 </div>
             </div>
             <div class="slots-container-wrapper" id="slotsWrapper">
@@ -2324,7 +2324,7 @@
             
             <div class="input-group">
                 <label>NAI API Token</label>
-                <input type="password" id="naiToken" placeholder="Enter your NAI token">
+                <input type="password" id="naiToken" placeholder="NAI 토큰 입력">
                 <small>Get from novelai.net → Account → API</small>
             </div>
             
@@ -2419,7 +2419,7 @@
             
             <div class="input-group">
                 <label>API Token</label>
-                <input type="password" id="naiTokenModalInput" placeholder="Enter your NAI token">
+                <input type="password" id="naiTokenModalInput" placeholder="NAI 토큰 입력">
                 <small>Get from <a href="https://novelai.net/settings" target="_blank" style="color: var(--primary);">novelai.net</a> → Account Settings → Get Persistent API Token</small>
             </div>
             
@@ -2568,14 +2568,14 @@
                 <div class="slot-prompt">
                     <div class="slot-prompt-header">
                         <span class="slot-number">001</span>
-                        <input type="text" placeholder="name (optional)" value="${name}" class="slot-name">
-                        <button type="button" class="slot-drag" title="Drag to reorder" tabindex="-1">☰</button>
+                        <input type="text" placeholder="이름 (선택)" value="${name}" class="slot-name">
+                        <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
                     </div>
-                    <textarea placeholder="tags..." class="slot-tags">${content}</textarea>
+                    <textarea placeholder="태그..." class="slot-tags">${content}</textarea>
                 </div>
                 <div class="slot-images">
-                    <div class="slot-empty">Images will appear here</div>
+                    <div class="slot-empty">이미지가 여기에 표시됩니다</div>
                 </div>
             `;
 
@@ -2874,7 +2874,7 @@
             const slots = slotsContainer.querySelectorAll('.slot');
             slots.forEach(slot => {
                 const imagesContainer = slot.querySelector('.slot-images');
-                imagesContainer.innerHTML = '<div class="slot-empty">Images will appear here</div>';
+                imagesContainer.innerHTML = '<div class="slot-empty">이미지가 여기에 표시됩니다</div>';
             });
         }
         
@@ -2934,8 +2934,8 @@
                 <div class="preset-item ${currentPreset?.filename === p.filename ? 'selected' : ''}" data-filename="${p.filename}">
                     <span class="check">${currentPreset?.filename === p.filename ? '✓' : ''}</span>
                     <span class="label">${p.name}</span>
-                    <button class="edit-btn" title="Rename">✏️</button>
-                    <button class="delete-btn" title="Delete">🗑️</button>
+                    <button class="edit-btn" title="이름 변경">✏️</button>
+                    <button class="delete-btn" title="삭제">🗑️</button>
                 </div>
             `).join('');
             
@@ -2985,13 +2985,13 @@
                 
                 showToast(`Loaded: ${data.name}`, 'success');
             } catch (e) {
-                showToast('Failed to load preset', 'error');
+                showToast('프리셋 로드 실패', 'error');
             }
         }
         
         // 새 프리셋 저장
         newPresetBtn.onclick = async () => {
-            const name = prompt('Enter preset name:');
+            const name = prompt('프리셋 이름 입력:');
             if (!name) return;
             
             const slots = getSlotList().map(s => ({ name: s.name, content: s.content }));
@@ -3011,14 +3011,14 @@
                 loadPresetList();
                 showToast(`Saved: ${name}`, 'success');
             } catch (e) {
-                showToast('Failed to save preset', 'error');
+                showToast('프리셋 저장 실패', 'error');
             }
         };
         
         // 현재 프리셋에 덮어쓰기
         savePresetBtn.onclick = async () => {
             if (!currentPreset) {
-                showToast('No preset selected', 'warning');
+                showToast('프리셋이 선택되지 않음', 'warning');
                 return;
             }
             
@@ -3035,7 +3035,7 @@
                 showToast(`Saved: ${currentPreset.name}`, 'success');
                 presetMenu.classList.remove('show');
             } catch (e) {
-                showToast('Failed to save preset', 'error');
+                showToast('프리셋 저장 실패', 'error');
             }
         };
         
@@ -3065,9 +3065,9 @@
                 }
                 
                 loadPresetList();
-                showToast('Renamed', 'success');
+                showToast('이름 변경됨', 'success');
             } catch (e) {
-                showToast('Failed to rename', 'error');
+                showToast('이름 변경 실패', 'error');
             }
         }
         
@@ -3087,9 +3087,9 @@
                 }
                 
                 loadPresetList();
-                showToast('Deleted', 'success');
+                showToast('삭제됨', 'success');
             } catch (e) {
-                showToast('Failed to delete', 'error');
+                showToast('삭제 실패', 'error');
             }
         }
         
@@ -3338,7 +3338,7 @@
                 showToast(`Saved: ${name}`, 'success');
                 return data;
             } catch (e) {
-                showToast('Failed to save', 'error');
+                showToast('저장 실패', 'error');
                 return null;
             }
         }
@@ -3346,10 +3346,10 @@
         async function deletePromptPreset(category, filename) {
             try {
                 await fetch(`${API_BASE}/api/prompts/${category}/${filename}`, { method: 'DELETE' });
-                showToast('Deleted', 'success');
+                showToast('삭제됨', 'success');
                 return true;
             } catch (e) {
-                showToast('Failed to delete', 'error');
+                showToast('삭제 실패', 'error');
                 return false;
             }
         }
@@ -3373,7 +3373,7 @@
                     // 목록 로드
                     const presets = await loadPromptPresets(category);
                     if (presets.length === 0) {
-                        list.innerHTML = '<div class="prompt-preset-empty">No saved presets</div>';
+                        list.innerHTML = '<div class="prompt-preset-empty">저장된 프리셋 없음</div>';
                     } else {
                         list.innerHTML = presets.map(p => `
                             <div class="prompt-preset-item" data-filename="${p.filename}">
@@ -3414,11 +3414,11 @@
                             
                             item.querySelector('.delete-btn').onclick = async (e) => {
                                 e.stopPropagation();
-                                if (confirm('Delete this preset?')) {
+                                if (confirm('이 프리셋을 삭제하시겠습니까?')) {
                                     if (await deletePromptPreset(category, filename)) {
                                         item.remove();
                                         if (list.querySelectorAll('.prompt-preset-item').length === 0) {
-                                            list.innerHTML = '<div class="prompt-preset-empty">No saved presets</div>';
+                                            list.innerHTML = '<div class="prompt-preset-empty">저장된 프리셋 없음</div>';
                                         }
                                     }
                                 }
@@ -3432,10 +3432,10 @@
                 e.stopPropagation();
                 const content = textarea.value.trim();
                 if (!content) {
-                    showToast('Nothing to save', 'warning');
+                    showToast('저장할 내용 없음', 'warning');
                     return;
                 }
-                const name = prompt('Enter preset name:');
+                const name = prompt('프리셋 이름 입력:');
                 if (!name) return;
                 
                 if (await savePromptPreset(category, name, content)) {
@@ -3496,7 +3496,7 @@
             presetDropdown.className = 'prompt-preset-dropdown';
             presetDropdown.dataset.category = 'character';
             presetDropdown.innerHTML = `
-                <button type="button" class="prompt-preset-btn" title="Prompt presets">📁 ▼</button>
+                <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">📁 ▼</button>
                 <div class="prompt-preset-menu">
                     <div class="prompt-preset-list"></div>
                     <div class="prompt-preset-actions">
@@ -3566,7 +3566,7 @@
         function addCharacter(content = '') {
             const count = charactersList.querySelectorAll('.character-item').length;
             if (count >= 6) {
-                showToast('Maximum 6 characters allowed', 'warning');
+                showToast('최대 6개의 캐릭터까지 가능', 'warning');
                 return;
             }
             const item = createCharacterItem(content);
@@ -3644,8 +3644,8 @@
                 
             } catch (e) {
                 console.error('Failed to load:', e);
-                statusText.textContent = 'Backend not running!';
-                showToast('Backend not connected', 'error');
+                statusText.textContent = '백엔드 실행 안됨!';
+                showToast('백엔드 연결 안됨', 'error');
             }
         }
         
@@ -3674,7 +3674,7 @@
         async function saveNaiTokenFromModal() {
             const token = document.getElementById('naiTokenModalInput').value.trim();
             if (!token) {
-                showToast('Please enter a token', 'error');
+                showToast('토큰을 입력하세요', 'error');
                 return;
             }
             
@@ -3690,7 +3690,7 @@
                 });
                 
                 if (res.ok) {
-                    showToast('Token saved', 'success');
+                    showToast('토큰 저장됨', 'success');
                     naiTokenSet = true;
                     updateNaiStatus(true);
                     closeNaiTokenModal();
@@ -3701,10 +3701,10 @@
                     // 생성 진행
                     addToQueue();
                 } else {
-                    showToast('Failed to save token', 'error');
+                    showToast('토큰 저장 실패', 'error');
                 }
             } catch (e) {
-                showToast('Failed to save token', 'error');
+                showToast('토큰 저장 실패', 'error');
             }
             
             btn.textContent = '💾 Save & Continue';
@@ -3810,7 +3810,7 @@
                 request.model = document.getElementById('localModel').value;
                 request.loras = getSelectedLoras();
                 if (!request.model) {
-                    showToast('Select a model', 'error');
+                    showToast('모델을 선택하세요', 'error');
                     return;
                 }
                 
@@ -3825,7 +3825,7 @@
                     request.size_alignment = document.getElementById('sizeAlignment').value;
                     
                     if (!request.upscale_model) {
-                        showToast('Select an upscale model', 'error');
+                        showToast('업스케일 모델을 선택하세요', 'error');
                         return;
                     }
                 }
@@ -3861,7 +3861,7 @@
         
         function updateProgress() {
             if (totalImages === 0) {
-                statusText.textContent = 'Ready';
+                statusText.textContent = '준비';
                 progressFill.style.width = '0%';
             } else {
                 statusText.textContent = `${currentIndex}/${totalImages}`;
@@ -3997,9 +3997,9 @@
 
                     if (data.queue_length === 0) {
                         // 완료 처리
-                        statusText.textContent = 'Complete!';
+                        statusText.textContent = '완료!';
                         progressFill.style.width = '100%';
-                        showToast('All done', 'success');
+                        showToast('완료', 'success');
                         // 기존 타이머 취소 후 새 타이머 설정
                         if (resetTimer) clearTimeout(resetTimer);
                         resetTimer = setTimeout(() => {
@@ -4018,7 +4018,7 @@
                     totalImages -= data.cancelled_images;
                     if (totalImages < currentIndex) totalImages = currentIndex;
                     updateProgress();
-                    showToast('Job cancelled', 'warning');
+                    showToast('작업 취소됨', 'warning');
                     break;
 
                 case 'queue_cleared':
@@ -4047,7 +4047,7 @@
         
         function clearResults() {
             clearSlotImages();
-            statusText.textContent = 'Ready';
+            statusText.textContent = '준비';
             progressFill.style.width = '0%';
             currentIndex = 0;
             totalImages = 0;
@@ -4093,11 +4093,11 @@
                 });
                 
                 if (res.ok) {
-                    showToast('Settings saved', 'success');
+                    showToast('설정 저장됨', 'success');
                     closeSettings();
                 }
             } catch (e) {
-                showToast('Failed to save', 'error');
+                showToast('저장 실패', 'error');
             }
         }
         
@@ -4285,7 +4285,7 @@
             try {
                 const res = await fetch(`${API_BASE}/api/local/install`, { method: 'POST' });
                 if (res.ok) {
-                    showToast('Installation started', 'success');
+                    showToast('설치 시작됨', 'success');
                     updateInstallModalStatus();
                     checkLocalEnvStatus();  // Settings 모달도 업데이트
                 } else {
@@ -4295,7 +4295,7 @@
                     btn.disabled = false;
                 }
             } catch (e) {
-                showToast('Failed to start installation', 'error');
+                showToast('설치 시작 실패', 'error');
                 btn.textContent = '⬇️ Install (~3GB)';
                 btn.disabled = false;
             }
@@ -4305,30 +4305,30 @@
             try {
                 const res = await fetch(`${API_BASE}/api/local/install`, { method: 'POST' });
                 if (res.ok) {
-                    showToast('Installation started', 'success');
+                    showToast('설치 시작됨', 'success');
                     checkLocalEnvStatus();
                 } else {
                     const data = await res.json();
                     showToast(data.detail || 'Failed to start installation', 'error');
                 }
             } catch (e) {
-                showToast('Failed to start installation', 'error');
+                showToast('설치 시작 실패', 'error');
             }
         }
         
         async function uninstallLocalEnv() {
-            if (!confirm('Uninstall local generation engine? This will free up ~3GB of disk space.')) {
+            if (!confirm('로컬 생성 엔진을 제거하시겠습니까? 약 3GB 디스크 공간이 확보됩니다.')) {
                 return;
             }
             
             try {
                 const res = await fetch(`${API_BASE}/api/local/uninstall`, { method: 'DELETE' });
                 if (res.ok) {
-                    showToast('Uninstalled', 'success');
+                    showToast('제거됨', 'success');
                     checkLocalEnvStatus();
                 }
             } catch (e) {
-                showToast('Failed to uninstall', 'error');
+                showToast('제거 실패', 'error');
             }
         }
         
@@ -4421,11 +4421,11 @@
             furryModeEnabled = enabled;
             if (enabled) {
                 modeToggle.textContent = '🐾';
-                modeToggle.title = 'Furry Mode';
+                modeToggle.title = '퍼리 모드';
                 modeToggle.classList.add('furry');
             } else {
                 modeToggle.textContent = '🌸';
-                modeToggle.title = 'Anime Mode';
+                modeToggle.title = '아니메 모드';
                 modeToggle.classList.remove('furry');
             }
             autoSaveSettings();
@@ -4972,7 +4972,7 @@
                 if (settings.furryModeEnabled) {
                     furryModeEnabled = true;
                     modeToggle.textContent = '🐾';
-                    modeToggle.title = 'Furry Mode';
+                    modeToggle.title = '퍼리 모드';
                     modeToggle.classList.add('furry');
                 }
 
