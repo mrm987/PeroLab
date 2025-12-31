@@ -1552,6 +1552,8 @@
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 16px;
             width: 100%;
+            align-items: start;
+            align-content: start;
         }
         .gallery-item {
             background: var(--bg-light);
@@ -1559,6 +1561,7 @@
             overflow: hidden;
             transition: transform 0.2s;
             cursor: pointer;
+            height: fit-content;
         }
         .gallery-item:hover { transform: translateY(-4px); }
         .gallery-item img {
