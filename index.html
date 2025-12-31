@@ -2199,7 +2199,7 @@
 
                         <div class="checkbox-row">
                             <input type="checkbox" id="randomSeed">
-                            <label for="randomSeed">Random seed every image</label>
+                            <label for="randomSeed">매 이미지마다 랜덤 시드</label>
                         </div>
                     </div>
                 </div>
@@ -2243,8 +2243,8 @@
         <main class="main">
             <div class="slots-header">
                 <div class="mode-toggle">
-                    <button type="button" class="mode-btn active" id="slotModeBtn">Slot Mode</button>
-                    <button type="button" class="mode-btn" id="galleryModeBtn">Gallery</button>
+                    <button type="button" class="mode-btn active" id="slotModeBtn">슬롯</button>
+                    <button type="button" class="mode-btn" id="galleryModeBtn">갤러리</button>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <div class="preset-dropdown" id="presetDropdown">
@@ -2373,10 +2373,10 @@
                     </div>
                     <span class="local-env-progress-text" id="localEnvProgressText">0%</span>
                 </div>
-                <small>Python + PyTorch CUDA + diffusers (~3GB, 3-5min)</small>
+                <small style="display: block; margin-top: 12px; color: var(--text-dim);">Python + PyTorch CUDA + diffusers (~3GB, 3-5분)</small>
             </div>
-            
-            <button class="btn" onclick="saveSettings()">Save Settings</button>
+
+            <button class="btn" onclick="saveSettings()" style="margin-top: 16px;">Save Settings</button>
         </div>
     </div>
     
