@@ -2434,10 +2434,23 @@
         function addImageToSlot(slotIndex, data) {
             // slotIndex로 슬롯 찾기
             const slots = slotsContainer.querySelectorAll('.slot');
-            if (slotIndex >= slots.length) return;
+            const slotsWrapperDisplay = slotsWrapper.style.display;
+            console.log(`[addImageToSlot] slotIndex=${slotIndex}, slots.length=${slots.length}, filename=${data.filename}, slotsWrapperDisplay=${slotsWrapperDisplay}`);
 
-            const slot = slots[slotIndex];
-            const imagesContainer = slot.querySelector('.slot-images');
+            // 슬롯이 없거나 인덱스가 범위를 벗어나면 첫 번째 슬롯에 추가
+            let targetSlot;
+            if (slotIndex >= slots.length || slotIndex < 0) {
+                console.warn(`[addImageToSlot] Invalid slotIndex ${slotIndex}, falling back to slot 0`);
+                if (slots.length === 0) {
+                    console.error('[addImageToSlot] No slots available!');
+                    return;
+                }
+                targetSlot = slots[0];
+            } else {
+                targetSlot = slots[slotIndex];
+            }
+
+            const imagesContainer = targetSlot.querySelector('.slot-images');
 
             // 빈 상태 제거
             const empty = imagesContainer.querySelector('.slot-empty');
@@ -2523,8 +2536,9 @@
 
             // 최신 이미지를 위에 추가
             imagesContainer.insertBefore(card, imagesContainer.firstChild);
+            console.log(`[addImageToSlot] Card inserted for ${data.filename}`);
         }
-        
+
         function clearSlotImages() {
             const slots = slotsContainer.querySelectorAll('.slot');
             slots.forEach(slot => {
@@ -3379,14 +3393,16 @@
             
             const slotList = getSlotList();
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
-            
+
             // 모든 슬롯 등록 (빈 슬롯도 포함)
             const promptCount = slotList.length || 1;
-            
+
             // 백엔드용 데이터 변환
-            const promptData = slotList.length > 0 
+            const promptData = slotList.length > 0
                 ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex }))
                 : [{ name: '', content: '', slotIndex: 0 }];
+
+            console.log(`[Queue] Adding job: slots=${slotList.length}, promptData=`, promptData);
             
             const request = {
                 provider: currentProvider,
@@ -3533,6 +3549,7 @@
                 lastSSETime = Date.now();
                 try {
                     const data = JSON.parse(event.data);
+                    console.log(`[SSE Raw] type=${data.type}`, data.type === 'image' ? `prompt_idx=${data.prompt_idx}` : '');
                     handleSSEMessage(data);
                 } catch (e) {
                     console.error('SSE parse error:', e);
@@ -3588,6 +3605,7 @@
                     break;
 
                 case 'image':
+                    console.log(`[SSE] Image received: prompt_idx=${data.prompt_idx}, filename=${data.filename}`);
                     // 서버 전역 진행률 사용 (SSE 누락 방지)
                     if (data.global_completed !== undefined) {
                         currentIndex = data.global_completed;
