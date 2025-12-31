@@ -1896,7 +1896,13 @@ async def stream():
                 try:
                     # 타임아웃 내에 데이터가 오면 전송
                     data = await asyncio.wait_for(queue.get(), timeout=heartbeat_interval)
-                    yield f"data: {json.dumps(data)}\n\n"
+                    msg_type = data.get('type', 'unknown')
+                    json_data = json.dumps(data)
+                    if msg_type == 'image':
+                        print(f"[SSE Stream] Yielding image, json size={len(json_data)} bytes")
+                    yield f"data: {json_data}\n\n"
+                    if msg_type == 'image':
+                        print(f"[SSE Stream] Image yield completed")
                 except asyncio.TimeoutError:
                     # 타임아웃 시 하트비트 전송 (현재 상태 포함)
                     yield f"data: {json.dumps({'type': 'heartbeat', **gen_queue.get_status()})}\n\n"
