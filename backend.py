@@ -1341,7 +1341,7 @@ async def process_job(job):
                 "job_id": job_id,
                 "index": image_idx - 1,
                 "total": total_images,
-                "prompt": extra_prompt,
+                "prompt": full_prompt,
                 "prompt_idx": slot_index,
                 "seed": actual_seed,
                 "image": image_to_base64(image),

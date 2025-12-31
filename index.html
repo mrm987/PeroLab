@@ -2447,7 +2447,7 @@
             card.className = 'slot-image-card';
             card.innerHTML = `
                 <img src="data:image/png;base64,${data.image}" alt="" draggable="false">
-                <button type="button" class="save-gallery-btn" title="갤러리에 저장">⭐</button>
+                <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="filename" title="${data.filename}">${data.filename}</div>
                     <div class="seed">Seed: ${data.seed}</div>
@@ -2491,6 +2491,7 @@
                     const result = await response.json();
                     if (result.success) {
                         saveBtn.classList.add('saved');
+                        saveBtn.textContent = '★';
                         showToast('갤러리에 저장됨', 'success');
                     } else {
                         showToast('저장 실패: ' + result.error, 'error');
