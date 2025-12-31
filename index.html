@@ -2458,8 +2458,12 @@
 
             const card = document.createElement('div');
             card.className = 'slot-image-card';
+            // image_path가 있으면 URL로, 없으면 base64로 (하위 호환)
+            const imgSrc = data.image_path
+                ? `${API_BASE}/api/outputs/${data.image_path}`
+                : `data:image/png;base64,${data.image}`;
             card.innerHTML = `
-                <img src="data:image/png;base64,${data.image}" alt="" draggable="false">
+                <img src="${imgSrc}" alt="" draggable="false">
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="filename" title="${data.filename}">${data.filename}</div>
@@ -2469,7 +2473,8 @@
 
             // 이미지 데이터 저장 (갤러리 저장용)
             card._imageData = {
-                image: data.image,
+                image_path: data.image_path || null,
+                image: data.image || null,  // 하위 호환
                 filename: data.filename,
                 seed: data.seed,
                 prompt: data.prompt || ''
@@ -2486,7 +2491,8 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            image: card._imageData.image,
+                            image: card._imageData.image,  // base64 (하위 호환)
+                            image_path: card._imageData.image_path,  // 파일 경로
                             filename: card._imageData.filename,
                             metadata: {
                                 seed: card._imageData.seed,
@@ -2529,7 +2535,7 @@
                 const dy = Math.abs(e.clientY - imgMouseDownY);
                 // 5px 이내면 클릭으로 간주
                 if (dx < 5 && dy < 5) {
-                    lightboxImg.src = `data:image/png;base64,${data.image}`;
+                    lightboxImg.src = imgSrc;  // URL 또는 base64 사용
                     lightbox.classList.add('active');
                 }
             });

@@ -1351,13 +1351,37 @@ async def process_job(job):
 
             file_num = get_next_image_number(category, save_dir)
             filename = f"{category}_{file_num:07d}.png"
-            image.save(save_dir / filename)
+
+            # 메타데이터 보존 및 추가
+            from PIL.PngImagePlugin import PngInfo
+            pnginfo = PngInfo()
+
+            # 기존 메타데이터 복사 (NAI 메타데이터 포함)
+            if hasattr(image, 'info') and image.info:
+                for key, value in image.info.items():
+                    if isinstance(value, str):
+                        pnginfo.add_text(key, value)
+                    elif isinstance(value, bytes):
+                        try:
+                            pnginfo.add_text(key, value.decode('utf-8'))
+                        except:
+                            pass
+
+            # 추가 메타데이터
+            pnginfo.add_text("prompt", full_prompt)
+            pnginfo.add_text("seed", str(actual_seed))
+            pnginfo.add_text("negative_prompt", req.negative_prompt or "")
+
+            image.save(save_dir / filename, pnginfo=pnginfo)
 
             # 진행 상황 업데이트
             gen_queue.completed_images += 1
             gen_queue.current_job_progress += 1
 
-            print(f"[Backend] Broadcasting image: {filename}, slot_index={slot_index}, clients={len(gen_queue.clients)}")
+            # 이미지 경로 (output_folder 포함)
+            image_path = f"{req.output_folder}/{filename}" if req.output_folder else filename
+
+            print(f"[Backend] Broadcasting image: {image_path}, slot_index={slot_index}, clients={len(gen_queue.clients)}")
             await gen_queue.broadcast({
                 "type": "image",
                 "job_id": job_id,
@@ -1366,7 +1390,7 @@ async def process_job(job):
                 "prompt": full_prompt,
                 "prompt_idx": slot_index,
                 "seed": actual_seed,
-                "image": image_to_base64(image),
+                "image_path": image_path,  # base64 대신 경로만 전송
                 "filename": filename,
                 "queue_length": len(gen_queue.queue),
                 "global_completed": gen_queue.completed_images,
@@ -1520,15 +1544,22 @@ async def save_to_gallery(request: dict):
     from PIL.PngImagePlugin import PngInfo
 
     image_base64 = request.get("image")
+    image_path = request.get("image_path")  # 파일 경로 (우선)
     filename = request.get("filename", "gallery_image.png")
     metadata = request.get("metadata", {})
 
-    if not image_base64:
-        return {"success": False, "error": "No image provided"}
-
     try:
-        image_data = base64.b64decode(image_base64)
-        image = Image.open(io.BytesIO(image_data))
+        # image_path가 있으면 파일에서 읽기, 없으면 base64 디코딩
+        if image_path:
+            file_path = OUTPUT_DIR / image_path
+            if not file_path.exists():
+                return {"success": False, "error": "Image file not found"}
+            image = Image.open(file_path)
+        elif image_base64:
+            image_data = base64.b64decode(image_base64)
+            image = Image.open(io.BytesIO(image_data))
+        else:
+            return {"success": False, "error": "No image provided"}
 
         # 고유 파일명 생성
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1970,6 +2001,16 @@ async def list_outputs():
         if f.suffix == ".png":
             files.append(f.name)
     return {"files": files}
+
+
+@app.get("/api/outputs/{filepath:path}")
+async def get_output_image(filepath: str):
+    """출력 이미지 파일 서빙"""
+    from fastapi.responses import FileResponse
+    file_path = OUTPUT_DIR / filepath
+    if not file_path.exists() or not file_path.is_file():
+        return {"error": "File not found"}
+    return FileResponse(file_path, media_type="image/png")
 
 
 # === Preset API ===
