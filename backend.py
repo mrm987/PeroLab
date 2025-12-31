@@ -1289,10 +1289,10 @@ async def process_job(job):
             # 파일명용 태그 결정: name > 첫 태그 (sanitize_filename 사용)
             file_tag = ""
             if prompt_name:
-                file_tag = sanitize_filename(prompt_name, max_length=20)
+                file_tag = sanitize_filename(prompt_name, max_length=100)
             elif extra_prompt:
                 tag = extra_prompt.split(",")[0].strip()
-                file_tag = sanitize_filename(tag, max_length=20)
+                file_tag = sanitize_filename(tag, max_length=100)
             
             image_idx += 1
 
