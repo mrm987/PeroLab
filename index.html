@@ -4338,20 +4338,21 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ nai_token: token })
                 });
-                
-                if (res.ok) {
+                const data = await res.json();
+
+                if (res.ok && data.success) {
                     showToast('토큰 저장됨', 'success');
                     naiTokenSet = true;
                     updateNaiStatus(true);
                     closeNaiTokenModal();
-                    
+
                     // Settings 모달의 토큰 필드도 업데이트
                     document.getElementById('naiToken').value = token;
-                    
+
                     // 생성 진행
                     addToQueue();
                 } else {
-                    showToast('토큰 저장 실패', 'error');
+                    showToast(data.error || '토큰 저장 실패', 'error');
                 }
             } catch (e) {
                 showToast('토큰 저장 실패', 'error');
@@ -4734,17 +4735,20 @@
                 checkpoints_dir: document.getElementById('checkpointsDir').value || null,
                 lora_dir: document.getElementById('loraDir').value || null,
             };
-            
+
             try {
                 const res = await fetch(`${API_BASE}/api/config`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(config)
                 });
-                
-                if (res.ok) {
+                const data = await res.json();
+
+                if (res.ok && data.success) {
                     showToast('설정 저장됨', 'success');
                     closeSettings();
+                } else {
+                    showToast(data.error || '저장 실패', 'error');
                 }
             } catch (e) {
                 showToast('저장 실패', 'error');

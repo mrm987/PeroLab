@@ -2040,7 +2040,14 @@ async def open_folder(request: dict):
 async def update_config(update: ConfigUpdate):
     global CONFIG
     if update.nai_token is not None:
-        CONFIG["nai_token"] = update.nai_token
+        # 토큰 정리: 앞뒤 공백 제거
+        token = update.nai_token.strip()
+        # ASCII 문자만 허용 (JWT 토큰은 base64로 ASCII만 포함)
+        try:
+            token.encode('ascii')
+        except UnicodeEncodeError:
+            return {"success": False, "error": "NAI 토큰에 유효하지 않은 문자가 포함되어 있습니다. 토큰을 다시 복사해주세요."}
+        CONFIG["nai_token"] = token
     if update.checkpoints_dir is not None:
         CONFIG["checkpoints_dir"] = update.checkpoints_dir
     if update.lora_dir is not None:
