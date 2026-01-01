@@ -5145,8 +5145,10 @@
 
             // 토글 함수
             const toggleCollapse = (e) => {
-                // 프리셋 드롭다운 버튼 클릭은 무시
+                // 프리셋 드롭다운 버튼, 기타 컨트롤 클릭은 무시
                 if (e && e.target.closest('.prompt-preset-dropdown, .add-char-btn, .section-toggle, .mode-toggle')) return;
+                // 이벤트 버블링 방지
+                if (e) e.stopPropagation();
 
                 btn.classList.toggle('collapsed');
                 target.classList.toggle('collapsed');
@@ -5167,13 +5169,22 @@
                 }
             }
 
-            // 버튼 클릭
-            btn.onclick = toggleCollapse;
+            // 클릭 가능한 바 찾기 (prompt-label-row가 prompt-label-left보다 우선)
+            let clickableBar = btn.closest('.section-title, .characters-header');
+            if (!clickableBar) {
+                // prompt-label-left 안에 있으면 prompt-label-row를 찾음
+                const promptLabelLeft = btn.closest('.prompt-label-left');
+                if (promptLabelLeft) {
+                    clickableBar = promptLabelLeft.closest('.prompt-label-row');
+                }
+            }
 
-            // 부모 바 클릭 (section-title, prompt-label-row, characters-header)
-            const parentBar = btn.closest('.section-title, .prompt-label-row, .prompt-label-left, .characters-header');
-            if (parentBar) {
-                parentBar.onclick = toggleCollapse;
+            // 바 전체에 클릭 이벤트 설정
+            if (clickableBar) {
+                clickableBar.addEventListener('click', toggleCollapse);
+            } else {
+                // 바가 없으면 버튼에만 설정
+                btn.onclick = toggleCollapse;
             }
         });
 
