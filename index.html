@@ -4551,10 +4551,17 @@
             document.getElementById('dropModalPreview').src = '';
             document.getElementById('dropModalPreview').style.display = 'none';
 
+            // 캐릭터 프롬프트 정보
+            const charPrompts = metadata.character_prompts || [];
+            const charPromptsHtml = charPrompts.length > 0
+                ? `<div><strong>캐릭터 (${charPrompts.length}):</strong> ${charPrompts.map((c, i) => `[${i+1}] ${(c || '').substring(0, 30)}${(c || '').length > 30 ? '...' : ''}`).join(', ')}</div>`
+                : '';
+
             const metadataDiv = document.getElementById('dropModalMetadata');
             metadataDiv.innerHTML = `
                 <div><strong>Prompt:</strong> ${(metadata.prompt || '').substring(0, 100)}${(metadata.prompt || '').length > 100 ? '...' : ''}</div>
                 <div><strong>Negative:</strong> ${(metadata.negative_prompt || '').substring(0, 50)}${(metadata.negative_prompt || '').length > 50 ? '...' : ''}</div>
+                ${charPromptsHtml}
                 <div><strong>Seed:</strong> ${metadata.seed || 'N/A'}</div>
                 <div><strong>Size:</strong> ${metadata.width}x${metadata.height}</div>
                 <div><strong>Steps:</strong> ${metadata.steps}, <strong>CFG:</strong> ${metadata.cfg}</div>
@@ -4575,6 +4582,20 @@
             // 프롬프트
             if (metadata.prompt) document.getElementById('basePrompt').value = metadata.prompt;
             if (metadata.negative_prompt) document.getElementById('negativePrompt').value = metadata.negative_prompt;
+
+            // 캐릭터 프롬프트 적용
+            if (metadata.character_prompts && metadata.character_prompts.length > 0) {
+                // 기존 캐릭터 슬롯 모두 제거
+                const charactersList = document.getElementById('charactersList');
+                charactersList.innerHTML = '';
+                // 새 캐릭터 프롬프트 추가
+                metadata.character_prompts.forEach(cp => {
+                    if (cp && cp.trim()) {
+                        addCharacter(cp);
+                    }
+                });
+                updateCharacterNumbers();
+            }
 
             // 크기
             if (metadata.width) document.getElementById('width').value = metadata.width;
@@ -5610,20 +5631,30 @@
                         const result = await response.json();
                         if (result.success && result.metadata) {
                             const meta = result.metadata;
+                            // 캐릭터 프롬프트 추출 (peropix 또는 NAI 형식)
+                            let charPrompts = meta.character_prompts || [];
+                            if (charPrompts.length === 0 && meta.v4_prompt?.caption?.char_captions) {
+                                charPrompts = meta.v4_prompt.caption.char_captions.map(c => c.char_caption).filter(c => c);
+                            }
+                            if (charPrompts.length === 0 && meta.characterPrompts) {
+                                charPrompts = meta.characterPrompts.map(c => c.prompt).filter(c => c);
+                            }
                             // 메타데이터 형식 변환 (showLoadSettingsConfirm 호환)
                             const normalizedMeta = {
                                 prompt: meta.prompt || '',
-                                negative_prompt: meta.uc || '',
+                                negative_prompt: meta.negative_prompt || meta.uc || '',
+                                character_prompts: charPrompts,
                                 seed: meta.seed,
                                 width: meta.width,
                                 height: meta.height,
                                 steps: meta.steps,
-                                cfg: meta.scale,
+                                cfg: meta.cfg || meta.scale,
                                 sampler: meta.sampler,
-                                scheduler: meta.noise_schedule || 'native',
-                                nai_model: meta.request_type || '',
-                                smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
-                                uc_preset: meta.ucPreset || meta.uc_preset || ''
+                                scheduler: meta.scheduler || meta.noise_schedule || 'native',
+                                nai_model: meta.nai_model || meta.request_type || '',
+                                smea: meta.smea || (meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none')),
+                                uc_preset: meta.uc_preset || meta.ucPreset || '',
+                                quality_tags: meta.quality_tags
                             };
                             showLoadSettingsConfirm(normalizedMeta);
                         } else {

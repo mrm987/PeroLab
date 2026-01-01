@@ -1375,6 +1375,7 @@ async def process_job(job):
             peropix_metadata = {
                 "prompt": full_prompt,
                 "negative_prompt": req.negative_prompt or "",
+                "character_prompts": req.character_prompts or [],
                 "seed": actual_seed,
                 "width": req.width,
                 "height": req.height,
@@ -1617,19 +1618,35 @@ async def get_gallery_image(filename: str):
 
     try:
         image = Image.open(filepath)
-        metadata = {}
+        raw_metadata = {}
         nai_metadata = None
+        peropix_metadata = None
 
         if hasattr(image, 'info'):
             for key, value in image.info.items():
                 if isinstance(value, str):
-                    metadata[key] = value
+                    raw_metadata[key] = value
 
-        if 'Comment' in metadata:
+        # NAI 메타데이터 (Comment 필드)
+        if 'Comment' in raw_metadata:
             try:
-                nai_metadata = json.loads(metadata['Comment'])
+                nai_metadata = json.loads(raw_metadata['Comment'])
             except:
                 pass
+
+        # PeroPix 메타데이터 (peropix 필드)
+        if 'peropix' in raw_metadata:
+            try:
+                peropix_metadata = json.loads(raw_metadata['peropix'])
+            except:
+                pass
+
+        # 메타데이터 병합 (peropix 우선, NAI로 보완)
+        merged_metadata = {}
+        if nai_metadata:
+            merged_metadata = {**nai_metadata}
+        if peropix_metadata:
+            merged_metadata = {**merged_metadata, **peropix_metadata}
 
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
@@ -1638,7 +1655,7 @@ async def get_gallery_image(filename: str):
         return {
             "success": True,
             "image": image_base64,
-            "metadata": nai_metadata,
+            "metadata": merged_metadata,
             "filename": filename
         }
     except Exception as e:
