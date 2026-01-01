@@ -1589,32 +1589,29 @@
         /* Gallery */
         .gallery-container {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 16px;
-            width: 100%;
-            flex-direction: column;
-        }
-        .gallery-container::-webkit-scrollbar {
-            width: 8px;
-        }
-        .gallery-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .gallery-container::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
-        .gallery-container::-webkit-scrollbar-thumb:hover {
-            background: var(--text-dim);
-        }
-        .gallery-toolbar {
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 12px;
-            flex-shrink: 0;
+            flex-direction: column;
+            width: 100%;
+            overflow: hidden;
         }
-        .gallery-folder-btn {
+        .gallery-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            flex-shrink: 0;
+            gap: 12px;
+        }
+        .gallery-folders {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            flex: 1;
+            overflow-x: auto;
+        }
+        .folder-tab {
             padding: 6px 12px;
             background: var(--bg-light);
             border: 1px solid var(--border);
@@ -1622,6 +1619,71 @@
             color: var(--text);
             cursor: pointer;
             font-size: 0.85rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .folder-tab:hover {
+            background: var(--bg-lighter);
+        }
+        .folder-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        .folder-tab.drag-over {
+            background: var(--accent-gold);
+            border-color: var(--accent-gold);
+            color: black;
+        }
+        .gallery-header-buttons {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .add-folder-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+        .add-folder-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .gallery-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px;
+        }
+        .gallery-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .gallery-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .gallery-content::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        .gallery-content::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+        .gallery-folder-btn {
+            padding: 6px 10px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 1rem;
             transition: all 0.2s;
         }
         .gallery-folder-btn:hover {
@@ -1651,6 +1713,10 @@
             transform: translateY(-4px);
             z-index: 1;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+        .gallery-item.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
         }
         .gallery-item img {
             width: 100%;
@@ -2417,18 +2483,25 @@
                 </div>
             </div>
             <div class="gallery-container" id="galleryContainer" style="display: none;">
-                <div class="gallery-toolbar">
-                    <button type="button" class="gallery-folder-btn" id="openGalleryFolderBtn" title="갤러리 폴더 열기">
-                        📂 폴더 열기
-                    </button>
+                <div class="gallery-header">
+                    <div class="gallery-folders" id="galleryFolders">
+                        <button type="button" class="folder-tab active" data-folder="">📁 gallery</button>
+                        <!-- 하위 폴더 탭들이 여기에 추가됨 -->
+                    </div>
+                    <div class="gallery-header-buttons">
+                        <button type="button" class="add-folder-btn" id="addFolderBtn" title="새 폴더">+</button>
+                        <button type="button" class="gallery-folder-btn" id="openGalleryFolderBtn" title="갤러리 폴더 열기">📂</button>
+                    </div>
                 </div>
-                <div class="gallery-grid" id="galleryGrid">
-                    <!-- 갤러리 이미지들 -->
-                </div>
-                <div class="gallery-empty" id="galleryEmpty">
-                    <div class="icon">🖼️</div>
-                    <p>갤러리가 비어있습니다</p>
-                    <small>이미지에서 ⭐ 버튼을 눌러 갤러리에 저장하세요</small>
+                <div class="gallery-content">
+                    <div class="gallery-grid" id="galleryGrid">
+                        <!-- 갤러리 이미지들 -->
+                    </div>
+                    <div class="gallery-empty" id="galleryEmpty">
+                        <div class="icon">🖼️</div>
+                        <p>갤러리가 비어있습니다</p>
+                        <small>이미지에서 ⭐ 버튼을 눌러 갤러리에 저장하세요</small>
+                    </div>
                 </div>
             </div>
         </main>
@@ -2987,13 +3060,15 @@
                 // 저장되지 않은 경우 갤러리에 저장
                 try {
                     // 백엔드에서 원본 파일의 메타데이터를 직접 읽음
+                    // 현재 열린 갤러리 폴더에 저장
                     const response = await fetch(`${API_BASE}/api/gallery/save`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             image: card._imageData.image,  // base64 (하위 호환)
                             image_path: card._imageData.image_path,  // 파일 경로
-                            filename: card._imageData.filename
+                            filename: card._imageData.filename,
+                            folder: currentGalleryFolder || ''  // 현재 갤러리 폴더
                         })
                     });
                     const result = await response.json();
@@ -5448,8 +5523,10 @@
         const galleryContainer = document.getElementById('galleryContainer');
         const galleryGrid = document.getElementById('galleryGrid');
         const galleryEmpty = document.getElementById('galleryEmpty');
+        const galleryFolders = document.getElementById('galleryFolders');
 
         let currentMode = 'slot'; // 'slot' or 'gallery'
+        let currentGalleryFolder = ''; // 현재 선택된 폴더 (빈 문자열 = gallery 루트)
 
         slotModeBtn.onclick = () => {
             if (currentMode === 'slot') return;
@@ -5467,7 +5544,8 @@
             slotModeBtn.classList.remove('active');
             slotsWrapper.style.display = 'none';
             galleryContainer.style.display = 'flex';
-            loadGallery();
+            loadGalleryFolders();
+            loadGallery(currentGalleryFolder);
         };
 
         // 갤러리 폴더 열기
@@ -5483,9 +5561,114 @@
             }
         };
 
+        // 새 폴더 생성
+        document.getElementById('addFolderBtn').onclick = async () => {
+            const folderName = prompt('새 폴더 이름을 입력하세요:');
+            if (!folderName || !folderName.trim()) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/gallery/folders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: folderName.trim() })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showToast('폴더 생성됨', 'success');
+                    loadGalleryFolders();
+                } else {
+                    showToast('폴더 생성 실패: ' + result.error, 'error');
+                }
+            } catch (err) {
+                showToast('폴더 생성 오류: ' + err.message, 'error');
+            }
+        };
+
+        // 폴더 목록 로드
+        async function loadGalleryFolders() {
+            try {
+                const response = await fetch(`${API_BASE}/api/gallery/folders`);
+                const result = await response.json();
+
+                // 기존 폴더 탭 제거 (gallery 루트 제외)
+                const existingTabs = galleryFolders.querySelectorAll('.folder-tab:not([data-folder=""])');
+                existingTabs.forEach(tab => tab.remove());
+
+                if (result.success && result.folders) {
+                    result.folders.forEach(folder => {
+                        const tab = document.createElement('button');
+                        tab.type = 'button';
+                        tab.className = 'folder-tab' + (currentGalleryFolder === folder.name ? ' active' : '');
+                        tab.dataset.folder = folder.name;
+                        tab.textContent = `📁 ${folder.name}`;
+                        tab.title = `${folder.image_count}개 이미지`;
+                        setupFolderTab(tab);
+                        galleryFolders.appendChild(tab);
+                    });
+                }
+
+                // 루트 폴더 탭 active 상태 업데이트
+                const rootTab = galleryFolders.querySelector('[data-folder=""]');
+                if (rootTab) {
+                    rootTab.classList.toggle('active', currentGalleryFolder === '');
+                    setupFolderTab(rootTab);
+                }
+            } catch (err) {
+                console.error('폴더 목록 로드 실패:', err);
+            }
+        }
+
+        // 폴더 탭 이벤트 설정
+        function setupFolderTab(tab) {
+            tab.onclick = () => {
+                if (tab.dataset.folder === currentGalleryFolder) return;
+                currentGalleryFolder = tab.dataset.folder;
+                // 모든 탭 active 해제
+                galleryFolders.querySelectorAll('.folder-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                loadGallery(currentGalleryFolder);
+            };
+
+            // 드래그 오버 이벤트 (이미지를 폴더로 이동할 때)
+            tab.ondragover = (e) => {
+                e.preventDefault();
+                tab.classList.add('drag-over');
+            };
+            tab.ondragleave = () => {
+                tab.classList.remove('drag-over');
+            };
+            tab.ondrop = async (e) => {
+                e.preventDefault();
+                tab.classList.remove('drag-over');
+                const filename = e.dataTransfer.getData('text/plain');
+                const fromFolder = e.dataTransfer.getData('application/x-gallery-folder');
+                const toFolder = tab.dataset.folder;
+
+                if (!filename || fromFolder === toFolder) return;
+
+                try {
+                    const response = await fetch(`${API_BASE}/api/gallery/${encodeURIComponent(filename)}/move`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ from_folder: fromFolder, to_folder: toFolder })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('이미지 이동됨', 'success');
+                        loadGallery(currentGalleryFolder);
+                        loadGalleryFolders();
+                    } else {
+                        showToast('이동 실패: ' + result.error, 'error');
+                    }
+                } catch (err) {
+                    showToast('이동 오류: ' + err.message, 'error');
+                }
+            };
+        }
+
         let galleryLoaded = false;
 
-        async function loadGallery() {
+        async function loadGallery(folder = '') {
             // 로딩 중 표시
             galleryGrid.style.display = 'none';
             galleryEmpty.innerHTML = `
@@ -5495,17 +5678,17 @@
             galleryEmpty.style.display = 'flex';
 
             try {
-                const response = await fetch(`${API_BASE}/api/gallery`);
+                const response = await fetch(`${API_BASE}/api/gallery?folder=${encodeURIComponent(folder)}`);
                 const result = await response.json();
 
                 if (result.images && result.images.length > 0) {
                     galleryEmpty.style.display = 'none';
                     galleryGrid.style.display = 'grid';
-                    renderGallery(result.images);
+                    renderGallery(result.images, folder);
                 } else {
                     galleryEmpty.innerHTML = `
                         <div class="icon">🖼️</div>
-                        <p>갤러리가 비어있습니다</p>
+                        <p>${folder ? `'${folder}' 폴더가` : '갤러리가'} 비어있습니다</p>
                         <small>이미지에서 ⭐ 버튼을 눌러 갤러리에 저장하세요</small>
                     `;
                     galleryEmpty.style.display = 'flex';
@@ -5523,13 +5706,15 @@
             }
         }
 
-        function renderGallery(images) {
+        function renderGallery(images, folder = '') {
             galleryGrid.innerHTML = '';
 
             images.forEach(img => {
                 const item = document.createElement('div');
                 item.className = 'gallery-item';
                 item._filename = img.filename;
+                item._folder = folder;
+                item.draggable = true;
                 item.innerHTML = `
                     <img src="data:image/png;base64,${img.thumbnail}" alt="">
                     <div class="gallery-item-info">
@@ -5547,10 +5732,21 @@
                     </div>
                 `;
 
+                // 드래그 시작 (폴더 이동용)
+                item.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', item._filename);
+                    e.dataTransfer.setData('application/x-gallery-folder', item._folder);
+                    item.classList.add('dragging');
+                };
+                item.ondragend = () => {
+                    item.classList.remove('dragging');
+                };
+
                 // 라이트박스 표시 함수
+                const folderQuery = folder ? `?folder=${encodeURIComponent(folder)}` : '';
                 const showLightbox = async () => {
                     try {
-                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}`);
+                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
                         const result = await response.json();
                         if (result.success) {
                             lightboxImg.src = 'data:image/png;base64,' + result.image;
@@ -5601,7 +5797,7 @@
                             const response = await fetch(`${API_BASE}/api/gallery/${item._filename}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ new_name: newName })
+                                body: JSON.stringify({ new_name: newName, folder: item._folder })
                             });
                             const result = await response.json();
                             if (result.success) {
@@ -5636,7 +5832,7 @@
                 item.querySelector('.copy-prompt-btn').onclick = async (e) => {
                     e.stopPropagation();
                     try {
-                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}`);
+                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
                         const result = await response.json();
                         if (result.success && result.metadata && result.metadata.prompt) {
                             const meta = result.metadata;
@@ -5710,7 +5906,7 @@
                 item.querySelector('.apply-all-btn').onclick = async (e) => {
                     e.stopPropagation();
                     try {
-                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}`);
+                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
                         const result = await response.json();
                         if (result.success && result.metadata) {
                             const meta = result.metadata;
@@ -5756,7 +5952,7 @@
                         '<p>이 이미지를 갤러리에서 삭제하시겠습니까?</p>',
                         async () => {
                             try {
-                                const response = await fetch(`${API_BASE}/api/gallery/${item._filename}`, {
+                                const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`, {
                                     method: 'DELETE'
                                 });
                                 const result = await response.json();

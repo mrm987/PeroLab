@@ -1521,13 +1521,92 @@ async def extract_metadata(request: dict):
 # Gallery API
 # ============================================================
 
+def get_gallery_folder_path(folder: str = "") -> Path:
+    """갤러리 폴더 경로 반환 (보안 검증 포함)"""
+    if not folder or folder == "gallery":
+        return GALLERY_DIR
+    # 경로 조작 방지
+    if ".." in folder or folder.startswith("/") or folder.startswith("\\"):
+        raise ValueError("Invalid folder name")
+    return GALLERY_DIR / folder
+
+
+@app.get("/api/gallery/folders")
+async def get_gallery_folders():
+    """갤러리 하위 폴더 목록 조회"""
+    folders = []
+    try:
+        for item in sorted(GALLERY_DIR.iterdir()):
+            if item.is_dir():
+                # 폴더 내 이미지 수 카운트
+                image_count = len(list(item.glob("*.png")))
+                folders.append({
+                    "name": item.name,
+                    "image_count": image_count
+                })
+        return {"success": True, "folders": folders}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/gallery/folders")
+async def create_gallery_folder(request: dict):
+    """갤러리 폴더 생성"""
+    folder_name = request.get("name", "").strip()
+    if not folder_name:
+        return {"success": False, "error": "Folder name is required"}
+
+    # 안전한 폴더명인지 확인
+    if "/" in folder_name or "\\" in folder_name or ".." in folder_name:
+        return {"success": False, "error": "Invalid folder name"}
+
+    folder_path = GALLERY_DIR / folder_name
+    if folder_path.exists():
+        return {"success": False, "error": "Folder already exists"}
+
+    try:
+        folder_path.mkdir(parents=True)
+        return {"success": True, "name": folder_name}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/gallery/folders/{folder_name}")
+async def delete_gallery_folder(folder_name: str):
+    """갤러리 폴더 삭제 (빈 폴더만)"""
+    if not folder_name or folder_name == "gallery":
+        return {"success": False, "error": "Cannot delete root gallery"}
+
+    folder_path = GALLERY_DIR / folder_name
+    if not folder_path.exists():
+        return {"success": False, "error": "Folder not found"}
+
+    # 폴더가 비어있는지 확인
+    if any(folder_path.iterdir()):
+        return {"success": False, "error": "Folder is not empty"}
+
+    try:
+        folder_path.rmdir()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @app.get("/api/gallery")
-async def get_gallery():
-    """갤러리 이미지 목록 조회"""
+async def get_gallery(folder: str = ""):
+    """갤러리 이미지 목록 조회 (폴더별)"""
     lazy_imports()
     images = []
 
-    for filepath in sorted(GALLERY_DIR.glob("*.png"), key=lambda x: x.stat().st_mtime, reverse=True):
+    try:
+        gallery_path = get_gallery_folder_path(folder)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    if not gallery_path.exists():
+        return {"images": [], "folder": folder}
+
+    for filepath in sorted(gallery_path.glob("*.png"), key=lambda x: x.stat().st_mtime, reverse=True):
         try:
             image = Image.open(filepath)
             metadata = {}
@@ -1562,7 +1641,7 @@ async def get_gallery():
             print(f"[Gallery] Error loading {filepath}: {e}")
             continue
 
-    return {"images": images}
+    return {"images": images, "folder": folder}
 
 
 @app.post("/api/gallery/save")
@@ -1574,8 +1653,18 @@ async def save_to_gallery(request: dict):
     image_base64 = request.get("image")
     image_path = request.get("image_path")  # 파일 경로 (우선)
     filename = request.get("filename", "gallery_image.png")
+    folder = request.get("folder", "")  # 저장할 폴더
 
     try:
+        # 폴더 경로 검증
+        try:
+            gallery_path = get_gallery_folder_path(folder)
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
+
+        # 폴더가 없으면 생성
+        gallery_path.mkdir(parents=True, exist_ok=True)
+
         # image_path가 있으면 파일에서 읽기, 없으면 base64 디코딩
         if image_path:
             file_path = OUTPUT_DIR / image_path
@@ -1592,7 +1681,7 @@ async def save_to_gallery(request: dict):
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = Path(filename).stem
         new_filename = f"{base_name}_{timestamp}.png"
-        filepath = GALLERY_DIR / new_filename
+        filepath = gallery_path / new_filename
 
         # 원본 PNG 메타데이터 보존
         pnginfo = PngInfo()
@@ -1609,11 +1698,16 @@ async def save_to_gallery(request: dict):
 
 
 @app.get("/api/gallery/{filename}")
-async def get_gallery_image(filename: str):
+async def get_gallery_image(filename: str, folder: str = ""):
     """갤러리 이미지 조회 (전체 크기 + 메타데이터)"""
     lazy_imports()
 
-    filepath = GALLERY_DIR / filename
+    try:
+        gallery_path = get_gallery_folder_path(folder)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    filepath = gallery_path / filename
     if not filepath.exists():
         return {"success": False, "error": "Image not found"}
 
@@ -1664,9 +1758,14 @@ async def get_gallery_image(filename: str):
 
 
 @app.delete("/api/gallery/{filename}")
-async def delete_gallery_image(filename: str):
+async def delete_gallery_image(filename: str, folder: str = ""):
     """갤러리 이미지 삭제"""
-    filepath = GALLERY_DIR / filename
+    try:
+        gallery_path = get_gallery_folder_path(folder)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    filepath = gallery_path / filename
     if not filepath.exists():
         return {"success": False, "error": "Image not found"}
 
@@ -1677,11 +1776,50 @@ async def delete_gallery_image(filename: str):
         return {"success": False, "error": str(e)}
 
 
+@app.post("/api/gallery/{filename}/move")
+async def move_gallery_image(filename: str, request: dict):
+    """갤러리 이미지를 다른 폴더로 이동"""
+    from_folder = request.get("from_folder", "")
+    to_folder = request.get("to_folder", "")
+
+    try:
+        from_path = get_gallery_folder_path(from_folder)
+        to_path = get_gallery_folder_path(to_folder)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    # 대상 폴더가 없으면 생성
+    to_path.mkdir(parents=True, exist_ok=True)
+
+    src_file = from_path / filename
+    dst_file = to_path / filename
+
+    if not src_file.exists():
+        return {"success": False, "error": "Image not found"}
+
+    if dst_file.exists():
+        # 파일명 충돌 시 타임스탬프 추가
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        base_name = Path(filename).stem
+        new_filename = f"{base_name}_{timestamp}.png"
+        dst_file = to_path / new_filename
+    else:
+        new_filename = filename
+
+    try:
+        import shutil
+        shutil.move(str(src_file), str(dst_file))
+        return {"success": True, "new_filename": new_filename}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 @app.patch("/api/gallery/{filename}")
 async def rename_gallery_image(filename: str, request: Request):
     """갤러리 이미지 이름 변경"""
     data = await request.json()
     new_name = data.get("new_name", "").strip()
+    folder = data.get("folder", "")
 
     if not new_name:
         return {"success": False, "error": "New name is required"}
@@ -1694,8 +1832,13 @@ async def rename_gallery_image(filename: str, request: Request):
     if "/" in new_name or "\\" in new_name or ".." in new_name:
         return {"success": False, "error": "Invalid filename"}
 
-    old_path = GALLERY_DIR / filename
-    new_path = GALLERY_DIR / new_name
+    try:
+        gallery_path = get_gallery_folder_path(folder)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+
+    old_path = gallery_path / filename
+    new_path = gallery_path / new_name
 
     if not old_path.exists():
         return {"success": False, "error": "Image not found"}
