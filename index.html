@@ -1180,7 +1180,7 @@
             position: relative;
         }
 
-        /* 슬롯 리사이즈 핸들 */
+        /* 슬롯 리사이즈 핸들 (오른쪽만) */
         .slot-resize-handle {
             position: absolute;
             top: 0;
@@ -1190,22 +1190,14 @@
             z-index: 10;
             opacity: 0;
             transition: opacity 0.2s, background 0.2s;
+            right: -8px;
+            border-radius: 0 10px 10px 0;
         }
 
         .slot-resize-handle:hover,
         .slot-resize-handle.active {
             opacity: 1;
             background: var(--accent-gold-dim);
-        }
-
-        .slot-resize-handle.left {
-            left: 0;
-            border-radius: 10px 0 0 10px;
-        }
-
-        .slot-resize-handle.right {
-            right: -8px;  /* 슬롯 바깥에서 드래그하도록 */
-            border-radius: 0 10px 10px 0;
         }
 
         body.resizing-slot {
@@ -2728,38 +2720,32 @@
         }
 
         function setupSlotResize(slot) {
-            const leftHandle = slot.querySelector('.slot-resize-handle.left');
-            const rightHandle = slot.querySelector('.slot-resize-handle.right');
+            const handle = slot.querySelector('.slot-resize-handle');
+            if (!handle) return;
 
-            function startResize(e, isLeft) {
+            handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 const startX = e.clientX;
                 const startWidth = currentSlotWidth;
 
                 document.body.classList.add('resizing-slot');
-                leftHandle.classList.add('active');
-                rightHandle.classList.add('active');
+                handle.classList.add('active');
 
                 function onMouseMove(e) {
                     const deltaX = e.clientX - startX;
-                    const newWidth = isLeft ? startWidth - deltaX : startWidth + deltaX;
-                    setSlotWidth(newWidth);
+                    setSlotWidth(startWidth + deltaX);
                 }
 
                 function onMouseUp() {
                     document.body.classList.remove('resizing-slot');
-                    leftHandle.classList.remove('active');
-                    rightHandle.classList.remove('active');
+                    handle.classList.remove('active');
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
                 }
 
                 document.addEventListener('mousemove', onMouseMove);
                 document.addEventListener('mouseup', onMouseUp);
-            }
-
-            leftHandle.addEventListener('mousedown', (e) => startResize(e, true));
-            rightHandle.addEventListener('mousedown', (e) => startResize(e, false));
+            });
         }
 
         // 사이드바 너비 관리
@@ -2809,8 +2795,7 @@
             slot.className = 'slot';
             slot.dataset.slotIndex = slotId;
             slot.innerHTML = `
-                <div class="slot-resize-handle left"></div>
-                <div class="slot-resize-handle right"></div>
+                <div class="slot-resize-handle"></div>
                 <div class="slot-prompt">
                     <div class="slot-prompt-header">
                         <span class="slot-number">001</span>
