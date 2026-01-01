@@ -5169,10 +5169,16 @@
                     document.getElementById('anlasFreeTag').style.display = 'inline';
                 } else {
                     document.getElementById('anlasCost').style.display = 'inline';
-                    // Vibe 인코딩 비용 표시
+                    // 비용 상세 표시: 총비용 (개별 × 슬롯 × 횟수)
                     let costText = data.total_cost.toLocaleString();
+                    if (slotCount > 1 || repeatCount > 1) {
+                        let breakdown = `${data.cost_per_image}`;
+                        if (slotCount > 1) breakdown += ` × ${slotCount}슬롯`;
+                        if (repeatCount > 1) breakdown += ` × ${repeatCount}회`;
+                        costText += ` (${breakdown})`;
+                    }
                     if (data.vibe_encoding_cost > 0) {
-                        costText += ` (+${data.vibe_encoding_cost} vibe)`;
+                        costText += ` +${data.vibe_encoding_cost}vibe`;
                     }
                     document.getElementById('anlasCost').textContent = costText;
                     document.getElementById('anlasFreeTag').style.display = 'none';
