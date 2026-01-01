@@ -68,11 +68,11 @@ for subdir in ['base', 'negative', 'character']:
 # Config 관리
 def load_config():
     if CONFIG_FILE.exists():
-        return json.loads(CONFIG_FILE.read_text())
+        return json.loads(CONFIG_FILE.read_text(encoding='utf-8'))
     return {"nai_token": "", "checkpoints_dir": str(CHECKPOINTS_DIR), "lora_dir": str(LORA_DIR)}
 
 def save_config(config):
-    CONFIG_FILE.write_text(json.dumps(config, indent=2))
+    CONFIG_FILE.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding='utf-8')
 
 CONFIG = load_config()
 
