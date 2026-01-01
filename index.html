@@ -159,6 +159,14 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 10px;
+            padding: 8px 10px;
+            margin: 0 -10px 10px -10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .section-title:hover {
+            background: var(--bg-lighter);
         }
         
         .section-title .section-toggle {
@@ -374,6 +382,14 @@
             align-items: center;
             gap: 4px;
             margin-bottom: 8px;
+            padding: 8px 10px;
+            margin: 0 -10px 8px -10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .characters-header:hover {
+            background: var(--bg-lighter);
         }
 
         .characters-header label {
@@ -489,6 +505,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 4px;
+            padding: 8px 10px;
+            margin: 0 -10px 4px -10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .prompt-label-row:hover {
+            background: var(--bg-lighter);
         }
 
         .prompt-label-left {
@@ -5117,22 +5141,40 @@
         document.querySelectorAll('.collapse-toggle').forEach(btn => {
             const targetId = btn.dataset.target;
             const target = document.getElementById(targetId);
+            if (!target) return;
 
-            // Restore collapse state from localStorage
+            // 토글 함수
+            const toggleCollapse = (e) => {
+                // 프리셋 드롭다운 버튼 클릭은 무시
+                if (e && e.target.closest('.prompt-preset-dropdown, .add-char-btn, .section-toggle, .mode-toggle')) return;
+
+                btn.classList.toggle('collapsed');
+                target.classList.toggle('collapsed');
+                localStorage.setItem(`collapse_${targetId}`, btn.classList.contains('collapsed') ? 'collapsed' : 'expanded');
+            };
+
+            // 저장된 상태 복원 또는 기본값 설정
             const savedState = localStorage.getItem(`collapse_${targetId}`);
-            if (savedState === 'collapsed' && target) {
+            if (savedState === 'collapsed') {
                 btn.classList.add('collapsed');
                 target.classList.add('collapsed');
+            } else if (savedState === null) {
+                // 첫 실행: basePromptContent만 펼치고 나머지 접기
+                if (targetId !== 'basePromptContent') {
+                    btn.classList.add('collapsed');
+                    target.classList.add('collapsed');
+                    localStorage.setItem(`collapse_${targetId}`, 'collapsed');
+                }
             }
 
-            btn.onclick = () => {
-                if (target) {
-                    btn.classList.toggle('collapsed');
-                    target.classList.toggle('collapsed');
-                    // Save state to localStorage
-                    localStorage.setItem(`collapse_${targetId}`, btn.classList.contains('collapsed') ? 'collapsed' : 'expanded');
-                }
-            };
+            // 버튼 클릭
+            btn.onclick = toggleCollapse;
+
+            // 부모 바 클릭 (section-title, prompt-label-row, characters-header)
+            const parentBar = btn.closest('.section-title, .prompt-label-row, .prompt-label-left, .characters-header');
+            if (parentBar) {
+                parentBar.onclick = toggleCollapse;
+            }
         });
 
         // 폴더 열기 버튼 핸들러
