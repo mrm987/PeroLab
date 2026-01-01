@@ -211,6 +211,13 @@
             cursor: pointer;
         }
 
+        .subsection-title .section-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            cursor: pointer;
+        }
+
         /* Form */
         label {
             display: block;
@@ -370,9 +377,12 @@
         }
 
         .characters-header label {
-            color: var(--text-dim);
             font-size: 0.85rem;
             flex: 1;
+        }
+
+        .characters-header label.prompt-label {
+            color: var(--text);
         }
         
         .add-char-btn {
