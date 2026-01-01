@@ -3756,10 +3756,11 @@
                 showToast('최대 6개의 캐릭터까지 가능', 'warning');
                 return;
             }
-            // 접힌 캐릭터 프롬프트들 펼치기
-            charactersList.querySelectorAll('.collapsible-content.collapsed').forEach(el => {
-                el.classList.remove('collapsed');
-            });
+            // Characters 섹션이 접혀있으면 펼치기
+            const charactersContent = document.getElementById('charactersContent');
+            if (charactersContent.classList.contains('collapsed')) {
+                charactersContent.classList.remove('collapsed');
+            }
             const item = createCharacterItem(content);
             charactersList.appendChild(item);
             updateCharacterNumbers();
