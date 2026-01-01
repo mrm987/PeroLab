@@ -2547,6 +2547,19 @@
         </div>
     </div>
 
+    <!-- Input Prompt Modal -->
+    <div class="drop-modal" id="inputModal">
+        <div class="drop-modal-content" style="max-width: 400px;">
+            <h3 id="inputModalTitle">입력</h3>
+            <div id="inputModalMessage" style="margin: 12px 0; color: var(--text-dim);"></div>
+            <input type="text" id="inputModalInput" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-light); color: var(--text); margin-bottom: 16px;">
+            <div class="buttons">
+                <button type="button" class="btn btn-secondary" id="inputModalCancel">취소</button>
+                <button type="button" class="btn" id="inputModalOk">확인</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
@@ -4646,6 +4659,45 @@
             modal.classList.add('active');
         }
 
+        function showInputModal(title, message, onConfirm, confirmText = '확인', defaultValue = '') {
+            const modal = document.getElementById('inputModal');
+            document.getElementById('inputModalTitle').textContent = title;
+            document.getElementById('inputModalMessage').textContent = message;
+            const input = document.getElementById('inputModalInput');
+            input.value = defaultValue;
+
+            const okBtn = document.getElementById('inputModalOk');
+            okBtn.textContent = confirmText;
+
+            // 이벤트 리스너 정리 후 재설정
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            const newCancelBtn = document.getElementById('inputModalCancel').cloneNode(true);
+            document.getElementById('inputModalCancel').parentNode.replaceChild(newCancelBtn, document.getElementById('inputModalCancel'));
+
+            newOkBtn.onclick = () => {
+                const value = input.value.trim();
+                if (value) {
+                    modal.classList.remove('active');
+                    if (onConfirm) onConfirm(value);
+                }
+            };
+            newCancelBtn.onclick = () => {
+                modal.classList.remove('active');
+            };
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    newOkBtn.click();
+                } else if (e.key === 'Escape') {
+                    modal.classList.remove('active');
+                }
+            };
+
+            modal.classList.add('active');
+            setTimeout(() => input.focus(), 100);
+        }
+
         // 설정 불러오기 확인 팝업 (드롭 모달 재사용)
         function showLoadSettingsConfirm(metadata) {
             const dropModal = document.getElementById('dropModal');
@@ -5548,10 +5600,14 @@
             loadGallery(currentGalleryFolder);
         };
 
-        // 갤러리 폴더 열기
+        // 갤러리 폴더 열기 (현재 선택된 폴더)
         document.getElementById('openGalleryFolderBtn').onclick = async () => {
             try {
-                const response = await fetch(`${API_BASE}/api/gallery/open-folder`, { method: 'POST' });
+                const response = await fetch(`${API_BASE}/api/gallery/open-folder`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder: currentGalleryFolder })
+                });
                 const result = await response.json();
                 if (!result.success) {
                     showToast('폴더 열기 실패', 'error');
@@ -5562,26 +5618,25 @@
         };
 
         // 새 폴더 생성
-        document.getElementById('addFolderBtn').onclick = async () => {
-            const folderName = prompt('새 폴더 이름을 입력하세요:');
-            if (!folderName || !folderName.trim()) return;
-
-            try {
-                const response = await fetch(`${API_BASE}/api/gallery/folders`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: folderName.trim() })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    showToast('폴더 생성됨', 'success');
-                    loadGalleryFolders();
-                } else {
-                    showToast('폴더 생성 실패: ' + result.error, 'error');
+        document.getElementById('addFolderBtn').onclick = () => {
+            showInputModal('📁 새 폴더', '폴더 이름을 입력하세요', async (folderName) => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/gallery/folders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: folderName })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showToast('폴더 생성됨', 'success');
+                        loadGalleryFolders();
+                    } else {
+                        showToast('폴더 생성 실패: ' + result.error, 'error');
+                    }
+                } catch (err) {
+                    showToast('폴더 생성 오류: ' + err.message, 'error');
                 }
-            } catch (err) {
-                showToast('폴더 생성 오류: ' + err.message, 'error');
-            }
+            }, '생성');
         };
 
         // 폴더 목록 로드
@@ -5736,11 +5791,30 @@
                 item.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', item._filename);
                     e.dataTransfer.setData('application/x-gallery-folder', item._folder);
+                    e.dataTransfer.effectAllowed = 'move';
+
+                    // 커스텀 드래그 고스트 생성
+                    const ghost = document.createElement('div');
+                    ghost.id = 'dragGhost';
+                    ghost.style.cssText = 'position: fixed; top: -100px; left: -100px; width: 60px; height: 60px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: none; z-index: 10000;';
+                    ghost.textContent = '📁';
+                    document.body.appendChild(ghost);
+                    e.dataTransfer.setDragImage(ghost, 30, 30);
+
                     item.classList.add('dragging');
                 };
                 item.ondragend = () => {
                     item.classList.remove('dragging');
+                    // 드래그 고스트 제거
+                    const ghost = document.getElementById('dragGhost');
+                    if (ghost) ghost.remove();
                 };
+
+                // 이미지 자체의 기본 드래그 동작 방지
+                const img = item.querySelector('img');
+                if (img) {
+                    img.ondragstart = (e) => e.preventDefault();
+                }
 
                 // 라이트박스 표시 함수
                 const folderQuery = folder ? `?folder=${encodeURIComponent(folder)}` : '';

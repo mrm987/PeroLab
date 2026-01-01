@@ -1854,13 +1854,16 @@ async def rename_gallery_image(filename: str, request: Request):
 
 
 @app.post("/api/gallery/open-folder")
-async def open_gallery_folder():
+async def open_gallery_folder(request: dict = None):
     """갤러리 폴더 열기"""
     import subprocess
     import platform
 
     try:
-        folder_path = str(GALLERY_DIR.absolute())
+        # 서브폴더 지정 시 해당 폴더 열기
+        subfolder = request.get("folder", "") if request else ""
+        target_folder = get_gallery_folder_path(subfolder)
+        folder_path = str(target_folder.absolute())
         system = platform.system()
 
         if system == "Windows":
