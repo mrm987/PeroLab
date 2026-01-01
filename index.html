@@ -5160,6 +5160,7 @@
                     })
                 });
                 const data = await response.json();
+                console.log('[Cost Response]', data);
 
                 if (data.is_free) {
                     document.getElementById('anlasCost').style.display = 'none';
