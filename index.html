@@ -3853,6 +3853,12 @@
             const charactersContent = document.getElementById('charactersContent');
             if (charactersContent.classList.contains('collapsed')) {
                 charactersContent.classList.remove('collapsed');
+                // 토글 버튼 상태도 동기화
+                const toggleBtn = document.querySelector('[data-target="charactersContent"]');
+                if (toggleBtn) {
+                    toggleBtn.classList.remove('collapsed');
+                    localStorage.setItem('collapse_charactersContent', 'expanded');
+                }
             }
             const item = createCharacterItem(content);
             charactersList.appendChild(item);
