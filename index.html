@@ -5814,9 +5814,9 @@
                 };
 
                 // 이미지 자체의 기본 드래그 동작 방지
-                const img = item.querySelector('img');
-                if (img) {
-                    img.ondragstart = (e) => e.preventDefault();
+                const imgEl = item.querySelector('img');
+                if (imgEl) {
+                    imgEl.ondragstart = (e) => e.preventDefault();
                 }
 
                 // 라이트박스 표시 함수
