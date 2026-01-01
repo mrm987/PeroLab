@@ -840,14 +840,19 @@ async def call_nai_api(req: GenerateRequest):
 
                 if is_v4_plus:
                     # V4+ 모델: encode-vibe 엔드포인트로 사전 인코딩
-                    orig_size = get_image_size_from_base64(v["image"])
-                    png_image = ensure_png_base64(v["image"])
-                    image_name = v.get("name", f"vibe_{i+1}")
-                    print(f"[NAI] Vibe {i+1}: {orig_size[0]}x{orig_size[1]}, encoding for V4+...")
+                    # 이미 인코딩된 데이터가 있으면 그대로 사용 (캐시된 바이브)
+                    if v.get("encoded"):
+                        print(f"[NAI] Vibe {i+1}: using pre-encoded data (cached)")
+                        vibe_images.append(v["encoded"])
+                    else:
+                        orig_size = get_image_size_from_base64(v["image"])
+                        png_image = ensure_png_base64(v["image"])
+                        image_name = v.get("name", f"vibe_{i+1}")
+                        print(f"[NAI] Vibe {i+1}: {orig_size[0]}x{orig_size[1]}, encoding for V4+...")
 
-                    encoded_vibe = await encode_vibe_v4(png_image, req.nai_model, info_extracted, strength, token, image_name)
-                    vibe_images.append(encoded_vibe)
-                    print(f"[NAI] Vibe {i+1}: encoded successfully")
+                        encoded_vibe = await encode_vibe_v4(png_image, req.nai_model, info_extracted, strength, token, image_name)
+                        vibe_images.append(encoded_vibe)
+                        print(f"[NAI] Vibe {i+1}: encoded successfully")
                 else:
                     # V3 모델: 원본 이미지 그대로 전송
                     png_image = ensure_png_base64(v["image"])
@@ -2290,6 +2295,10 @@ async def calculate_cost(request: dict):
 
     if vibes and "diffusion-4" in model:
         for v in vibes:
+            # 이미 인코딩된 바이브는 캐시된 것으로 처리
+            if v.get("encoded"):
+                continue
+
             image_base64 = v.get("image", "")
             info_extracted = v.get("info_extracted", 1.0)
             if image_base64:

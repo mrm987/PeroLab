@@ -5674,7 +5674,8 @@
             // Vibe 데이터 (캐시 체크용)
             const vibes = vibeEnabled ? vibeList.map(v => ({
                 image: v.image,
-                info_extracted: v.info_extracted
+                info_extracted: v.info_extracted,
+                encoded: !!v.encoded  // 이미 인코딩된 바이브인지 여부
             })) : [];
 
             try {
