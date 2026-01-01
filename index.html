@@ -5164,22 +5164,29 @@
                 const data = await response.json();
                 console.log('[Cost Response]', data);
 
-                if (data.is_free) {
+                if (data.is_free && data.vibe_encoding_cost === 0) {
                     document.getElementById('anlasCost').style.display = 'none';
                     document.getElementById('anlasFreeTag').style.display = 'inline';
                 } else {
                     document.getElementById('anlasCost').style.display = 'inline';
-                    // 비용 상세 표시: 총비용 (개별 × 슬롯 × 횟수)
-                    // Vibe 인코딩 비용은 vibeCacheInfo에서 별도 표시 (CharRef와 동시 사용 불가)
-                    let costText = data.total_cost.toLocaleString();
-                    if (slotCount > 1 || repeatCount > 1) {
-                        let breakdown = `${data.cost_per_image}`;
-                        if (slotCount > 1) breakdown += ` × ${slotCount}슬롯`;
-                        if (repeatCount > 1) breakdown += ` × ${repeatCount}회`;
-                        costText += ` (${breakdown})`;
-                    }
-                    document.getElementById('anlasCost').textContent = costText;
                     document.getElementById('anlasFreeTag').style.display = 'none';
+
+                    // Vibe 인코딩 비용 (일회성, 바이브 갯수만큼)
+                    if (data.vibe_encoding_cost > 0) {
+                        document.getElementById('anlasCost').textContent =
+                            `${data.vibe_encoding_cost} (바이브 ${data.uncached_vibes}개)`;
+                    }
+                    // 일반 생성 비용 (CharRef 등)
+                    else {
+                        let costText = data.total_cost.toLocaleString();
+                        if (slotCount > 1 || repeatCount > 1) {
+                            let breakdown = `${data.cost_per_image}`;
+                            if (slotCount > 1) breakdown += ` × ${slotCount}슬롯`;
+                            if (repeatCount > 1) breakdown += ` × ${repeatCount}회`;
+                            costText += ` (${breakdown})`;
+                        }
+                        document.getElementById('anlasCost').textContent = costText;
+                    }
                 }
 
                 // Vibe 캐시 상태 표시
