@@ -1889,33 +1889,6 @@
             border-color: var(--primary);
         }
 
-        /* Stale image indicator - shows when image is from previous prompt */
-        .slot-image-card.stale-image {
-            opacity: 0.7;
-            border: 2px solid var(--warning);
-            position: relative;
-        }
-        .slot-image-card.stale-image::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, transparent 85%, var(--warning) 85%);
-            pointer-events: none;
-            z-index: 5;
-        }
-        .stale-badge {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            background: rgba(0,0,0,0.85);
-            color: var(--warning);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-            z-index: 10;
-            pointer-events: none;
-        }
-
         /* Settings Modal */
         .modal {
             display: none;
@@ -2761,74 +2734,16 @@
         const API_BASE = 'http://127.0.0.1:8765';
         
         let currentProvider = 'nai';
-        let eventSource = null;
         let currentIndex = 0;
         let totalImages = 0;
         let resetTimer = null;
         let naiTokenSet = false;  // NAI 토큰 설정 여부
 
-        // Job tracking for UI synchronization
-        let activeJobs = new Map();  // job_id -> { promptHashes: Map<slotIndex, hash>, basePromptHash }
-        let generationSession = 0;   // Incremented when slots/prompts change
-
-        function hashString(str) {
-            // Simple hash for quick comparison
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                const char = str.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash;
-            }
-            return hash;
-        }
-
-        function captureCurrentPromptState() {
-            const basePrompt = document.getElementById('basePrompt').value;
-            const slots = slotsContainer.querySelectorAll('.slot');
-            const promptHashes = new Map();
-
-            slots.forEach((slot, index) => {
-                const name = slot.querySelector('.slot-name').value.trim();
-                const tags = slot.querySelector('.slot-tags').value.trim();
-                const fullPrompt = `${basePrompt}, ${name}, ${tags}`.trim();
-                promptHashes.set(index, hashString(fullPrompt));
-            });
-
-            // If no slots, hash just the base prompt
-            if (slots.length === 0) {
-                promptHashes.set(0, hashString(basePrompt));
-            }
-
-            return {
-                basePromptHash: hashString(basePrompt),
-                promptHashes,
-                session: generationSession
-            };
-        }
-
-        function isImageFromCurrentSession(jobId, slotIndex, promptText) {
-            const job = activeJobs.get(jobId);
-            if (!job) {
-                // Unknown job - might be from before page load
-                return { valid: false, reason: 'unknown_job' };
-            }
-
-            // Check if session has changed (slots were modified)
-            if (job.session !== generationSession) {
-                return { valid: false, reason: 'session_changed' };
-            }
-
-            // Verify the prompt hash matches
-            const expectedHash = job.promptHashes.get(slotIndex);
-            if (expectedHash !== undefined) {
-                const actualHash = hashString(promptText);
-                if (expectedHash !== actualHash) {
-                    return { valid: false, reason: 'prompt_mismatch' };
-                }
-            }
-
-            return { valid: true };
-        }
+        // WebSocket 연결 관리
+        let ws = null;
+        let wsClientId = localStorage.getItem('ws_client_id') || null;
+        let wsReconnectTimer = null;
+        let lastImageSeq = 0;  // 마지막으로 받은 이미지 순번 (재연결 시 동기화용)
 
         // Elements
         const tabs = document.querySelectorAll('.tab');
@@ -2965,14 +2880,10 @@
                     updateQueueButton();
                     updateAnlasCost();
                     autoSaveSettings();
-                    generationSession++;  // Invalidate pending jobs
                 }
             };
 
-            slot.querySelector('textarea').oninput = () => {
-                updateQueueButton();
-                generationSession++;  // Prompt changed, invalidate pending jobs
-            };
+            slot.querySelector('textarea').oninput = updateQueueButton;
             
             // 탭 키로 같은 타입 필드 간 이동
             const nameInput = slot.querySelector('.slot-name');
@@ -3091,7 +3002,6 @@
 
             updateSlotNumbers();
             autoSaveSettings();
-            generationSession++;  // Slot order changed, invalidate pending jobs
         }
 
         function addSlot(name = '', content = '') {
@@ -3101,7 +3011,6 @@
             updateSlotNumbers();
             updateQueueButton();
             updateAnlasCost();
-            generationSession++;  // Slot added, invalidate pending jobs
         }
         
         function getSlotList() {
@@ -3152,24 +3061,12 @@
             const card = document.createElement('div');
             card.className = 'slot-image-card';
 
-            // Mark stale images with visual indicator
-            if (data._isStale) {
-                card.classList.add('stale-image');
-                card.title = data._staleReason === 'prompt_mismatch'
-                    ? '⚠️ 이전 프롬프트로 생성된 이미지'
-                    : data._staleReason === 'session_changed'
-                    ? '⚠️ 슬롯 변경 후 도착한 이미지'
-                    : '⚠️ 이전 세션의 이미지';
-            }
-
             // image_path가 있으면 URL로, 없으면 base64로 (하위 호환)
             const imgSrc = data.image_path
                 ? `${API_BASE}/api/outputs/${data.image_path}`
                 : `data:image/png;base64,${data.image}`;
-            const staleIndicator = data._isStale ? '<div class="stale-badge" title="이전 프롬프트로 생성됨">⚠️</div>' : '';
             card.innerHTML = `
                 <img src="${imgSrc}" alt="" draggable="false">
-                ${staleIndicator}
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="info-row">
@@ -4293,31 +4190,15 @@
                 document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
             }
 
-            // Capture current prompt state before submitting
-            const promptState = captureCurrentPromptState();
-
             // N번 큐에 등록
             for (let i = 0; i < repeatCount; i++) {
-                // 즉시 UI 업데이트
-                totalImages += promptCount;
-                updateProgress();
-
                 try {
-                    const response = await fetch(`${API_BASE}/api/generate/multi`, {
+                    await fetch(`${API_BASE}/api/generate/multi`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(request)
                     });
-                    const result = await response.json();
-
-                    // Register job with its prompt state for validation
-                    if (result.job_id) {
-                        activeJobs.set(result.job_id, promptState);
-                        console.log(`[Job] Registered job ${result.job_id} with session ${promptState.session}`);
-                    }
                 } catch (e) {
-                    totalImages -= promptCount; // 실패 시 롤백
-                    updateProgress();
                     showToast(`Error: ${e.message}`, 'error');
                 }
 
@@ -4364,135 +4245,121 @@
             }
         }
         
-        let lastSSETime = Date.now();
-        let sseHealthCheckInterval = null;
+        // ============================================================
+        // WebSocket 연결 및 메시지 처리
+        // ============================================================
 
-        function connectSSE() {
-            if (eventSource) {
-                eventSource.close();
+        function connectWebSocket() {
+            if (wsReconnectTimer) {
+                clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = null;
             }
 
-            eventSource = new EventSource(`${API_BASE}/api/stream`);
-            lastSSETime = Date.now();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                return;
+            }
 
-            eventSource.onmessage = (event) => {
-                lastSSETime = Date.now();
+            const wsUrl = `ws://127.0.0.1:8765/ws${wsClientId ? `?clientId=${wsClientId}` : ''}`;
+            console.log('[WS] Connecting...', wsUrl);
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('[WS] Connected');
+                // 재연결 시 누락된 이미지 동기화 요청
+                if (lastImageSeq > 0) {
+                    ws.send(JSON.stringify({ type: 'sync', last_seq: lastImageSeq }));
+                }
+            };
+
+            ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log(`[SSE Raw] type=${data.type}`, data.type === 'image' ? `prompt_idx=${data.prompt_idx}` : '');
-                    handleSSEMessage(data);
+                    handleWebSocketMessage(data);
                 } catch (e) {
-                    console.error('SSE parse error:', e);
+                    console.error('[WS] Parse error:', e);
                 }
             };
 
-            eventSource.onerror = () => {
-                console.warn('SSE connection error, reconnecting...');
-                setTimeout(connectSSE, 2000);
+            ws.onclose = (event) => {
+                console.log('[WS] Disconnected, reconnecting in 1s...', event.code);
+                wsReconnectTimer = setTimeout(connectWebSocket, 1000);
             };
 
-            // SSE 헬스체크 - 30초간 메시지 없으면 재연결
-            if (sseHealthCheckInterval) clearInterval(sseHealthCheckInterval);
-            sseHealthCheckInterval = setInterval(() => {
-                const timeSinceLastMessage = Date.now() - lastSSETime;
-                if (timeSinceLastMessage > 30000) {
-                    console.warn('SSE stale, reconnecting...');
-                    connectSSE();
-                }
-            }, 10000);
+            ws.onerror = (error) => {
+                console.error('[WS] Error:', error);
+            };
         }
-        
-        // 서버 진행 상황 동기화 함수
-        function syncProgressFromServer(data) {
-            if (data.global_completed !== undefined && data.global_total !== undefined) {
-                // 서버에서 보낸 전역 진행률로 동기화
-                const serverCompleted = data.global_completed;
-                const serverTotal = data.global_total;
 
-                // 로컬 값이 서버보다 뒤처졌으면 동기화 (각 값 독립적으로)
-                if (currentIndex < serverCompleted) {
-                    currentIndex = serverCompleted;
-                }
-                if (totalImages < serverTotal) {
-                    totalImages = serverTotal;
-                }
+        function updateProgressFromServer(progress) {
+            if (progress) {
+                currentIndex = progress.completed;
+                totalImages = progress.total;
                 updateProgress();
             }
         }
 
-        function handleSSEMessage(data) {
+        function handleWebSocketMessage(data) {
             switch (data.type) {
-                case 'status':
-                case 'heartbeat':
-                    // 하트비트/상태로 프로그레스 동기화
-                    syncProgressFromServer(data);
-                    break;
-
-                case 'job_start':
-                    // 작업 시작 시 전역 total 동기화
-                    if (data.global_total !== undefined) {
-                        totalImages = data.global_total;
+                case 'connected':
+                    // 연결 성공, 클라이언트 ID 저장
+                    wsClientId = data.client_id;
+                    localStorage.setItem('ws_client_id', wsClientId);
+                    console.log('[WS] Client ID:', wsClientId);
+                    // 초기 상태 동기화
+                    if (data.status) {
+                        currentIndex = data.status.completed_images;
+                        totalImages = data.status.total_images;
                         updateProgress();
                     }
                     break;
 
-                case 'image':
-                    console.log(`[SSE] Image received: job_id=${data.job_id}, prompt_idx=${data.prompt_idx}, filename=${data.filename}`);
-                    // 서버 전역 진행률 사용 (SSE 누락 방지)
-                    if (data.global_completed !== undefined) {
-                        currentIndex = data.global_completed;
-                    } else {
-                        currentIndex++;
+                case 'sync':
+                    // 재연결 시 누락된 이미지 수신
+                    console.log(`[WS] Sync: received ${data.images?.length || 0} missed images`);
+                    if (data.images) {
+                        data.images.forEach(img => {
+                            addImageToSlot(img.slot_idx, img);
+                            if (img.seq) lastImageSeq = Math.max(lastImageSeq, img.seq);
+                        });
                     }
-                    if (data.global_total !== undefined) {
-                        totalImages = data.global_total;
+                    if (data.status) {
+                        currentIndex = data.status.completed_images;
+                        totalImages = data.status.total_images;
+                        updateProgress();
                     }
-                    updateProgress();
+                    break;
 
-                    // Validate if image belongs to current session
-                    const validation = isImageFromCurrentSession(data.job_id, data.prompt_idx, data.prompt || '');
-                    data._isStale = !validation.valid;
-                    data._staleReason = validation.reason;
-                    if (!validation.valid) {
-                        console.warn(`[SSE] Stale image detected: job=${data.job_id}, reason=${validation.reason}`);
-                    }
-                    addImageToSlot(data.prompt_idx, data);
+                case 'job_start':
+                    console.log(`[WS] Job started: ${data.job_id}, total: ${data.job_total}`);
+                    updateProgressFromServer(data.progress);
+                    break;
+
+                case 'image':
+                    console.log(`[WS] Image received: job_id=${data.job_id}, slot_idx=${data.slot_idx}, filename=${data.filename}, seq=${data.seq}`);
+                    if (data.seq) lastImageSeq = Math.max(lastImageSeq, data.seq);
+                    updateProgressFromServer(data.progress);
+                    addImageToSlot(data.slot_idx, data);
                     break;
 
                 case 'job_done':
-                    // Remove completed job from tracking
-                    if (data.job_id) {
-                        activeJobs.delete(data.job_id);
-                        console.log(`[Job] Removed completed job ${data.job_id}`);
-                    }
+                    console.log(`[WS] Job done: ${data.job_id}`);
+                    updateProgressFromServer(data.progress);
 
                     // Anlas 잔액 및 비용 갱신 (생성 완료 시)
                     if (currentProvider === 'nai') {
                         fetchAnlasBalance();
-                        updateAnlasCost();  // Vibe 캐시 상태 갱신
+                        updateAnlasCost();
                     }
-                    // 서버 진행률로 동기화
-                    if (data.global_completed !== undefined) {
-                        currentIndex = data.global_completed;
-                    }
-                    if (data.global_total !== undefined) {
-                        totalImages = data.global_total;
-                    }
-                    updateProgress();
 
-                    if (data.queue_length === 0) {
-                        // 완료 처리
+                    if (data.progress?.queue_length === 0) {
+                        // 모든 작업 완료
                         statusText.textContent = '완료!';
                         progressFill.style.width = '100%';
                         showToast('완료', 'success');
+                        lastImageSeq = 0;  // 시퀀스 리셋
 
-                        // Clear all job tracking when queue is empty
-                        activeJobs.clear();
-
-                        // 기존 타이머 취소 후 새 타이머 설정
                         if (resetTimer) clearTimeout(resetTimer);
                         resetTimer = setTimeout(() => {
-                            // 새 작업이 추가되지 않았을 때만 리셋
                             if (totalImages === currentIndex || totalImages === 0) {
                                 currentIndex = 0;
                                 totalImages = 0;
@@ -4503,41 +4370,24 @@
                     break;
 
                 case 'job_cancelled':
-                    // Remove cancelled job from tracking
-                    if (data.job_id) {
-                        activeJobs.delete(data.job_id);
-                    }
-                    syncProgressFromServer(data);
-                    totalImages -= data.cancelled_images;
-                    if (totalImages < currentIndex) totalImages = currentIndex;
-                    updateProgress();
+                    console.log(`[WS] Job cancelled: ${data.job_id}`);
+                    updateProgressFromServer(data.progress);
                     showToast('작업 취소됨', 'warning');
                     break;
 
                 case 'queue_cleared':
-                    // Clear all pending jobs (but keep current job)
-                    if (data.cleared_job_ids) {
-                        data.cleared_job_ids.forEach(id => activeJobs.delete(id));
-                    }
-                    syncProgressFromServer(data);
-                    totalImages -= data.cleared_images;
-                    if (totalImages < currentIndex) totalImages = currentIndex;
-                    updateProgress();
+                    console.log(`[WS] Queue cleared: ${data.cleared_images} images`);
+                    updateProgressFromServer(data.progress);
                     break;
 
                 case 'error':
-                    // 서버 전역 진행률 사용
-                    if (data.global_completed !== undefined) {
-                        currentIndex = data.global_completed;
-                    } else {
-                        currentIndex++;
-                    }
-                    if (data.global_total !== undefined) {
-                        totalImages = data.global_total;
-                    }
-                    updateProgress();
+                    console.error('[WS] Generation error:', data.error);
+                    updateProgressFromServer(data.progress);
                     showToast(`Error: ${data.error || 'Generation failed'}`, 'error');
-                    console.error('Generation error:', data.error);
+                    break;
+
+                case 'pong':
+                    // Heartbeat 응답
                     break;
             }
         }
@@ -5080,10 +4930,10 @@
             }
         });
         
-        // 탭 활성화 시 SSE 재연결 (백그라운드 throttling 대응)
+        // 탭 활성화 시 WebSocket 재연결 확인
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                connectSSE();
+                connectWebSocket();
             }
         });
         
@@ -5733,10 +5583,6 @@
             charactersList.addEventListener('input', autoSaveSettings);
             charactersList.addEventListener('change', autoSaveSettings);
 
-            // Base/Negative prompt 변경 시 session 무효화
-            document.getElementById('basePrompt').addEventListener('input', () => generationSession++);
-            document.getElementById('negativePrompt').addEventListener('input', () => generationSession++);
-
             // 프롬프트 창 리사이즈 감지
             const resizeObserver = new ResizeObserver(() => autoSaveSettings());
             resizeObserver.observe(document.getElementById('basePrompt'));
@@ -5794,7 +5640,7 @@
                 window._pendingCharacterPromptsLayout = null;
             }
         });
-        connectSSE();
+        connectWebSocket();
         checkLocalEnvStatus();
         setupAutoSave();
         

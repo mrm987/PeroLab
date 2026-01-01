@@ -416,7 +416,7 @@ upscale_cache = UpscaleModelCache()
 # ============================================================
 # FastAPI App
 # ============================================================
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
@@ -1147,7 +1147,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 큐 시스템
+# 큐 시스템 (WebSocket 기반)
 from collections import deque
 import uuid
 
@@ -1158,23 +1158,29 @@ class GenerationQueue:
         self.current_job_id = None
         self.cancel_current = False  # 현재 작업 취소 플래그
         self.is_processing = False
-        self.clients = []  # SSE 클라이언트들
-        # 진행 상황 추적 (SSE 누락 시 동기화용)
+
+        # WebSocket 클라이언트 관리
+        self.clients: dict[str, WebSocket] = {}  # client_id → WebSocket
+
+        # 진행 상황 추적
         self.completed_images = 0
         self.total_images = 0
-        self.current_job_progress = 0  # 현재 작업 내 진행률
-    
+
+        # 재연결 시 동기화용 - 최근 완료된 이미지 목록 (최대 100개 유지)
+        self.recent_images: list[dict] = []
+        self.image_sequence = 0  # 이미지 순번 (재연결 시 누락 감지용)
+
     def add_job(self, request):
         job_id = str(uuid.uuid4())[:8]
         job = {"id": job_id, "request": request}
         self.queue.append(job)
         return job_id
-    
+
     def get_next_job(self):
         if self.queue:
             return self.queue.popleft()
         return None
-    
+
     def clear_queue(self):
         """대기 큐만 비우기 (현재 작업은 유지)"""
         cleared_jobs = len(self.queue)
@@ -1185,34 +1191,62 @@ class GenerationQueue:
             cleared_images += prompt_count
         self.queue.clear()
         return cleared_jobs, cleared_images
-    
+
     def cancel_current_job(self):
         """현재 작업 취소 신호"""
         self.cancel_current = True
-    
+
     def get_status(self):
         return {
             "queue_length": len(self.queue),
             "current_job_id": self.current_job_id,
             "is_processing": self.is_processing,
             "queued_jobs": [{"id": j["id"], "prompts": len(j["request"].prompt_list or [''])} for j in self.queue],
-            # 진행 상황 동기화용
             "completed_images": self.completed_images,
             "total_images": self.total_images,
-            "current_job_progress": self.current_job_progress
+            "image_sequence": self.image_sequence
         }
-    
+
+    def add_completed_image(self, image_data: dict):
+        """완료된 이미지 기록 (재연결 동기화용)"""
+        self.image_sequence += 1
+        image_data["seq"] = self.image_sequence
+        self.recent_images.append(image_data)
+        # 최대 100개 유지
+        if len(self.recent_images) > 100:
+            self.recent_images.pop(0)
+
+    def get_images_since(self, last_seq: int) -> list[dict]:
+        """특정 순번 이후의 이미지 목록 반환"""
+        return [img for img in self.recent_images if img.get("seq", 0) > last_seq]
+
     async def broadcast(self, data):
-        """모든 클라이언트에 메시지 전송"""
+        """모든 WebSocket 클라이언트에 메시지 전송"""
         msg_type = data.get('type', 'unknown')
         if msg_type == 'image':
-            print(f"[Broadcast] Sending image to {len(self.clients)} clients")
-        for client in self.clients[:]:
+            print(f"[WS Broadcast] Sending image to {len(self.clients)} clients")
+
+        disconnected = []
+        for client_id, ws in self.clients.items():
             try:
-                await client.put(data)
+                await ws.send_json(data)
             except Exception as e:
-                print(f"[Broadcast] Failed to send to client: {e}")
-                self.clients.remove(client)
+                print(f"[WS Broadcast] Failed to send to {client_id}: {e}")
+                disconnected.append(client_id)
+
+        # 연결 끊긴 클라이언트 제거
+        for client_id in disconnected:
+            self.clients.pop(client_id, None)
+
+    async def send_to_client(self, client_id: str, data: dict):
+        """특정 클라이언트에 메시지 전송"""
+        ws = self.clients.get(client_id)
+        if ws:
+            try:
+                await ws.send_json(data)
+            except Exception as e:
+                print(f"[WS] Failed to send to {client_id}: {e}")
+                self.clients.pop(client_id, None)
 
 gen_queue = GenerationQueue()
 
@@ -1256,28 +1290,34 @@ async def process_job(job):
     
     # 진행 상황 초기화
     gen_queue.total_images += total_images
-    gen_queue.current_job_progress = 0
 
     # 시작 알림
     await gen_queue.broadcast({
         "type": "job_start",
         "job_id": job_id,
-        "total": total_images,
-        "queue_length": len(gen_queue.queue),
-        "global_completed": gen_queue.completed_images,
-        "global_total": gen_queue.total_images
+        "job_total": total_images,
+        "progress": {
+            "completed": gen_queue.completed_images,
+            "total": gen_queue.total_images,
+            "queue_length": len(gen_queue.queue)
+        }
     })
-    
+
     for prompt_idx, prompt_item in enumerate(prompts):
         # 취소 체크
         if gen_queue.cancel_current:
             cancelled_images = total_images - image_idx
+            # 취소된 이미지 수만큼 total에서 차감
+            gen_queue.total_images -= cancelled_images
             await gen_queue.broadcast({
                 "type": "job_cancelled",
                 "job_id": job_id,
-                "index": image_idx,
-                "total": total_images,
-                "cancelled_images": cancelled_images
+                "cancelled_images": cancelled_images,
+                "progress": {
+                    "completed": gen_queue.completed_images,
+                    "total": gen_queue.total_images,
+                    "queue_length": len(gen_queue.queue)
+                }
             })
             return
         
@@ -1405,27 +1445,34 @@ async def process_job(job):
 
             # 진행 상황 업데이트
             gen_queue.completed_images += 1
-            gen_queue.current_job_progress += 1
 
             # 이미지 경로 (output_folder 포함)
             image_path = f"{req.output_folder}/{filename}" if req.output_folder else filename
 
-            print(f"[Backend] Broadcasting image: {image_path}, slot_index={slot_index}, clients={len(gen_queue.clients)}")
-            await gen_queue.broadcast({
+            # 이미지 데이터 구성
+            image_data = {
                 "type": "image",
                 "job_id": job_id,
-                "index": image_idx - 1,
-                "total": total_images,
-                "prompt": full_prompt,
-                "prompt_idx": slot_index,
+                "slot_idx": slot_index,
                 "seed": actual_seed,
-                "image_path": image_path,  # base64 대신 경로만 전송
+                "image_path": image_path,
                 "filename": filename,
-                "queue_length": len(gen_queue.queue),
-                "global_completed": gen_queue.completed_images,
-                "global_total": gen_queue.total_images,
-                "metadata": peropix_metadata  # 전체 설정 메타데이터
-            })
+                "prompt": full_prompt,
+                "metadata": peropix_metadata
+            }
+
+            # 재연결 동기화용 기록
+            gen_queue.add_completed_image(image_data.copy())
+
+            # 진행 상황 추가
+            image_data["progress"] = {
+                "completed": gen_queue.completed_images,
+                "total": gen_queue.total_images,
+                "queue_length": len(gen_queue.queue)
+            }
+
+            print(f"[Backend] Broadcasting image: {image_path}, slot_idx={slot_index}, seq={gen_queue.image_sequence}, clients={len(gen_queue.clients)}")
+            await gen_queue.broadcast(image_data)
             
         except Exception as e:
             import traceback
@@ -1434,15 +1481,16 @@ async def process_job(job):
             image_idx += 1
             # 에러도 완료로 카운트 (프로그레스바 진행용)
             gen_queue.completed_images += 1
-            gen_queue.current_job_progress += 1
             await gen_queue.broadcast({
                 "type": "error",
                 "job_id": job_id,
-                "index": image_idx - 1,
-                "total": total_images,
+                "slot_idx": slot_index,
                 "error": str(e),
-                "global_completed": gen_queue.completed_images,
-                "global_total": gen_queue.total_images
+                "progress": {
+                    "completed": gen_queue.completed_images,
+                    "total": gen_queue.total_images,
+                    "queue_length": len(gen_queue.queue)
+                }
             })
 
     # 큐가 비면 카운터 리셋
@@ -1450,15 +1498,18 @@ async def process_job(job):
     await gen_queue.broadcast({
         "type": "job_done",
         "job_id": job_id,
-        "queue_length": len(gen_queue.queue),
-        "global_completed": gen_queue.completed_images,
-        "global_total": gen_queue.total_images
+        "progress": {
+            "completed": gen_queue.completed_images,
+            "total": gen_queue.total_images,
+            "queue_length": len(gen_queue.queue)
+        }
     })
 
     if queue_empty:
         gen_queue.completed_images = 0
         gen_queue.total_images = 0
-        gen_queue.current_job_progress = 0
+        gen_queue.recent_images.clear()
+        gen_queue.image_sequence = 0
 
 
 
@@ -2196,43 +2247,57 @@ async def generate_multi(req: MultiGenerateRequest):
     }
 
 
-@app.get("/api/stream")
-async def stream():
-    """SSE 스트림 - 모든 이벤트 수신 (하트비트 포함)"""
-    async def event_stream():
-        queue = asyncio.Queue()
-        gen_queue.clients.append(queue)
-        heartbeat_interval = 15  # 15초마다 하트비트
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, clientId: str = None):
+    """WebSocket 연결 - 실시간 이미지 생성 업데이트"""
+    # 클라이언트 ID 생성 또는 재사용
+    client_id = clientId or str(uuid.uuid4())[:8]
 
+    await websocket.accept()
+    print(f"[WS] Client connected: {client_id}")
+
+    # 기존 연결이 있으면 교체 (재연결)
+    old_ws = gen_queue.clients.get(client_id)
+    if old_ws:
         try:
-            # 초기 상태 전송
-            yield f"data: {json.dumps({'type': 'status', **gen_queue.get_status()})}\n\n"
-
-            while True:
-                try:
-                    # 타임아웃 내에 데이터가 오면 전송
-                    data = await asyncio.wait_for(queue.get(), timeout=heartbeat_interval)
-                    msg_type = data.get('type', 'unknown')
-                    json_data = json.dumps(data)
-                    if msg_type == 'image':
-                        print(f"[SSE Stream] Yielding image, json size={len(json_data)} bytes")
-                    yield f"data: {json_data}\n\n"
-                    if msg_type == 'image':
-                        print(f"[SSE Stream] Image yield completed")
-                except asyncio.TimeoutError:
-                    # 타임아웃 시 하트비트 전송 (현재 상태 포함)
-                    yield f"data: {json.dumps({'type': 'heartbeat', **gen_queue.get_status()})}\n\n"
-        except asyncio.CancelledError:
+            await old_ws.close()
+        except:
             pass
-        finally:
-            if queue in gen_queue.clients:
-                gen_queue.clients.remove(queue)
-    
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"}
-    )
+    gen_queue.clients[client_id] = websocket
+
+    # 초기 상태 전송
+    await websocket.send_json({
+        "type": "connected",
+        "client_id": client_id,
+        "status": gen_queue.get_status()
+    })
+
+    try:
+        while True:
+            # 클라이언트로부터 메시지 수신
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+
+            if msg_type == "sync":
+                # 재연결 시 누락된 이미지 동기화
+                last_seq = data.get("last_seq", 0)
+                missed_images = gen_queue.get_images_since(last_seq)
+                await websocket.send_json({
+                    "type": "sync",
+                    "images": missed_images,
+                    "status": gen_queue.get_status()
+                })
+                print(f"[WS] Sync requested by {client_id}: last_seq={last_seq}, sending {len(missed_images)} images")
+
+            elif msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
+
+    except WebSocketDisconnect:
+        print(f"[WS] Client disconnected: {client_id}")
+    except Exception as e:
+        print(f"[WS] Error with client {client_id}: {e}")
+    finally:
+        gen_queue.clients.pop(client_id, None)
 
 
 @app.post("/api/cancel-current")
@@ -2248,11 +2313,19 @@ async def cancel_current():
 async def clear_queue():
     """대기 큐 비우기 (현재 작업은 계속)"""
     cleared_jobs, cleared_images = gen_queue.clear_queue()
+    # total에서 대기 중이던 이미지 수 차감
+    gen_queue.total_images -= cleared_images
+    if gen_queue.total_images < gen_queue.completed_images:
+        gen_queue.total_images = gen_queue.completed_images
     await gen_queue.broadcast({
         "type": "queue_cleared",
         "cleared_jobs": cleared_jobs,
         "cleared_images": cleared_images,
-        "queue_length": 0
+        "progress": {
+            "completed": gen_queue.completed_images,
+            "total": gen_queue.total_images,
+            "queue_length": 0
+        }
     })
     return {"success": True, "cleared_jobs": cleared_jobs, "cleared_images": cleared_images}
 
