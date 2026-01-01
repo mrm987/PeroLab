@@ -2969,9 +2969,10 @@
         const lightbox = document.getElementById('lightbox');
         const lightboxImg = lightbox.querySelector('img');
 
-        // Lightbox navigation state (for wheel navigation in slot mode)
+        // Lightbox navigation state (for wheel navigation)
         let lightboxCurrentSlot = null;
         let lightboxCurrentCard = null;
+        let lightboxCurrentGalleryItem = null;  // 갤러리 모드용
         
         // Slots
         const slotsContainer = document.getElementById('slotsContainer');
@@ -4790,39 +4791,83 @@
                 lightbox.classList.remove('active');
                 lightboxCurrentSlot = null;
                 lightboxCurrentCard = null;
+                lightboxCurrentGalleryItem = null;
             }
         };
 
-        // Lightbox wheel navigation (slot mode)
+        // Lightbox wheel navigation (slot mode & gallery mode)
         lightbox.addEventListener('wheel', (e) => {
             if (!lightbox.classList.contains('active')) return;
-            if (!lightboxCurrentSlot || !lightboxCurrentCard) return;
 
-            e.preventDefault();
+            // 슬롯 모드
+            if (lightboxCurrentSlot && lightboxCurrentCard) {
+                e.preventDefault();
 
-            const imagesContainer = lightboxCurrentSlot.querySelector('.slot-images');
-            const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
-            if (cards.length <= 1) return;
+                const imagesContainer = lightboxCurrentSlot.querySelector('.slot-images');
+                const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
+                if (cards.length <= 1) return;
 
-            const currentIndex = cards.indexOf(lightboxCurrentCard);
-            if (currentIndex === -1) return;
+                const currentIndex = cards.indexOf(lightboxCurrentCard);
+                if (currentIndex === -1) return;
 
-            let newIndex;
-            if (e.deltaY > 0) {
-                // 휠 다운 → 다음 이미지 (아래쪽, 더 오래된 이미지)
-                newIndex = currentIndex + 1;
-                if (newIndex >= cards.length) newIndex = 0;  // 처음으로 순환
-            } else {
-                // 휠 업 → 이전 이미지 (위쪽, 더 최신 이미지)
-                newIndex = currentIndex - 1;
-                if (newIndex < 0) newIndex = cards.length - 1;  // 끝으로 순환
+                let newIndex;
+                if (e.deltaY > 0) {
+                    newIndex = currentIndex + 1;
+                    if (newIndex >= cards.length) newIndex = 0;
+                } else {
+                    newIndex = currentIndex - 1;
+                    if (newIndex < 0) newIndex = cards.length - 1;
+                }
+
+                const newCard = cards[newIndex];
+                const newImg = newCard.querySelector('img');
+                if (newImg) {
+                    lightboxImg.src = newImg.src;
+                    lightboxCurrentCard = newCard;
+                }
+                return;
             }
 
-            const newCard = cards[newIndex];
-            const newImg = newCard.querySelector('img');
-            if (newImg) {
-                lightboxImg.src = newImg.src;
-                lightboxCurrentCard = newCard;
+            // 갤러리/바이브 모드
+            if (lightboxCurrentGalleryItem) {
+                e.preventDefault();
+
+                const items = Array.from(galleryGrid.querySelectorAll('.gallery-item'));
+                if (items.length <= 1) return;
+
+                const currentIndex = items.indexOf(lightboxCurrentGalleryItem);
+                if (currentIndex === -1) return;
+
+                let newIndex;
+                if (e.deltaY > 0) {
+                    newIndex = currentIndex + 1;
+                    if (newIndex >= items.length) newIndex = 0;
+                } else {
+                    newIndex = currentIndex - 1;
+                    if (newIndex < 0) newIndex = items.length - 1;
+                }
+
+                const newItem = items[newIndex];
+                lightboxCurrentGalleryItem = newItem;
+
+                // 바이브 캐시면 썸네일 직접 사용
+                if (newItem._isVibe && newItem._thumbnail) {
+                    lightboxImg.src = 'data:image/png;base64,' + newItem._thumbnail;
+                    return;
+                }
+
+                // 갤러리 이미지 로드 (비동기)
+                const filename = newItem._filename;
+                const folder = newItem._folder || '';
+                const folderQuery = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+                fetch(`${API_BASE}/api/gallery/${filename}${folderQuery}`)
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.success) {
+                            lightboxImg.src = 'data:image/png;base64,' + result.image;
+                        }
+                    })
+                    .catch(() => {});
             }
         }, { passive: false });
 
@@ -6455,6 +6500,7 @@
                         const result = await response.json();
                         if (result.success) {
                             lightboxImg.src = 'data:image/png;base64,' + result.image;
+                            lightboxCurrentGalleryItem = item;  // 휠 네비게이션용
                             lightbox.classList.add('active');
                         }
                     } catch (err) {
@@ -6682,6 +6728,8 @@
                 const item = document.createElement('div');
                 item.className = 'gallery-item';
                 item._filename = vibe.filename;
+                item._isVibe = true;  // 바이브 캐시 아이템 마커
+                item._thumbnail = vibe.thumbnail;  // 휠 네비게이션용
                 item.draggable = false;  // Vibe items are not draggable
 
                 // 파일명에서 이름 추출 (예: name_0.6_1.0_0000001.png → name)
@@ -6705,6 +6753,7 @@
                 const imgEl = item.querySelector('img');
                 imgEl.onclick = () => {
                     lightboxImg.src = `data:image/png;base64,${vibe.thumbnail}`;
+                    lightboxCurrentGalleryItem = item;  // 휠 네비게이션용
                     lightbox.classList.add('active');
                 };
 
