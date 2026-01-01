@@ -498,7 +498,24 @@
             opacity: 1;
             color: var(--error);
         }
-        
+
+        .char-enable-toggle {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            cursor: pointer;
+            accent-color: var(--accent);
+        }
+
+        .character-item.disabled {
+            opacity: 0.5;
+        }
+
+        .character-item.disabled textarea {
+            background: var(--bg-tertiary);
+            color: var(--text-dim);
+        }
+
         /* Prompt Preset Dropdown */
         .prompt-label-row {
             display: flex;
@@ -4069,11 +4086,11 @@
         const charactersList = document.getElementById('charactersList');
         const addCharBtn = document.getElementById('addCharBtn');
         
-        function createCharacterItem(content = '', collapsed = false) {
+        function createCharacterItem(content = '', collapsed = false, enabled = true) {
             const item = document.createElement('div');
-            item.className = 'character-item';
+            item.className = 'character-item' + (enabled ? '' : ' disabled');
 
-            // 헤더 (접기 + 번호 + 라벨 + 프리셋 + 삭제)
+            // 헤더 (접기 + on/off + 번호 + 라벨 + 프리셋 + 삭제)
             const header = document.createElement('div');
             header.className = 'character-item-header';
 
@@ -4083,6 +4100,18 @@
             collapseBtn.className = 'collapse-toggle' + (collapsed ? ' collapsed' : '');
             collapseBtn.textContent = '▼';
             collapseBtn.title = '접기/펼치기';
+
+            // On/Off 토글
+            const enableToggle = document.createElement('input');
+            enableToggle.type = 'checkbox';
+            enableToggle.className = 'char-enable-toggle';
+            enableToggle.checked = enabled;
+            enableToggle.title = enabled ? '활성화됨 (클릭하여 비활성화)' : '비활성화됨 (클릭하여 활성화)';
+            enableToggle.onchange = () => {
+                item.classList.toggle('disabled', !enableToggle.checked);
+                enableToggle.title = enableToggle.checked ? '활성화됨 (클릭하여 비활성화)' : '비활성화됨 (클릭하여 활성화)';
+                autoSaveSettings();
+            };
 
             const charNum = document.createElement('span');
             charNum.className = 'char-num';
@@ -4116,6 +4145,7 @@
             };
 
             header.appendChild(collapseBtn);
+            header.appendChild(enableToggle);
             header.appendChild(charNum);
             header.appendChild(charLabel);
             header.appendChild(presetDropdown);
@@ -4188,7 +4218,10 @@
         
         function getCharacterPrompts() {
             const items = charactersList.querySelectorAll('.character-item');
-            return Array.from(items).map(item => item.querySelector('textarea').value).filter(v => v.trim());
+            return Array.from(items)
+                .filter(item => item.querySelector('.char-enable-toggle').checked)  // enabled만
+                .map(item => item.querySelector('textarea').value)
+                .filter(v => v.trim());
         }
 
         function getCharacterPromptsWithLayout() {
@@ -4196,7 +4229,8 @@
             return Array.from(items).map(item => ({
                 content: item.querySelector('textarea').value,
                 collapsed: item.querySelector('.collapsible-content').classList.contains('collapsed'),
-                height: item.querySelector('textarea').style.height || null
+                height: item.querySelector('textarea').style.height || null,
+                enabled: item.querySelector('.char-enable-toggle').checked
             }));
         }
         
@@ -5841,7 +5875,7 @@
                 }
                 // Legacy format (just strings)
                 else if (settings.characterPrompts && settings.characterPrompts.length > 0) {
-                    window._pendingCharacterPromptsLayout = settings.characterPrompts.map(c => ({ content: c, collapsed: false, height: null }));
+                    window._pendingCharacterPromptsLayout = settings.characterPrompts.map(c => ({ content: c, collapsed: false, height: null, enabled: true }));
                 }
                 
             } catch (e) {
@@ -5929,8 +5963,9 @@
                     const content = charData.content || '';
                     const collapsed = charData.collapsed || false;
                     const height = charData.height || null;
+                    const enabled = charData.enabled !== false;  // 기본값 true (하위 호환)
                     if (content.trim() || collapsed) {
-                        const item = createCharacterItem(content, collapsed);
+                        const item = createCharacterItem(content, collapsed, enabled);
                         if (height) {
                             item.querySelector('textarea').style.height = height;
                         }
