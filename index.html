@@ -6350,6 +6350,9 @@
         let galleryLoaded = false;
 
         async function loadGallery(folder = '') {
+            // 바이브 모드면 갤러리 로드 안함
+            if (isVibeMode) return;
+
             // 로딩 중 표시
             galleryGrid.style.display = 'none';
             galleryEmpty.innerHTML = `
@@ -6361,6 +6364,9 @@
             try {
                 const response = await fetch(`${API_BASE}/api/gallery?folder=${encodeURIComponent(folder)}`);
                 const result = await response.json();
+
+                // 로딩 중에 바이브 모드로 전환되었으면 렌더링 안함
+                if (isVibeMode) return;
 
                 if (result.images && result.images.length > 0) {
                     galleryEmpty.style.display = 'none';
