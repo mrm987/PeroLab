@@ -1204,7 +1204,7 @@
         }
 
         .slot-resize-handle.right {
-            right: 10px;  /* 스크롤바와 겹치지 않도록 */
+            right: -8px;  /* 슬롯 바깥에서 드래그하도록 */
             border-radius: 0 10px 10px 0;
         }
 
@@ -4117,12 +4117,18 @@
                 }
             }
             
+            // 시드 고정이 아닐 경우, 다음 큐를 위해 즉시 새 시드로 UI 갱신
+            // (빠르게 여러 번 클릭해도 중복 시드 방지)
+            if (!document.getElementById('lockSeed').checked) {
+                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+            }
+
             // N번 큐에 등록
             for (let i = 0; i < repeatCount; i++) {
                 // 즉시 UI 업데이트
                 totalImages += promptCount;
                 updateProgress();
-                
+
                 try {
                     await fetch(`${API_BASE}/api/generate/multi`, {
                         method: 'POST',
@@ -4134,17 +4140,12 @@
                     updateProgress();
                     showToast(`Error: ${e.message}`, 'error');
                 }
-                
+
                 // 매번 새로운 시드
                 request.seed = Math.floor(Math.random() * 2147483647);
             }
-            
-            showToast(`${repeatCount * promptCount} images queued`, 'success');
 
-            // 다음 생성을 위한 새 랜덤 시드 (시드 고정이 아닐 때만)
-            if (!document.getElementById('lockSeed').checked) {
-                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
-            }
+            showToast(`${repeatCount * promptCount} images queued`, 'success');
         }
         
         function updateProgress() {
@@ -4228,12 +4229,14 @@
                 const serverCompleted = data.global_completed;
                 const serverTotal = data.global_total;
 
-                // 로컬 값이 서버보다 뒤처졌으면 동기화
-                if (currentIndex < serverCompleted || totalImages < serverTotal) {
+                // 로컬 값이 서버보다 뒤처졌으면 동기화 (각 값 독립적으로)
+                if (currentIndex < serverCompleted) {
                     currentIndex = serverCompleted;
-                    totalImages = serverTotal;
-                    updateProgress();
                 }
+                if (totalImages < serverTotal) {
+                    totalImages = serverTotal;
+                }
+                updateProgress();
             }
         }
 
@@ -5655,7 +5658,7 @@
                         tab.type = 'button';
                         tab.className = 'folder-tab' + (currentGalleryFolder === folder.name ? ' active' : '');
                         tab.dataset.folder = folder.name;
-                        tab.textContent = `📁 ${folder.name}`;
+                        tab.textContent = `📁 ${folder.name} (${folder.image_count})`;
                         tab.title = `${folder.image_count}개 이미지`;
                         setupFolderTab(tab);
                         galleryFolders.appendChild(tab);

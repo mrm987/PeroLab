@@ -1759,21 +1759,44 @@ async def get_gallery_image(filename: str, folder: str = ""):
 
 @app.delete("/api/gallery/{filename}")
 async def delete_gallery_image(filename: str, folder: str = ""):
-    """갤러리 이미지 삭제"""
-    try:
-        gallery_path = get_gallery_folder_path(folder)
-    except ValueError as e:
-        return {"success": False, "error": str(e)}
+    """갤러리 이미지 삭제 (폴더 미지정 시 전체 검색)"""
+    # 폴더가 지정된 경우 해당 폴더에서만 검색
+    if folder:
+        try:
+            gallery_path = get_gallery_folder_path(folder)
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
 
-    filepath = gallery_path / filename
-    if not filepath.exists():
-        return {"success": False, "error": "Image not found"}
+        filepath = gallery_path / filename
+        if filepath.exists():
+            try:
+                filepath.unlink()
+                return {"success": True, "found_in": folder}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
 
-    try:
-        filepath.unlink()
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    # 폴더 미지정 또는 지정된 폴더에 없는 경우 전체 검색
+    # 루트 폴더 먼저 확인
+    filepath = GALLERY_DIR / filename
+    if filepath.exists():
+        try:
+            filepath.unlink()
+            return {"success": True, "found_in": ""}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # 서브폴더 검색
+    for subfolder in GALLERY_DIR.iterdir():
+        if subfolder.is_dir():
+            filepath = subfolder / filename
+            if filepath.exists():
+                try:
+                    filepath.unlink()
+                    return {"success": True, "found_in": subfolder.name}
+                except Exception as e:
+                    return {"success": False, "error": str(e)}
+
+    return {"success": False, "error": "Image not found"}
 
 
 @app.post("/api/gallery/{filename}/move")
@@ -2061,9 +2084,9 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
     if vibe_count >= 1:
         base_cost += 2
 
-    # Character Reference (Opus 기준 5 Anlas)
+    # Character Reference (Opus: 5 Anlas, 일반: 15 Anlas)
     if has_char_ref:
-        base_cost += 5
+        base_cost += 5 if is_opus else 15
 
     return base_cost
 
