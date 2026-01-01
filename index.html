@@ -2323,10 +2323,14 @@
                             <input type="checkbox" id="randomSeed">
                             <label for="randomSeed">매 슬롯마다 랜덤 시드</label>
                         </div>
+                        <div class="checkbox-row">
+                            <input type="checkbox" id="lockSeed">
+                            <label for="lockSeed">시드 고정</label>
+                        </div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="sidebar-footer">
                 <!-- Anlas Info (NAI only) - Single line -->
                 <div id="anlasInfo" class="anlas-info" style="display: none;">
@@ -4047,9 +4051,11 @@
             }
             
             showToast(`${repeatCount * promptCount} images queued`, 'success');
-            
-            // 다음 생성을 위한 새 랜덤 시드
-            document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+
+            // 다음 생성을 위한 새 랜덤 시드 (시드 고정이 아닐 때만)
+            if (!document.getElementById('lockSeed').checked) {
+                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+            }
         }
         
         function updateProgress() {
@@ -5117,7 +5123,8 @@
                 sampler: document.getElementById('sampler').value,
                 scheduler: document.getElementById('scheduler').value,
                 randomSeed: document.getElementById('randomSeed').checked,
-                
+                lockSeed: document.getElementById('lockSeed').checked,
+
                 // NAI
                 naiModel: document.getElementById('naiModel').value,
                 smea: document.getElementById('smea').value,
@@ -5218,7 +5225,8 @@
                 window._pendingScheduler = settings.scheduler;
                 
                 if (settings.randomSeed !== undefined) document.getElementById('randomSeed').checked = settings.randomSeed;
-                
+                if (settings.lockSeed !== undefined) document.getElementById('lockSeed').checked = settings.lockSeed;
+
                 // NAI
                 if (settings.naiModel) document.getElementById('naiModel').value = settings.naiModel;
                 if (settings.smea) document.getElementById('smea').value = settings.smea;
