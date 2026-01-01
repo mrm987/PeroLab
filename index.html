@@ -5241,7 +5241,30 @@
         // Vibe/CharRef/모델 변경시 비용 재계산
         document.getElementById('enableVibeTransfer').addEventListener('change', updateAnlasCost);
         document.getElementById('enableCharRef').addEventListener('change', updateAnlasCost);
-        document.getElementById('naiModel').addEventListener('change', updateAnlasCost);
+        document.getElementById('naiModel').addEventListener('change', () => {
+            updateAnlasCost();
+            updateSmeaVisibility();
+        });
+
+        // V4+ 모델에서 SMEA 비활성화
+        function updateSmeaVisibility() {
+            const model = document.getElementById('naiModel').value;
+            const isV4 = model.includes('diffusion-4');
+            const smeaSelect = document.getElementById('smea');
+            const smeaContainer = smeaSelect.parentElement;
+
+            if (isV4) {
+                smeaSelect.value = 'none';
+                smeaContainer.style.opacity = '0.5';
+                smeaSelect.disabled = true;
+                smeaContainer.title = 'V4+ 모델에서는 SMEA를 지원하지 않습니다';
+            } else {
+                smeaContainer.style.opacity = '1';
+                smeaSelect.disabled = false;
+                smeaContainer.title = '';
+            }
+        }
+        updateSmeaVisibility(); // 초기 실행
 
         // ============================================================
         // Settings Persistence (localStorage)
