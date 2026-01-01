@@ -27,7 +27,7 @@ jobs:
       - name: Install Dependencies
         run: |
           dist/PeroPix/python/bin/python3 -m pip install --upgrade pip
-          dist/PeroPix/python/bin/python3 -m pip install fastapi uvicorn httpx pillow numpy pydantic aiofiles
+          dist/PeroPix/python/bin/python3 -m pip install fastapi "uvicorn[standard]" httpx pillow numpy pydantic aiofiles websockets
 
       - name: Prepare Release Package
         run: |
