@@ -1525,11 +1525,29 @@
             border-radius: 8px;
             font-size: 13px;
             margin-bottom: 16px;
-            max-height: 150px;
+            max-height: 200px;
             overflow-y: auto;
+        }
+        .drop-modal-content .metadata::-webkit-scrollbar {
+            width: 8px;
+        }
+        .drop-modal-content .metadata::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .drop-modal-content .metadata::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        .drop-modal-content .metadata::-webkit-scrollbar-thumb:hover {
+            background: var(--text-dim);
         }
         .drop-modal-content .metadata div { margin-bottom: 4px; }
         .drop-modal-content .buttons { display: flex; gap: 12px; justify-content: flex-end; }
+        .drop-modal-content .buttons .btn {
+            width: auto;
+            flex: 1;
+            padding: 10px 16px;
+        }
 
         /* Mode Toggle */
         .mode-toggle {
@@ -2960,6 +2978,8 @@
 
                 // 저장되지 않은 경우 갤러리에 저장
                 try {
+                    // 원본 메타데이터가 있으면 사용, 없으면 기본값
+                    const originalMeta = card._imageData.metadata || {};
                     const response = await fetch(`${API_BASE}/api/gallery/save`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2968,15 +2988,9 @@
                             image_path: card._imageData.image_path,  // 파일 경로
                             filename: card._imageData.filename,
                             metadata: {
+                                ...originalMeta,  // 원본 메타데이터 전체 (character_prompts 포함)
                                 seed: card._imageData.seed,
-                                prompt: card._imageData.prompt,
-                                // 현재 설정값도 저장
-                                width: parseInt(document.getElementById('width').value),
-                                height: parseInt(document.getElementById('height').value),
-                                steps: parseInt(document.getElementById('steps').value),
-                                scale: parseFloat(document.getElementById('cfg').value),
-                                sampler: document.getElementById('sampler').value,
-                                uc: document.getElementById('negativePrompt').value
+                                prompt: card._imageData.prompt
                             }
                         })
                     });
@@ -5607,7 +5621,7 @@
 
                             showConfirmModal(
                                 '📋 프롬프트 적용',
-                                `<p>이 프롬프트를 적용하시겠습니까?</p><div class="metadata" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem; color: var(--text-dim); margin-top: 8px; white-space: pre-wrap; word-break: break-word;">${prompt}</div>${charPromptsInfo}`,
+                                `<p>이 프롬프트를 적용하시겠습니까?</p><div style="white-space: pre-wrap; word-break: break-word; margin-top: 8px;">${prompt}</div>${charPromptsInfo}`,
                                 async () => {
                                     document.getElementById('basePrompt').value = prompt;
 
