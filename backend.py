@@ -11,6 +11,7 @@ import base64
 import json
 import asyncio
 import datetime
+import math
 from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
@@ -2057,24 +2058,13 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
     if is_opus and pixels <= base_pixels and steps <= 28 and vibe_count <= 0 and not has_char_ref:
         return 0
 
-    # 기본 비용 계산
+    # 기본 비용 계산: ceil(MP * 20)
     if is_opus and pixels <= base_pixels and steps <= 28:
         # Opus는 기본 생성 무료, 추가 기능만 비용
         base_cost = 0
-    elif pixels <= 640 * 640:
-        base_cost = 4
-    elif pixels <= 832 * 1216:
-        base_cost = 8
-    elif pixels <= 1024 * 1024:
-        base_cost = 10
-    elif pixels <= 1216 * 832:
-        base_cost = 8
-    elif pixels <= 1024 * 1536:
-        base_cost = 16
-    elif pixels <= 1536 * 1024:
-        base_cost = 16
     else:
-        base_cost = int(pixels / base_pixels * 20)
+        # NAI 공식: ceil(megapixels * 20)
+        base_cost = math.ceil(pixels / base_pixels * 20)
 
     # Steps 보정 (28 초과시)
     if steps > 28 and base_cost > 0:

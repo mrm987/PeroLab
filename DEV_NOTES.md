@@ -33,30 +33,29 @@
 - 단일 이미지 생성
 - 다른 이미지를 base로 사용하지 않음 (img2img, inpaint 제외)
 
-#### 기본 비용 (해상도별)
+#### 기본 비용 공식
 ```
-640×640 이하:   4 Anlas
-832×1216 이하:  8 Anlas
-1024×1024 이하: 10 Anlas
-1024×1536 이하: 16 Anlas
+비용 = ceil(메가픽셀 × 20)
+     = ceil(pixels / 1048576 × 20)
 ```
-- Steps 보정: 28 초과시 `base_cost * (steps / 28)`
-- 커스텀 해상도: NAI 공식 미공개, 현재 근사치 사용
+- Steps 보정: 28 초과시 `base_cost × (steps / 28)`
 
-#### 현재 구현 (backend.py calculate_anlas_cost)
+#### NAI 비용 공식 (역산)
 ```python
-# 기본 해상도별 비용
-if pixels <= 640*640:      base_cost = 4
-elif pixels <= 832*1216:   base_cost = 8   # ~1MP
-elif pixels <= 1024*1024:  base_cost = 10  # 1MP
-elif pixels <= 1024*1536:  base_cost = 16  # ~1.5MP
-else:                      base_cost = int(pixels / (1024*1024) * 20)  # 근사치
+# 기본 비용: ceil(megapixels × 20)
+base_cost = math.ceil(pixels / 1048576 * 20)
 
-# Steps 보정
+# Steps 보정 (28 초과시)
 if steps > 28:
     base_cost = int(base_cost * (steps / 28))
+
+# 검증 데이터 (Opus, 28 steps)
+# 1152×1152 (1.27MP) → 26 Anlas ✓
+# 1280×1280 (1.56MP) → 32 Anlas ✓
+# 1920×1080 (1.98MP) → 40 Anlas ✓
+# 1472×1472 (2.07MP) → 42 Anlas ✓
+# 1536×1536 (2.25MP) → 45 Anlas ✓
 ```
-⚠️ 커스텀 해상도에서 NAI 공식 사이트와 차이 발생 가능
 
 #### Vibe Transfer (V4/V4.5)
 - 인코딩: 2 Anlas/vibe (일회성, 캐시됨)
