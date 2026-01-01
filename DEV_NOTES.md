@@ -26,18 +26,56 @@
 - Opus 확인: `tier >= 3`
 
 ### Anlas 비용 계산
+
+#### Opus 무료 조건 (공식)
+- 1024×1024 픽셀 이하 (약 1MP)
+- 28 steps 이하
+- 단일 이미지 생성
+- 다른 이미지를 base로 사용하지 않음 (img2img, inpaint 제외)
+
+#### 기본 비용 (해상도별)
+```
+640×640 이하:   4 Anlas
+832×1216 이하:  8 Anlas
+1024×1024 이하: 10 Anlas
+1024×1536 이하: 16 Anlas
+```
+- Steps 보정: 28 초과시 `base_cost * (steps / 28)`
+- 커스텀 해상도: NAI 공식 미공개, 현재 근사치 사용
+
+#### 현재 구현 (backend.py calculate_anlas_cost)
 ```python
-# 기본 비용 (해상도별)
-640x640 이하: 4 Anlas
-832x1216 이하: 8 Anlas
-1024x1024 이하: 10 Anlas
-1024x1536 이하: 16 Anlas
+# 기본 해상도별 비용
+if pixels <= 640*640:      base_cost = 4
+elif pixels <= 832*1216:   base_cost = 8   # ~1MP
+elif pixels <= 1024*1024:  base_cost = 10  # 1MP
+elif pixels <= 1024*1536:  base_cost = 16  # ~1.5MP
+else:                      base_cost = int(pixels / (1024*1024) * 20)  # 근사치
 
-# Steps 보정: 28 초과시 비례 증가
-# Vibe Transfer: +2 Anlas (첫 사용시)
-# Character Reference: Opus +5, 일반 +15
+# Steps 보정
+if steps > 28:
+    base_cost = int(base_cost * (steps / 28))
+```
+⚠️ 커스텀 해상도에서 NAI 공식 사이트와 차이 발생 가능
 
-# Opus 무료 조건: 1MP 이하 + 28 steps 이하 + vibe/charref 없음
+#### Vibe Transfer (V4/V4.5)
+- 인코딩: 2 Anlas/vibe (일회성, 캐시됨)
+- Information Extracted 값 변경 시 재인코딩 필요
+- 4개 초과 시: 추가 vibe당 +2 Anlas
+- 최대 16개 사용 가능
+
+#### Character Reference (V4.5 전용)
+- +5 Anlas/이미지 (Opus/일반 동일)
+- Vibe Transfer와 동시 사용 불가
+- 최대 6개 이미지 사용 가능
+
+#### 비용 표시 형식
+```
+// 일반: 총비용 (개별 × 슬롯 × 횟수)
+"15 (5 × 3슬롯 × 1회)"
+
+// Vibe: 인코딩 비용만 표시 (일회성)
+"4 (바이브 2개)"
 ```
 
 ### subscription API 응답 구조
