@@ -179,7 +179,38 @@
             margin: 0;
             cursor: pointer;
         }
-        
+
+        .subsection {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .subsection:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .subsection-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .subsection-title .section-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+        }
+
         /* Form */
         label {
             display: block;
@@ -187,7 +218,12 @@
             margin-bottom: 4px;
             color: var(--text-dim);
         }
-        
+
+        label.prompt-label {
+            color: var(--text);
+            font-weight: 500;
+        }
+
         input, select, textarea {
             width: 100%;
             padding: 10px 12px;
@@ -2050,7 +2086,7 @@
                         <div class="prompt-label-left">
                             <button type="button" class="collapse-toggle" data-target="basePromptContent" title="접기/펼치기">▼</button>
                             <button type="button" id="modeToggle" class="mode-toggle" title="아니메 모드">🌸</button>
-                            <label for="basePrompt">Base Prompt</label>
+                            <label for="basePrompt" class="prompt-label">Base Prompt</label>
                         </div>
                         <div class="prompt-preset-dropdown" data-category="base">
                             <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">📁 ▼</button>
@@ -2070,7 +2106,7 @@
                     <div class="characters-section">
                         <div class="characters-header">
                             <button type="button" class="collapse-toggle" data-target="charactersContent" title="접기/펼치기">▼</button>
-                            <label>Characters</label>
+                            <label class="prompt-label">Characters</label>
                             <button type="button" class="add-char-btn" id="addCharBtn" title="캐릭터 추가">+</button>
                         </div>
                         <div id="charactersContent" class="collapsible-content">
@@ -2083,7 +2119,7 @@
                     <div class="prompt-label-row">
                         <div class="prompt-label-left">
                             <button type="button" class="collapse-toggle" data-target="negativePromptContent" title="접기/펼치기">▼</button>
-                            <label for="negativePrompt">Negative Prompt</label>
+                            <label for="negativePrompt" class="prompt-label">Negative Prompt</label>
                         </div>
                         <div class="prompt-preset-dropdown" data-category="negative">
                             <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">📁 ▼</button>
@@ -2143,76 +2179,86 @@
                         </div>
                     </div>
 
-                    <!-- Vibe Transfer -->
+                    <!-- Vibe / Character Reference -->
                     <div class="section">
                         <div class="section-title">
-                            <span>Vibe Transfer</span>
-                            <label class="section-toggle">
-                                <input type="checkbox" id="enableVibeTransfer">
-                                <span>Active</span>
-                            </label>
+                            <button type="button" class="collapse-toggle" data-target="vibeCharRefContent" title="접기/펼치기">▼</button>
+                            <span>Vibe / Character Ref</span>
+                            <small style="font-weight: normal; text-transform: none; letter-spacing: 0; opacity: 0.7;">(택1)</small>
                         </div>
+                        <div id="vibeCharRefContent" class="collapsible-content">
+                            <!-- Vibe Transfer -->
+                            <div class="subsection">
+                                <div class="subsection-title">
+                                    <span>Vibe Transfer</span>
+                                    <label class="section-toggle">
+                                        <input type="checkbox" id="enableVibeTransfer">
+                                        <span>Active</span>
+                                    </label>
+                                </div>
 
-                        <div id="vibeTransferSettings" style="display: none;">
-                            <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
-                                최대 16개 이미지. 강도 합계가 1.0 이하가 되도록 권장.
-                            </small>
+                                <div id="vibeTransferSettings" style="display: none;">
+                                    <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
+                                        최대 16개 이미지. 강도 합계가 1.0 이하가 되도록 권장.
+                                    </small>
 
-                            <div id="vibeCacheInfo" style="display: none; font-size: 12px; margin-bottom: 8px; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                                    <div id="vibeCacheInfo" style="display: none; font-size: 12px; margin-bottom: 8px; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
 
-                            <div id="vibeList" class="vibe-list"></div>
+                                    <div id="vibeList" class="vibe-list"></div>
 
-                            <div class="btn-row">
-                                <button type="button" class="btn btn-secondary" id="addVibeBtn" style="flex: 1;">
-                                    + 바이브 추가
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-icon" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기">
-                                    📁
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Character Reference (V4.5 only) -->
-                    <div class="section" id="charRefSection">
-                        <div class="section-title">
-                            <span>Character Reference</span>
-                            <label class="section-toggle">
-                                <input type="checkbox" id="enableCharRef">
-                                <span>Active</span>
-                            </label>
-                        </div>
-
-                        <div id="charRefSettings" style="display: none;">
-                            <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
-                                V4.5 전용. Vibe Transfer와 동시 사용 불가.
-                            </small>
-
-                            <div id="charRefPreview" class="char-ref-preview" style="display: none;">
-                                <img id="charRefImage" src="" alt="Character Reference">
-                                <button type="button" class="remove-btn" id="removeCharRefBtn">×</button>
-                            </div>
-
-                            <button type="button" class="btn btn-secondary" id="uploadCharRefBtn" style="width: 100%;">
-                                이미지 선택
-                            </button>
-                            <input type="file" id="charRefInput" accept="image/*" style="display: none;">
-
-                            <div class="row" style="margin-top: 12px;">
-                                <div style="flex: 1;">
-                                    <label>Fidelity</label>
-                                    <input type="range" id="charRefFidelity" value="0.5" min="0" max="1" step="0.05" style="width: 100%;">
-                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
-                                        <span>유연</span>
-                                        <span id="charRefFidelityValue">0.5</span>
-                                        <span>정밀</span>
+                                    <div class="btn-row">
+                                        <button type="button" class="btn btn-secondary" id="addVibeBtn" style="flex: 1;">
+                                            + 바이브 추가
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-icon" id="openVibeFolderBtn" title="바이브 캐시 폴더 열기">
+                                            📁
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="checkbox-row" style="margin-top: 8px;">
-                                <input type="checkbox" id="charRefStyleAware" checked>
-                                <label for="charRefStyleAware">Style Aware (스타일도 복사)</label>
+                            <!-- Character Reference (V4.5 only) -->
+                            <div class="subsection" id="charRefSection">
+                                <div class="subsection-title">
+                                    <span>Character Reference</span>
+                                    <label class="section-toggle">
+                                        <input type="checkbox" id="enableCharRef">
+                                        <span>Active</span>
+                                    </label>
+                                </div>
+
+                                <div id="charRefSettings" style="display: none;">
+                                    <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
+                                        V4.5 전용. Vibe Transfer와 동시 사용 불가.
+                                    </small>
+
+                                    <div id="charRefPreview" class="char-ref-preview" style="display: none;">
+                                        <img id="charRefImage" src="" alt="Character Reference">
+                                        <button type="button" class="remove-btn" id="removeCharRefBtn">×</button>
+                                    </div>
+
+                                    <button type="button" class="btn btn-secondary" id="uploadCharRefBtn" style="width: 100%;">
+                                        이미지 선택
+                                    </button>
+                                    <input type="file" id="charRefInput" accept="image/*" style="display: none;">
+
+                                    <div class="row" style="margin-top: 12px;">
+                                        <div style="flex: 1;">
+                                            <label>Fidelity</label>
+                                            <input type="range" id="charRefFidelity" value="0.5" min="0" max="1" step="0.05" style="width: 100%;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                                                <span>유연</span>
+                                                <span id="charRefFidelityValue">0.5</span>
+                                                <span>정밀</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="checkbox-row" style="margin-top: 8px;">
+                                        <input type="checkbox" id="charRefStyleAware" checked>
+                                        <label for="charRefStyleAware">Style Aware (스타일도 복사)</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
