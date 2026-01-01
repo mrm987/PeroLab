@@ -5483,7 +5483,17 @@
             }
         };
 
+        let galleryLoaded = false;
+
         async function loadGallery() {
+            // 로딩 중 표시
+            galleryGrid.style.display = 'none';
+            galleryEmpty.innerHTML = `
+                <div class="icon">⏳</div>
+                <p>갤러리 로딩 중...</p>
+            `;
+            galleryEmpty.style.display = 'flex';
+
             try {
                 const response = await fetch(`${API_BASE}/api/gallery`);
                 const result = await response.json();
@@ -5493,11 +5503,22 @@
                     galleryGrid.style.display = 'grid';
                     renderGallery(result.images);
                 } else {
+                    galleryEmpty.innerHTML = `
+                        <div class="icon">🖼️</div>
+                        <p>갤러리가 비어있습니다</p>
+                        <small>이미지에서 ⭐ 버튼을 눌러 갤러리에 저장하세요</small>
+                    `;
                     galleryEmpty.style.display = 'flex';
                     galleryGrid.style.display = 'none';
                     galleryGrid.innerHTML = '';
                 }
+                galleryLoaded = true;
             } catch (err) {
+                galleryEmpty.innerHTML = `
+                    <div class="icon">❌</div>
+                    <p>갤러리 로드 실패</p>
+                    <small>${err.message}</small>
+                `;
                 showToast('갤러리 로드 실패: ' + err.message, 'error');
             }
         }
@@ -5744,6 +5765,11 @@
                                     showToast('삭제됨', 'success');
                                     // 갤러리가 비었는지 확인
                                     if (galleryGrid.children.length === 0) {
+                                        galleryEmpty.innerHTML = `
+                                            <div class="icon">🖼️</div>
+                                            <p>갤러리가 비어있습니다</p>
+                                            <small>이미지에서 ⭐ 버튼을 눌러 갤러리에 저장하세요</small>
+                                        `;
                                         galleryEmpty.style.display = 'flex';
                                         galleryGrid.style.display = 'none';
                                     }
