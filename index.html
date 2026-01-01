@@ -1002,35 +1002,6 @@
             color: white;
         }
         
-        /* Prefix Input */
-        .prefix-input-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 4px 8px;
-            background: var(--bg-lighter);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-        }
-        
-        .prefix-icon {
-            font-size: 0.9rem;
-        }
-        
-        .prefix-input {
-            width: 60px;
-            background: transparent;
-            border: none;
-            padding: 0;
-            margin: 0;
-            font-size: 0.8rem;
-            color: var(--text);
-        }
-        
-        .prefix-input:focus {
-            outline: none;
-        }
-        
         /* Preset Dropdown */
         .preset-dropdown {
             position: relative;
@@ -1159,7 +1130,104 @@
             color: var(--text-dim);
             font-size: 0.85rem;
         }
-        
+
+        /* Output Folder Dropdown */
+        .folder-dropdown {
+            position: relative;
+        }
+
+        .folder-btn {
+            min-width: 100px;
+        }
+
+        .folder-btn .folder-name {
+            flex: 1;
+            text-align: left;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .folder-btn .dropdown-arrow {
+            font-size: 0.6rem;
+            margin-left: 4px;
+        }
+
+        .folder-menu {
+            display: none;
+            position: fixed;
+            min-width: 180px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 99999;
+            overflow: hidden;
+        }
+
+        .folder-menu.show {
+            display: block;
+        }
+
+        .folder-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .folder-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        .folder-item.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .folder-item.root-folder {
+            font-weight: 500;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .folder-item.subfolder {
+            padding-left: 24px;
+        }
+
+        .folder-actions {
+            border-top: 1px solid var(--border);
+            padding: 8px;
+        }
+
+        .folder-action-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .folder-action-btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
         .slots-container-wrapper {
             flex: 1;
             position: relative;
@@ -2541,9 +2609,20 @@
                     </button>
                 </div>
                 <div class="toolbar-right">
-                    <div class="prefix-input-wrapper">
-                        <span class="prefix-icon">📁</span>
-                        <input type="text" id="outputFolder" value="" placeholder="폴더명" class="prefix-input" title="저장 폴더명">
+                    <div class="folder-dropdown" id="outputFolderDropdown">
+                        <button type="button" class="header-btn folder-btn" id="outputFolderBtn">
+                            <span class="folder-icon">📁</span>
+                            <span class="folder-name" id="outputFolderName">output</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="folder-menu" id="outputFolderMenu">
+                            <div class="folder-list" id="outputFolderList">
+                                <!-- 폴더 목록 -->
+                            </div>
+                            <div class="folder-actions">
+                                <button type="button" class="folder-action-btn" id="newOutputFolderBtn">+ 새 폴더</button>
+                            </div>
+                        </div>
                     </div>
                     <button type="button" class="header-btn icon-only" id="openOutputFolderBtn" title="출력 폴더 열기">📂</button>
                 </div>
@@ -3335,8 +3414,8 @@
                     addSlot();
                 }
                 
-                // Prefix 적용
-                document.getElementById('outputFolder').value = data.folder || '';
+                // 폴더 적용
+                setOutputFolder(data.folder || '');
                 
                 currentPreset = { filename, name: data.name };
                 presetNameSpan.textContent = data.name;
@@ -3354,7 +3433,7 @@
             if (!name) return;
             
             const slots = getSlotList().map(s => ({ name: s.name, content: s.content }));
-            const folder = document.getElementById('outputFolder').value || '';
+            const folder = getOutputFolder();
 
             try {
                 const res = await fetch(`${API_BASE}/api/presets`, {
@@ -3382,7 +3461,7 @@
             }
             
             const slots = getSlotList().map(s => ({ name: s.name, content: s.content }));
-            const folder = document.getElementById('outputFolder').value || '';
+            const folder = getOutputFolder();
 
             try {
                 await fetch(`${API_BASE}/api/presets/${currentPreset.filename}`, {
@@ -3457,7 +3536,132 @@
                 true
             );
         }
-        
+
+        // ============================================================
+        // Output Folder Dropdown
+        // ============================================================
+        const outputFolderDropdown = document.getElementById('outputFolderDropdown');
+        const outputFolderBtn = document.getElementById('outputFolderBtn');
+        const outputFolderMenu = document.getElementById('outputFolderMenu');
+        const outputFolderList = document.getElementById('outputFolderList');
+        const outputFolderName = document.getElementById('outputFolderName');
+        const outputFolderIcon = outputFolderBtn.querySelector('.folder-icon');
+
+        let currentOutputFolder = ''; // 빈 문자열 = output 루트
+
+        // 현재 선택된 폴더 반환 (API 호출 시 사용)
+        function getOutputFolder() {
+            return currentOutputFolder;
+        }
+
+        // 폴더 선택 시 UI 업데이트
+        function setOutputFolder(folderName) {
+            currentOutputFolder = folderName;
+            outputFolderName.textContent = folderName || 'output';
+            outputFolderIcon.textContent = '📁';
+            autoSaveSettings();
+        }
+
+        // 폴더 드롭다운 토글
+        outputFolderBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isShowing = outputFolderMenu.classList.contains('show');
+
+            if (isShowing) {
+                outputFolderMenu.classList.remove('show');
+                outputFolderDropdown.appendChild(outputFolderMenu);
+            } else {
+                document.body.appendChild(outputFolderMenu);
+                const btnRect = outputFolderBtn.getBoundingClientRect();
+                outputFolderMenu.style.top = (btnRect.bottom + 4) + 'px';
+                outputFolderMenu.style.right = (window.innerWidth - btnRect.right) + 'px';
+                outputFolderMenu.style.left = 'auto';
+                outputFolderMenu.classList.add('show');
+                loadOutputFolderList();
+            }
+        };
+
+        // 외부 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            if (!outputFolderDropdown.contains(e.target) && !outputFolderMenu.contains(e.target)) {
+                outputFolderMenu.classList.remove('show');
+                if (outputFolderMenu.parentElement === document.body) {
+                    outputFolderDropdown.appendChild(outputFolderMenu);
+                }
+            }
+        });
+
+        // 폴더 목록 로드
+        async function loadOutputFolderList() {
+            try {
+                const res = await fetch(`${API_BASE}/api/output-folders`);
+                const data = await res.json();
+                renderOutputFolderList(data.folders || []);
+            } catch (e) {
+                console.error('Failed to load output folders:', e);
+                renderOutputFolderList([]);
+            }
+        }
+
+        // 폴더 목록 렌더링
+        function renderOutputFolderList(folders) {
+            const isRootSelected = currentOutputFolder === '';
+
+            let html = `
+                <div class="folder-item root-folder ${isRootSelected ? 'active' : ''}" data-folder="">
+                    <span>${isRootSelected ? '📂' : '📁'}</span>
+                    <span>output</span>
+                </div>
+            `;
+
+            folders.forEach(folder => {
+                const isSelected = currentOutputFolder === folder.name;
+                html += `
+                    <div class="folder-item subfolder ${isSelected ? 'active' : ''}" data-folder="${folder.name}">
+                        <span>${isSelected ? '📂' : '📁'}</span>
+                        <span>${folder.name}</span>
+                        <span style="margin-left: auto; opacity: 0.6; font-size: 0.75rem;">${folder.image_count}</span>
+                    </div>
+                `;
+            });
+
+            outputFolderList.innerHTML = html;
+
+            // 폴더 클릭 이벤트
+            outputFolderList.querySelectorAll('.folder-item').forEach(item => {
+                item.onclick = () => {
+                    setOutputFolder(item.dataset.folder);
+                    outputFolderMenu.classList.remove('show');
+                    outputFolderDropdown.appendChild(outputFolderMenu);
+                };
+            });
+        }
+
+        // 새 폴더 생성
+        document.getElementById('newOutputFolderBtn').onclick = () => {
+            outputFolderMenu.classList.remove('show');
+            outputFolderDropdown.appendChild(outputFolderMenu);
+
+            showInputModal('📁 새 폴더', '폴더 이름을 입력하세요', async (folderName) => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/output-folders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: folderName })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        setOutputFolder(result.name);
+                        showToast(`폴더 생성: ${result.name}`, 'success');
+                    } else {
+                        showToast(result.error || '폴더 생성 실패', 'error');
+                    }
+                } catch (err) {
+                    showToast('폴더 생성 오류', 'error');
+                }
+            }, '생성');
+        };
+
         // Sync scroll 토글
         const syncScrollBtn = document.getElementById('syncScrollBtn');
         let syncScrollEnabled = false;
@@ -4160,7 +4364,7 @@
                 random_seed_per_image: document.getElementById('randomSeed').checked,
                 sampler: document.getElementById('sampler').value,
                 scheduler: document.getElementById('scheduler').value,
-                output_folder: document.getElementById('outputFolder').value || '',
+                output_folder: getOutputFolder(),
             };
             
             if (currentProvider === 'nai') {
@@ -4948,8 +5152,7 @@
         }
 
         document.getElementById('openOutputFolderBtn').onclick = () => {
-            const subfolder = document.getElementById('outputFolder').value.trim();
-            openFolder('outputs', subfolder);
+            openFolder('outputs', getOutputFolder());
         };
         document.getElementById('openVibeFolderBtn').onclick = () => openFolder('vibe_cache');
         document.getElementById('openCheckpointsFolderBtn').onclick = () => openFolder('checkpoints');
@@ -5416,7 +5619,7 @@
                 upscaleDenoise: document.getElementById('upscaleDenoise').value,
                 
                 // Output
-                outputFolder: document.getElementById('outputFolder').value,
+                outputFolder: getOutputFolder(),
                 repeatCount: document.getElementById('repeatCount').value,
                 
                 // Slots
@@ -5548,7 +5751,7 @@
                 }
                 
                 // Output
-                if (settings.outputFolder !== undefined) document.getElementById('outputFolder').value = settings.outputFolder;
+                if (settings.outputFolder !== undefined) setOutputFolder(settings.outputFolder);
                 if (settings.repeatCount) document.getElementById('repeatCount').value = settings.repeatCount;
                 
                 // Slots - 기존 슬롯 제거 후 복원
@@ -5597,7 +5800,7 @@
                 'sampler', 'scheduler', 'seed', 'randomSeed', 'naiModel', 'smea',
                 'ucPreset', 'qualityTags', 'localModel', 'enableUpscale', 'upscaleModel',
                 'downscaleRatio', 'sizeAlignment', 'upscaleSteps', 'upscaleCfg',
-                'upscaleDenoise', 'outputFolder', 'repeatCount', 'sizePreset'
+                'upscaleDenoise', 'repeatCount', 'sizePreset'
             ];
             
             inputs.forEach(id => {

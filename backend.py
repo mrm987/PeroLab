@@ -2387,6 +2387,42 @@ async def get_output_image(filepath: str):
     return FileResponse(file_path, media_type="image/png")
 
 
+# === Output Folder API ===
+@app.get("/api/output-folders")
+async def list_output_folders():
+    """output 폴더 내 하위 폴더 목록 반환"""
+    folders = []
+    if OUTPUT_DIR.exists():
+        for f in sorted(OUTPUT_DIR.iterdir()):
+            if f.is_dir():
+                # 폴더 내 이미지 수 카운트
+                image_count = len([p for p in f.iterdir() if p.suffix.lower() in ['.png', '.jpg', '.jpeg', '.webp']])
+                folders.append({"name": f.name, "image_count": image_count})
+    return {"success": True, "folders": folders}
+
+
+@app.post("/api/output-folders")
+async def create_output_folder(req: dict):
+    """output 폴더 내에 새 하위 폴더 생성"""
+    folder_name = req.get("name", "").strip()
+    if not folder_name:
+        return {"success": False, "error": "폴더명이 필요합니다"}
+
+    # 안전한 폴더명 확인
+    if "/" in folder_name or "\\" in folder_name or ".." in folder_name:
+        return {"success": False, "error": "잘못된 폴더명입니다"}
+
+    folder_path = OUTPUT_DIR / folder_name
+    if folder_path.exists():
+        return {"success": False, "error": "이미 존재하는 폴더입니다"}
+
+    try:
+        folder_path.mkdir(parents=True, exist_ok=True)
+        return {"success": True, "name": folder_name}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # === Preset API ===
 class PresetSlot(BaseModel):
     name: str = ""
