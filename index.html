@@ -2949,6 +2949,10 @@
         const statusText = document.getElementById('statusText');
         const lightbox = document.getElementById('lightbox');
         const lightboxImg = lightbox.querySelector('img');
+
+        // Lightbox navigation state (for wheel navigation in slot mode)
+        let lightboxCurrentSlot = null;
+        let lightboxCurrentCard = null;
         
         // Slots
         const slotsContainer = document.getElementById('slotsContainer');
@@ -3382,6 +3386,8 @@
                 // 5px 이내면 클릭으로 간주
                 if (dx < 5 && dy < 5) {
                     lightboxImg.src = imgSrc;  // URL 또는 base64 사용
+                    lightboxCurrentSlot = targetSlot;
+                    lightboxCurrentCard = card;
                     lightbox.classList.add('active');
                 }
             });
@@ -4763,9 +4769,44 @@
         lightbox.onclick = (e) => {
             if (e.target === lightbox || e.target.classList.contains('close')) {
                 lightbox.classList.remove('active');
+                lightboxCurrentSlot = null;
+                lightboxCurrentCard = null;
             }
         };
-        
+
+        // Lightbox wheel navigation (slot mode)
+        lightbox.addEventListener('wheel', (e) => {
+            if (!lightbox.classList.contains('active')) return;
+            if (!lightboxCurrentSlot || !lightboxCurrentCard) return;
+
+            e.preventDefault();
+
+            const imagesContainer = lightboxCurrentSlot.querySelector('.slot-images');
+            const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
+            if (cards.length <= 1) return;
+
+            const currentIndex = cards.indexOf(lightboxCurrentCard);
+            if (currentIndex === -1) return;
+
+            let newIndex;
+            if (e.deltaY > 0) {
+                // 휠 다운 → 다음 이미지 (아래쪽, 더 오래된 이미지)
+                newIndex = currentIndex + 1;
+                if (newIndex >= cards.length) newIndex = 0;  // 처음으로 순환
+            } else {
+                // 휠 업 → 이전 이미지 (위쪽, 더 최신 이미지)
+                newIndex = currentIndex - 1;
+                if (newIndex < 0) newIndex = cards.length - 1;  // 끝으로 순환
+            }
+
+            const newCard = cards[newIndex];
+            const newImg = newCard.querySelector('img');
+            if (newImg) {
+                lightboxImg.src = newImg.src;
+                lightboxCurrentCard = newCard;
+            }
+        }, { passive: false });
+
         // Settings
         function openSettings() {
             document.getElementById('settingsModal').classList.add('active');
