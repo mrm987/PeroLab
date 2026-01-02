@@ -6778,10 +6778,12 @@
                 updateCharacterNumbers();
                 window._pendingCharacterPromptsLayout = null;
             }
+
+            // 모든 복원 완료 후 자동 저장 설정
+            setupAutoSave();
         });
         connectWebSocket();
         checkLocalEnvStatus();
-        setupAutoSave();
         
         // 슬롯이 없으면 하나 추가
         if (slotsContainer.children.length === 0) {
