@@ -189,12 +189,135 @@ CONFIG_FILE = APP_DIR / "peropix_config.json"
 ## 디버깅 팁
 
 ### 콘솔 로그 확인
-- `[Anlas] Subscription loaded: { tier, isOpusTier, anlas }`
-- `[Queue] Adding job: slots=..., promptData=...`
-- `[SSE] Image received: prompt_idx=..., filename=...`
-- `[addImageToSlot] Card inserted for ...`
+- `[Generate] Job xxx started - N image(s), WxH, steps`
+- `[Generate] Image N/M completed - Xs - filename`
+- `[Generate] Job xxx finished - N image(s) in Xs`
+- `[WS] Client connected/disconnected`
+- `[NAI] Vibe cache hit/miss`
 
 ### 일반적인 문제
 1. **슬롯 안보임**: JavaScript 오류 → 콘솔 확인
 2. **API 실패**: 네트워크 탭에서 요청/응답 확인
 3. **스타일 깨짐**: CSS overflow, z-index 확인
+
+---
+
+## 최근 추가된 기능
+
+### Vibe Cache Viewer
+- 갤러리 모드에 `vibe` 탭 추가 (gallery 왼쪽, 이중 구분선)
+- `vibe_cache` 폴더의 캐시된 바이브 파일 표시
+- 버튼: `🎨 Vibe` (바이브 적용), `🗑️` (삭제)
+- 적용 시 사전 인코딩된 데이터 사용 (Anlas 무료)
+
+### Wheel Navigation
+- 라이트박스에서 마우스 휠로 이전/다음 이미지 탐색
+- 슬롯 모드, 갤러리, 바이브 캐시 모두 지원
+
+### 설정 적용 모달 개선
+- `전체 적용` / `프롬프트만` 선택 가능
+- 프롬프트만: prompt, negative, character prompts, seed만 적용
+
+### Save Options
+- 저장 포맷 선택: PNG / JPG / WebP
+- JPG Quality 설정
+- 메타데이터 제거 옵션
+
+---
+
+## 계획된 기능
+
+### Phase 1: Inpaint / Img2Img
+
+#### 마스크 모달
+```
+갤러리/슬롯에서 [Inpaint] 버튼
+        ↓
+┌─ Mask Editor Modal ─────────────┐
+│  [Canvas + Mask Layer]          │
+│  [Brush] [Eraser] [Clear]       │
+│  Size: ━━●━━                    │
+│  [Cancel]  [Apply to Generate]  │
+└─────────────────────────────────┘
+        ↓
+Base Image 섹션에 이미지+마스크 설정
+        ↓
+슬롯 모드에서 생성
+```
+
+#### Base Image 설정 (Generation Settings 내)
+```javascript
+baseImageSettings = {
+    enabled: true,
+    image: base64,           // 원본 이미지
+    mask: base64 | null,     // 마스크 (inpaint용)
+    mode: 'inpaint',         // 'img2img' | 'inpaint'
+    strength: 0.5,           // 변형 강도
+    noise: 0.0               // 노이즈
+}
+```
+
+#### NAI API 변경사항
+- `action: "generate"` → txt2img (현재)
+- `action: "img2img"` → 이미지 기반 생성
+- `action: "infill"` → 인페인트
+- 추가 파라미터: `image`, `mask`, `strength`, `noise`
+
+### Phase 2: Censor Mode
+
+#### 구조
+```
+[Slot Mode] [Gallery Mode] [Censor Mode]
+```
+
+#### 워크플로우
+```
+1. 폴더 선택 (Source / Output)
+2. [Run Auto Censor] → 일괄 처리
+3. Review Grid (썸네일 + 상태)
+   - ✓ OK / ⚠️ 확인필요
+4. 이미지 클릭 → Quick Editor
+   - 간단한 도형/브러시 도구
+   - [Save & Next]로 빠른 작업
+5. [Export All] → 승인된 것만 저장
+```
+
+#### Quick Editor 도구
+- 사각형 (흰/검/모자이크)
+- 브러시
+- 이동/크기 조절
+
+---
+
+## API 엔드포인트
+
+### Vibe Cache API
+```
+GET  /api/vibe-cache              - 캐시 목록
+GET  /api/vibe-cache/{filename}   - 상세 정보 (vibe_data 포함)
+DELETE /api/vibe-cache/{filename} - 캐시 삭제
+```
+
+### 향후 추가 예정
+```
+POST /api/generate/edit           - img2img / inpaint 생성
+POST /api/censor/auto             - 자동 검열 실행
+POST /api/censor/save             - 검열 결과 저장
+```
+
+---
+
+## Vibe 데이터 구조 (확장)
+
+```javascript
+{
+  image: "base64...",
+  strength: 0.6,
+  info_extracted: 1.0,
+  name: "vibe_name",
+  encoded: "base64..."  // 사전 인코딩된 데이터 (캐시에서 로드 시)
+}
+```
+
+- `encoded` 필드가 있으면 재인코딩 없이 바로 사용
+- Anlas 비용 계산 시 encoded가 있으면 캐시된 것으로 처리
