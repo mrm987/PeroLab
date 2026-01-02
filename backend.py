@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Optional, List
 from contextlib import asynccontextmanager
 
+import piexif
+import piexif.helper
+
 # 경로 설정 (앱 디렉토리 기준)
 if getattr(sys, 'frozen', False):
     # PyInstaller로 빌드된 경우
@@ -235,6 +238,166 @@ def ensure_png_base64(base64_image: str, force_reencode: bool = False) -> str:
     buffer = io.BytesIO()
     pil_img.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+# ============================================================
+# EXIF 메타데이터 헬퍼 함수
+# ============================================================
+
+def save_metadata_to_exif(image_bytes: bytes, metadata_dict: dict, image_format: str = 'PNG') -> bytes:
+    """이미지에 EXIF UserComment로 메타데이터 저장
+
+    Args:
+        image_bytes: 원본 이미지 바이트
+        metadata_dict: 저장할 메타데이터 딕셔너리
+        image_format: 이미지 포맷 (PNG, JPEG, WEBP)
+
+    Returns:
+        메타데이터가 포함된 이미지 바이트
+    """
+    from PIL import Image as PILImage
+
+    try:
+        # JSON으로 직렬화
+        metadata_json = json.dumps(metadata_dict, ensure_ascii=False)
+
+        # EXIF 데이터 생성
+        # UserComment에 저장 (UTF-8 인코딩)
+        user_comment = piexif.helper.UserComment.dump(metadata_json, encoding="unicode")
+
+        exif_dict = {
+            "0th": {},
+            "Exif": {
+                piexif.ExifIFD.UserComment: user_comment
+            },
+            "GPS": {},
+            "1st": {},
+            "thumbnail": None
+        }
+
+        exif_bytes = piexif.dump(exif_dict)
+
+        # 이미지에 EXIF 삽입
+        img = PILImage.open(io.BytesIO(image_bytes))
+
+        output = io.BytesIO()
+
+        if image_format.upper() == 'PNG':
+            # PNG: EXIF + PNG tEXt 청크 둘 다 저장 (NAI 호환성)
+            from PIL.PngImagePlugin import PngInfo
+            pnginfo = PngInfo()
+            pnginfo.add_text("Comment", metadata_json)
+
+            # PNG는 EXIF를 직접 지원하지 않으므로 tEXt로만 저장
+            img.save(output, format='PNG', pnginfo=pnginfo)
+        elif image_format.upper() in ('JPEG', 'JPG'):
+            # JPEG: EXIF 직접 지원
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+            img.save(output, format='JPEG', exif=exif_bytes, quality=95)
+        elif image_format.upper() == 'WEBP':
+            # WebP: EXIF 직접 지원
+            img.save(output, format='WEBP', exif=exif_bytes, quality=95)
+        else:
+            # 기타 포맷은 메타데이터 없이 저장
+            img.save(output, format=image_format)
+
+        return output.getvalue()
+
+    except Exception as e:
+        print(f"[EXIF] Error saving metadata: {e}")
+        # 실패시 원본 반환
+        return image_bytes
+
+
+def read_metadata_from_image(image_bytes: bytes) -> dict:
+    """이미지에서 메타데이터 읽기 (EXIF UserComment 또는 PNG Comment)
+
+    Args:
+        image_bytes: 이미지 바이트
+
+    Returns:
+        메타데이터 딕셔너리 (없으면 빈 딕셔너리)
+    """
+    from PIL import Image as PILImage
+
+    metadata = None
+
+    try:
+        img = PILImage.open(io.BytesIO(image_bytes))
+
+        # 1. PNG Comment 확인 (NAI 호환)
+        if hasattr(img, 'info') and 'Comment' in img.info:
+            try:
+                comment = img.info['Comment']
+                if isinstance(comment, bytes):
+                    comment = comment.decode('utf-8')
+                metadata = json.loads(comment)
+                return metadata
+            except:
+                pass
+
+        # 2. 레거시 peropix 필드 확인
+        if hasattr(img, 'info') and 'peropix' in img.info:
+            try:
+                legacy = json.loads(img.info['peropix'])
+                # 레거시 형식을 NAI 호환 형식으로 변환
+                metadata = {
+                    "prompt": legacy.get("prompt", ""),
+                    "uc": legacy.get("negative_prompt", ""),
+                    "seed": legacy.get("seed"),
+                    "width": legacy.get("width"),
+                    "height": legacy.get("height"),
+                    "steps": legacy.get("steps"),
+                    "scale": legacy.get("cfg"),
+                    "sampler": legacy.get("sampler"),
+                    "noise_schedule": legacy.get("scheduler"),
+                    "request_type": legacy.get("nai_model"),
+                    "ucPreset": legacy.get("uc_preset"),
+                    "qualityToggle": legacy.get("quality_tags"),
+                    "cfg_rescale": legacy.get("cfg_rescale"),
+                    "peropix": {
+                        "version": 0,
+                        "provider": legacy.get("provider", "nai"),
+                        "character_prompts": legacy.get("character_prompts", []),
+                        "variety_plus": legacy.get("variety_plus", False),
+                        "furry_mode": legacy.get("furry_mode", False),
+                        "local_model": legacy.get("model", "")
+                    }
+                }
+                return metadata
+            except:
+                pass
+
+        # 3. EXIF UserComment 확인 - getexif() 사용 (Pillow 9.0+, WebP/JPEG 모두 지원)
+        try:
+            exif = img.getexif()
+            if exif:
+                # UserComment는 EXIF IFD에 있으므로 get_ifd로 접근
+                exif_ifd = exif.get_ifd(0x8769)  # ExifIFD
+                if exif_ifd and 0x9286 in exif_ifd:  # UserComment tag
+                    user_comment_bytes = exif_ifd[0x9286]
+                    user_comment = piexif.helper.UserComment.load(user_comment_bytes)
+                    metadata = json.loads(user_comment)
+                    return metadata
+        except Exception as e:
+            pass
+
+        # 4. piexif로 직접 읽기 시도 (JPEG 호환)
+        try:
+            exif_dict = piexif.load(image_bytes)
+            if "Exif" in exif_dict and piexif.ExifIFD.UserComment in exif_dict["Exif"]:
+                user_comment = piexif.helper.UserComment.load(exif_dict["Exif"][piexif.ExifIFD.UserComment])
+                metadata = json.loads(user_comment)
+                return metadata
+        except:
+            pass
+
+    except Exception as e:
+        print(f"[EXIF] Error reading metadata: {e}")
+
+    return metadata or {}
+
 
 class ModelCache:
     def __init__(self):
@@ -1567,27 +1730,7 @@ async def process_job(job):
             strip_metadata = getattr(req, 'strip_metadata', False)
             jpg_quality = getattr(req, 'jpg_quality', 95)
 
-            print(f"[DEBUG save] save_format={save_format}, strip_metadata={strip_metadata}")
-
-            # 메타데이터 보존 및 추가 (PNG only, strip_metadata가 False일 때만)
-            from PIL.PngImagePlugin import PngInfo
-            pnginfo = PngInfo() if save_format == 'png' and not strip_metadata else None
-            print(f"[DEBUG save] pnginfo created: {pnginfo is not None}")
-
-            # 기존 메타데이터 복사 (Comment 제외 - 나중에 통합 메타데이터로 대체)
-            if pnginfo and hasattr(image, 'info') and image.info:
-                for key, value in image.info.items():
-                    if key == 'Comment':
-                        continue  # Comment는 통합 메타데이터로 대체
-                    if isinstance(value, str):
-                        pnginfo.add_text(key, value)
-                    elif isinstance(value, bytes):
-                        try:
-                            pnginfo.add_text(key, value.decode('utf-8'))
-                        except:
-                            pass
-
-            # NAI 호환 메타데이터 구조 (Comment 필드에 저장)
+            # NAI 호환 메타데이터 구조 생성
             # 기존 NAI Comment가 있으면 파싱, 없으면 새로 생성
             existing_comment = None
             if hasattr(image, 'info') and 'Comment' in image.info:
@@ -1623,14 +1766,12 @@ async def process_job(job):
 
             if existing_comment:
                 # NAI에서 생성된 이미지: 기존 Comment에 peropix 확장 추가
-                # 그리고 request_type을 실제 사용한 모델로 덮어쓰기 (NAI 내부값 수정)
                 existing_comment["peropix"] = peropix_ext
-                existing_comment["request_type"] = req.nai_model  # NAI의 내부 타입 대신 실제 모델명
+                existing_comment["request_type"] = req.nai_model
                 unified_metadata = existing_comment
             else:
                 # Local 또는 Comment 없는 경우: NAI 호환 형식으로 전체 생성
                 unified_metadata = {
-                    # NAI 표준 필드
                     "prompt": full_prompt,
                     "uc": req.negative_prompt or "",
                     "steps": req.steps,
@@ -1646,28 +1787,37 @@ async def process_job(job):
                     "qualityToggle": req.quality_tags,
                     "cfg_rescale": req.cfg_rescale,
                     "request_type": req.nai_model,
-                    # PeroPix 확장
                     "peropix": peropix_ext
                 }
 
-            if pnginfo:
-                # Comment 필드에 통합 메타데이터 저장 (NAI 호환)
-                pnginfo.add_text("Comment", json.dumps(unified_metadata))
-                # 기존 호환성용 개별 필드
-                pnginfo.add_text("prompt", full_prompt)
-                pnginfo.add_text("seed", str(actual_seed))
+            # 이미지를 바이트로 변환
+            img_buffer = io.BytesIO()
+            format_map = {'png': 'PNG', 'jpg': 'JPEG', 'webp': 'WEBP'}
+            pil_format = format_map.get(save_format, 'PNG')
 
-            # 포맷별 저장
-            save_path = save_dir / filename
-            if save_format == 'png':
-                image.save(save_path, format='PNG', pnginfo=pnginfo)
-            elif save_format == 'jpg':
-                # JPEG는 RGB만 지원
-                if image.mode in ('RGBA', 'P'):
-                    image = image.convert('RGB')
-                image.save(save_path, format='JPEG', quality=jpg_quality)
+            # JPEG는 RGB만 지원
+            save_image = image
+            if save_format == 'jpg' and image.mode in ('RGBA', 'P'):
+                save_image = image.convert('RGB')
+
+            # 임시로 메타데이터 없이 저장
+            if save_format == 'jpg':
+                save_image.save(img_buffer, format=pil_format, quality=jpg_quality)
             elif save_format == 'webp':
-                image.save(save_path, format='WEBP', quality=jpg_quality)
+                save_image.save(img_buffer, format=pil_format, quality=jpg_quality)
+            else:
+                save_image.save(img_buffer, format=pil_format)
+
+            image_bytes = img_buffer.getvalue()
+
+            # 메타데이터 추가 (strip_metadata가 False일 때만)
+            if not strip_metadata:
+                image_bytes = save_metadata_to_exif(image_bytes, unified_metadata, pil_format)
+
+            # 파일로 저장
+            save_path = save_dir / filename
+            with open(save_path, 'wb') as f:
+                f.write(image_bytes)
 
             # 진행 상황 업데이트
             gen_queue.completed_images += 1
@@ -1755,7 +1905,7 @@ async def health():
 
 @app.post("/api/extract-metadata")
 async def extract_metadata(request: dict):
-    """PNG 이미지에서 메타데이터 추출"""
+    """이미지에서 메타데이터 추출 (PNG/JPG/WebP 지원)"""
     image_base64 = request.get("image")
     if not image_base64:
         return {"success": False, "error": "No image provided"}
@@ -1764,68 +1914,29 @@ async def extract_metadata(request: dict):
         image_data = base64.b64decode(image_base64)
         image = Image.open(io.BytesIO(image_data))
 
-        metadata = {}
-
-        # PNG 텍스트 메타데이터 추출
+        # PNG 텍스트 메타데이터 (바이브 파일 확인용)
+        raw_metadata = {}
         if hasattr(image, 'info'):
             for key, value in image.info.items():
                 if isinstance(value, str):
-                    metadata[key] = value
-
-        print(f"[DEBUG extract_metadata] keys found: {list(metadata.keys())}")
+                    raw_metadata[key] = value
 
         # 바이브 파일 여부 확인
-        is_vibe = 'vibe_data' in metadata
+        is_vibe = 'vibe_data' in raw_metadata
 
-        # NAI 생성 이미지 여부 확인 (Comment에 JSON 메타데이터)
-        nai_metadata = None
-        if 'Comment' in metadata:
-            try:
-                nai_metadata = json.loads(metadata['Comment'])
-            except:
-                pass
-
-        # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
-        if not nai_metadata and 'peropix' in metadata:
-            try:
-                legacy = json.loads(metadata['peropix'])
-                # 레거시 형식을 NAI 호환 형식으로 변환
-                nai_metadata = {
-                    "prompt": legacy.get("prompt", ""),
-                    "uc": legacy.get("negative_prompt", ""),
-                    "seed": legacy.get("seed"),
-                    "width": legacy.get("width"),
-                    "height": legacy.get("height"),
-                    "steps": legacy.get("steps"),
-                    "scale": legacy.get("cfg"),
-                    "sampler": legacy.get("sampler"),
-                    "noise_schedule": legacy.get("scheduler"),
-                    "request_type": legacy.get("nai_model"),
-                    "ucPreset": legacy.get("uc_preset"),
-                    "qualityToggle": legacy.get("quality_tags"),
-                    "cfg_rescale": legacy.get("cfg_rescale"),
-                    "peropix": {
-                        "version": 0,  # 레거시
-                        "provider": legacy.get("provider", "nai"),
-                        "character_prompts": legacy.get("character_prompts", []),
-                        "variety_plus": legacy.get("variety_plus", False),
-                        "furry_mode": legacy.get("furry_mode", False),
-                        "local_model": legacy.get("model", "")
-                    }
-                }
-            except:
-                pass
+        # 통합 메타데이터 읽기 (PNG Comment, 레거시 peropix, EXIF 순서로 시도)
+        nai_metadata = read_metadata_from_image(image_data)
 
         return {
             "success": True,
             "is_vibe": is_vibe,
-            "is_nai": nai_metadata is not None,
-            "vibe_data": metadata.get('vibe_data') if is_vibe else None,
-            "vibe_model": metadata.get('model') if is_vibe else None,
-            "vibe_strength": float(metadata.get('strength', 0.6)) if is_vibe else None,
-            "vibe_info_extracted": float(metadata.get('info_extracted', 1.0)) if is_vibe else None,
-            "nai_metadata": nai_metadata,
-            "raw_metadata": metadata
+            "is_nai": bool(nai_metadata),
+            "vibe_data": raw_metadata.get('vibe_data') if is_vibe else None,
+            "vibe_model": raw_metadata.get('model') if is_vibe else None,
+            "vibe_strength": float(raw_metadata.get('strength', 0.6)) if is_vibe else None,
+            "vibe_info_extracted": float(raw_metadata.get('info_extracted', 1.0)) if is_vibe else None,
+            "nai_metadata": nai_metadata if nai_metadata else None,
+            "raw_metadata": raw_metadata
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1852,8 +1963,10 @@ async def get_gallery_folders():
     try:
         for item in sorted(GALLERY_DIR.iterdir()):
             if item.is_dir():
-                # 폴더 내 이미지 수 카운트
-                image_count = len(list(item.glob("*.png")))
+                # 폴더 내 이미지 수 카운트 (PNG/JPG/WebP)
+                image_count = 0
+                for ext in ['*.png', '*.jpg', '*.jpeg', '*.webp']:
+                    image_count += len(list(item.glob(ext)))
                 folders.append({
                     "name": item.name,
                     "image_count": image_count
@@ -1908,7 +2021,7 @@ async def delete_gallery_folder(folder_name: str):
 
 @app.get("/api/gallery")
 async def get_gallery(folder: str = ""):
-    """갤러리 이미지 목록 조회 (폴더별)"""
+    """갤러리 이미지 목록 조회 (폴더별) - PNG/JPG/WebP 지원"""
     images = []
 
     try:
@@ -1919,43 +2032,30 @@ async def get_gallery(folder: str = ""):
     if not gallery_path.exists():
         return {"images": [], "folder": folder}
 
-    for filepath in sorted(gallery_path.glob("*.png"), key=lambda x: x.stat().st_mtime, reverse=True):
+    # 지원하는 모든 이미지 포맷 검색
+    all_files = []
+    for ext in ['*.png', '*.jpg', '*.jpeg', '*.webp']:
+        all_files.extend(gallery_path.glob(ext))
+
+    # 수정 시간순 정렬 (최신순)
+    all_files = sorted(all_files, key=lambda x: x.stat().st_mtime, reverse=True)
+
+    for filepath in all_files:
         try:
-            image = Image.open(filepath)
-            metadata = {}
+            # 파일을 바이트로 읽어서 메타데이터 추출
+            with open(filepath, 'rb') as f:
+                image_bytes = f.read()
 
-            if hasattr(image, 'info'):
-                for key, value in image.info.items():
-                    if isinstance(value, str):
-                        metadata[key] = value
-
-            # 통합 메타데이터 (Comment 필드에서 읽기)
-            comment_meta = None
-            if 'Comment' in metadata:
-                try:
-                    comment_meta = json.loads(metadata['Comment'])
-                except:
-                    pass
-
-            # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
-            if not comment_meta and 'peropix' in metadata:
-                try:
-                    legacy = json.loads(metadata['peropix'])
-                    # 레거시 형식을 NAI 호환 형식으로 변환
-                    comment_meta = {
-                        "prompt": legacy.get("prompt", ""),
-                        "seed": legacy.get("seed"),
-                        "peropix": legacy  # 전체를 peropix 확장으로
-                    }
-                except:
-                    pass
+            # 통합 메타데이터 읽기 (PNG Comment, 레거시 peropix, EXIF 순서로 시도)
+            comment_meta = read_metadata_from_image(image_bytes)
 
             # seed와 prompt 추출
             seed = comment_meta.get("seed") if comment_meta else None
             prompt = (comment_meta.get("prompt", "") or "")[:100] if comment_meta else ""
-            has_metadata = comment_meta is not None
+            has_metadata = bool(comment_meta)
 
             # 썸네일 생성 (고해상도 디스플레이용 2x)
+            image = Image.open(io.BytesIO(image_bytes))
             thumb = image.copy()
             thumb.thumbnail((520, 520), Image.LANCZOS)
             buffer = io.BytesIO()
@@ -2040,7 +2140,7 @@ async def save_to_gallery(request: dict):
 
 @app.get("/api/gallery/{filename}")
 async def get_gallery_image(filename: str, folder: str = ""):
-    """갤러리 이미지 조회 (전체 크기 + 메타데이터)"""
+    """갤러리 이미지 조회 (전체 크기 + 메타데이터) - PNG/JPG/WebP EXIF 지원"""
     try:
         gallery_path = get_gallery_folder_path(folder)
     except ValueError as e:
@@ -2051,53 +2151,15 @@ async def get_gallery_image(filename: str, folder: str = ""):
         return {"success": False, "error": "Image not found"}
 
     try:
-        image = Image.open(filepath)
-        raw_metadata = {}
+        # 파일을 바이트로 읽어서 메타데이터 추출
+        with open(filepath, 'rb') as f:
+            image_bytes = f.read()
 
-        if hasattr(image, 'info'):
-            for key, value in image.info.items():
-                if isinstance(value, str):
-                    raw_metadata[key] = value
+        # 통합 메타데이터 읽기 (PNG Comment, 레거시 peropix, EXIF 순서로 시도)
+        comment_meta = read_metadata_from_image(image_bytes)
 
-        # 통합 메타데이터 (Comment 필드에서 읽기)
-        comment_meta = None
-        if 'Comment' in raw_metadata:
-            try:
-                comment_meta = json.loads(raw_metadata['Comment'])
-            except:
-                pass
-
-        # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
-        if not comment_meta and 'peropix' in raw_metadata:
-            try:
-                legacy = json.loads(raw_metadata['peropix'])
-                # 레거시 형식을 NAI 호환 형식으로 변환
-                comment_meta = {
-                    "prompt": legacy.get("prompt", ""),
-                    "uc": legacy.get("negative_prompt", ""),
-                    "seed": legacy.get("seed"),
-                    "width": legacy.get("width"),
-                    "height": legacy.get("height"),
-                    "steps": legacy.get("steps"),
-                    "scale": legacy.get("cfg"),
-                    "sampler": legacy.get("sampler"),
-                    "noise_schedule": legacy.get("scheduler"),
-                    "request_type": legacy.get("nai_model"),
-                    "ucPreset": legacy.get("uc_preset"),
-                    "qualityToggle": legacy.get("quality_tags"),
-                    "cfg_rescale": legacy.get("cfg_rescale"),
-                    "peropix": {
-                        "version": 0,  # 레거시
-                        "provider": legacy.get("provider", "nai"),
-                        "character_prompts": legacy.get("character_prompts", []),
-                        "variety_plus": legacy.get("variety_plus", False),
-                        "furry_mode": legacy.get("furry_mode", False),
-                        "local_model": legacy.get("model", "")
-                    }
-                }
-            except:
-                pass
-
+        # 이미지를 PNG로 변환하여 반환
+        image = Image.open(io.BytesIO(image_bytes))
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         image_base64 = base64.b64encode(buffer.getvalue()).decode()
