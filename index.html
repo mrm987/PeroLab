@@ -5852,15 +5852,36 @@
 
             // UC Preset: 숫자 → 문자열 변환
             const ucPresetMap = { 0: 'Heavy', 1: 'Light', 2: 'Human Focus', 3: 'None' };
-            const ucPresetOriginal = ucPresetMap[meta.ucPreset] || meta.ucPreset || 'Heavy';
+            const ucPreset = ucPresetMap[meta.ucPreset] || meta.ucPreset || 'Heavy';
+            const qualityTags = meta.qualityToggle;
 
             // 순수 NAI 이미지 여부 확인 (peropix 확장이 없으면 순수 NAI)
-            // 순수 NAI 이미지는 프롬프트에 이미 퀄리티 태그와 UC 프리셋이 적용되어 있음
             const isPureNai = !meta.peropix;
 
-            // 순수 NAI 이미지면 중복 방지를 위해 비활성화
-            const ucPreset = isPureNai ? 'None' : ucPresetOriginal;
-            const qualityTags = isPureNai ? false : meta.qualityToggle;
+            // 순수 NAI 이미지면 프롬프트에서 퀄리티 태그/UC 프리셋 태그 제거 (중복 방지)
+            let prompt = meta.prompt || '';
+            let negativePrompt = meta.uc || '';
+
+            if (isPureNai) {
+                // 퀄리티 태그 제거 (프롬프트 앞에 추가된 태그)
+                const qualityTagsPattern = /^(very aesthetic,\s*best quality,\s*absurdres,?\s*)/i;
+                prompt = prompt.replace(qualityTagsPattern, '');
+
+                // UC 프리셋 태그 제거 (네거티브 프롬프트에서)
+                const ucPresets = {
+                    'Heavy': 'lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]',
+                    'Light': 'lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing',
+                    'Human Focus': 'lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], {{bad hands}}, extra legs, extra arms'
+                };
+
+                // 현재 UC 프리셋에 해당하는 태그 제거
+                const presetTags = ucPresets[ucPreset];
+                if (presetTags && negativePrompt.startsWith(presetTags)) {
+                    negativePrompt = negativePrompt.slice(presetTags.length);
+                    // 앞에 ", " 가 남아있으면 제거
+                    negativePrompt = negativePrompt.replace(/^,\s*/, '');
+                }
+            }
 
             // Variety+ 감지 (peropix 확장 또는 NAI skip_cfg_above_sigma)
             let varietyPlus = ppx.variety_plus || false;
@@ -5885,8 +5906,8 @@
             // request_type이 "PromptGenerateRequest" 같은 내부 타입이면 무시
 
             return {
-                prompt: meta.prompt || '',
-                negative_prompt: meta.uc || '',
+                prompt: prompt,
+                negative_prompt: negativePrompt,
                 character_prompts: charPrompts,
                 seed: meta.seed,
                 width: meta.width,
@@ -7744,7 +7765,7 @@
                         <div><strong>Sampler:</strong> ${meta.sampler}, <strong>Scheduler:</strong> ${meta.scheduler}</div>
                         <div><strong>SMEA:</strong> ${meta.smea}, <strong>Variety+:</strong> ${meta.variety_plus ? 'On' : 'Off'}</div>
                         <div><strong>Model:</strong> ${meta.nai_model || 'N/A'}</div>
-                        ${isPureNai ? '<div style="color:#facc15; margin-top:8px;">⚠️ NAI 원본: 프롬프트에 이미 퀄리티 태그/UC 프리셋이 포함됨<br>(중복 방지를 위해 해당 옵션 비활성화)</div>' : ''}
+                        ${isPureNai ? '<div style="color:#4ade80; margin-top:8px;">✓ NAI 원본: 퀄리티 태그/UC 프리셋 자동 분리됨</div>' : ''}
                     `;
                     document.getElementById('dropModalConfirm').textContent = '전체 적용';
                     document.getElementById('dropModalPromptOnly').style.display = 'inline-block';
@@ -7798,11 +7819,9 @@
                 applyPromptOnly(window._pendingLoadMetadata);
                 closeDropModal();
             } else if (pendingDropData && pendingDropData.type === 'nai') {
-                const meta = pendingDropData.metadata;
-                if (meta.prompt) document.getElementById('basePrompt').value = meta.prompt;
-                if (meta.uc) document.getElementById('negativePrompt').value = meta.uc;
-                saveAppSettings();
-                showToast('프롬프트만 적용됨', 'success');
+                // 정규화된 메타데이터로 applyPromptOnly 호출 (캐릭터 프롬프트 포함)
+                const normalized = normalizeMetadata(pendingDropData.metadata);
+                applyPromptOnly(normalized);
                 closeDropModal();
             }
         };
