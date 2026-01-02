@@ -7241,25 +7241,28 @@
                             if (charPrompts.length === 0 && meta.characterPrompts) {
                                 charPrompts = meta.characterPrompts.map(c => c.prompt).filter(c => c);
                             }
-                            // 메타데이터 형식 변환 (showLoadSettingsConfirm 호환)
+                            // 메타데이터 형식 변환 (NAI 통합 형식 → 앱 내부 형식)
+                            // peropix 확장 필드에서 PeroPix 전용 설정 추출
+                            const ppx = meta.peropix || {};
+
                             const normalizedMeta = {
                                 prompt: meta.prompt || '',
-                                negative_prompt: meta.negative_prompt || meta.uc || '',
-                                character_prompts: charPrompts,
+                                negative_prompt: meta.uc || '',
+                                character_prompts: ppx.character_prompts || charPrompts,
                                 seed: meta.seed,
                                 width: meta.width,
                                 height: meta.height,
                                 steps: meta.steps,
-                                cfg: meta.cfg || meta.scale,
+                                cfg: meta.scale,
                                 sampler: meta.sampler,
-                                scheduler: meta.scheduler || meta.noise_schedule || 'karras',
-                                nai_model: meta.nai_model || meta.request_type || '',
-                                smea: meta.smea || (meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none')),
-                                uc_preset: meta.uc_preset || meta.ucPreset || '',
-                                quality_tags: meta.quality_tags,
+                                scheduler: meta.noise_schedule || 'karras',
+                                nai_model: meta.request_type || '',
+                                smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
+                                uc_preset: meta.ucPreset,
+                                quality_tags: meta.qualityToggle,
                                 cfg_rescale: meta.cfg_rescale,
-                                variety_plus: meta.variety_plus,
-                                furry_mode: meta.furry_mode
+                                variety_plus: ppx.variety_plus || false,
+                                furry_mode: ppx.furry_mode || false
                             };
                             showLoadSettingsConfirm(normalizedMeta);
                         } else {
@@ -7764,15 +7767,6 @@
                     document.getElementById('cfgRescale').value = meta.cfg_rescale;
                     document.getElementById('cfgRescaleValue').textContent = meta.cfg_rescale;
                 }
-                if (meta.skip_cfg_above_sigma !== undefined && meta.skip_cfg_above_sigma !== null) {
-                    document.getElementById('varietyPlus').checked = true;
-                } else {
-                    document.getElementById('varietyPlus').checked = false;
-                }
-                // Furry mode (from prompt prefix)
-                if (meta.prompt && meta.prompt.startsWith('fur dataset,')) {
-                    setFurryMode(true);
-                }
 
                 // UC Preset
                 if (meta.ucPreset !== undefined) {
@@ -7784,6 +7778,37 @@
                 // Quality Tags
                 if (meta.qualityToggle !== undefined) {
                     document.getElementById('qualityTags').checked = meta.qualityToggle;
+                }
+
+                // PeroPix 확장 필드 처리
+                const ppx = meta.peropix || {};
+
+                // Variety Plus
+                if (ppx.variety_plus !== undefined) {
+                    document.getElementById('varietyPlus').checked = ppx.variety_plus;
+                } else if (meta.skip_cfg_above_sigma !== undefined && meta.skip_cfg_above_sigma !== null) {
+                    document.getElementById('varietyPlus').checked = true;
+                } else {
+                    document.getElementById('varietyPlus').checked = false;
+                }
+
+                // Furry Mode
+                if (ppx.furry_mode !== undefined) {
+                    setFurryMode(ppx.furry_mode);
+                } else if (meta.prompt && meta.prompt.startsWith('fur dataset,')) {
+                    setFurryMode(true);
+                }
+
+                // Character Prompts
+                if (ppx.character_prompts && ppx.character_prompts.length > 0) {
+                    const charactersList = document.getElementById('charactersList');
+                    charactersList.innerHTML = '';
+                    ppx.character_prompts.forEach(cp => {
+                        if (cp && cp.trim()) {
+                            addCharacter(cp);
+                        }
+                    });
+                    updateCharacterNumbers();
                 }
 
                 saveAppSettings();

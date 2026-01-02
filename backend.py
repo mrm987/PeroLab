@@ -1506,9 +1506,11 @@ async def process_job(job):
             from PIL.PngImagePlugin import PngInfo
             pnginfo = PngInfo() if save_format == 'png' and not strip_metadata else None
 
-            # 기존 메타데이터 복사 (NAI 메타데이터 포함)
+            # 기존 메타데이터 복사 (Comment 제외 - 나중에 통합 메타데이터로 대체)
             if pnginfo and hasattr(image, 'info') and image.info:
                 for key, value in image.info.items():
+                    if key == 'Comment':
+                        continue  # Comment는 통합 메타데이터로 대체
                     if isinstance(value, str):
                         pnginfo.add_text(key, value)
                     elif isinstance(value, bytes):
@@ -1517,37 +1519,62 @@ async def process_job(job):
                         except:
                             pass
 
-            # PeroPix 전체 설정 메타데이터 저장
-            peropix_metadata = {
-                "prompt": full_prompt,
-                "negative_prompt": req.negative_prompt or "",
-                "character_prompts": req.character_prompts or [],
-                "seed": actual_seed,
-                "width": req.width,
-                "height": req.height,
-                "steps": req.steps,
-                "cfg": req.cfg,
-                "sampler": req.sampler,
-                "scheduler": req.scheduler,
+            # NAI 호환 메타데이터 구조 (Comment 필드에 저장)
+            # 기존 NAI Comment가 있으면 파싱, 없으면 새로 생성
+            existing_comment = None
+            if hasattr(image, 'info') and 'Comment' in image.info:
+                try:
+                    existing_comment = json.loads(image.info['Comment'])
+                except:
+                    pass
+
+            # SMEA 설정 파싱
+            sm = req.smea in ['SMEA', 'SMEA+DYN']
+            sm_dyn = req.smea == 'SMEA+DYN'
+
+            # PeroPix 확장 필드
+            peropix_ext = {
+                "version": 1,
                 "provider": req.provider,
-                # NAI 설정
-                "nai_model": req.nai_model,
-                "smea": req.smea,
-                "uc_preset": req.uc_preset,
-                "quality_tags": req.quality_tags,
-                "cfg_rescale": req.cfg_rescale,
+                "character_prompts": req.character_prompts or [],
                 "variety_plus": req.variety_plus,
                 "furry_mode": req.furry_mode,
-                # Local 설정
-                "model": req.model,
+                "local_model": req.model if req.provider == 'local' else ""
             }
 
+            if existing_comment:
+                # NAI에서 생성된 이미지: 기존 Comment에 peropix 확장만 추가
+                existing_comment["peropix"] = peropix_ext
+                unified_metadata = existing_comment
+            else:
+                # Local 또는 Comment 없는 경우: NAI 호환 형식으로 전체 생성
+                unified_metadata = {
+                    # NAI 표준 필드
+                    "prompt": full_prompt,
+                    "uc": req.negative_prompt or "",
+                    "steps": req.steps,
+                    "width": req.width,
+                    "height": req.height,
+                    "scale": req.cfg,
+                    "seed": actual_seed,
+                    "sampler": req.sampler,
+                    "noise_schedule": req.scheduler,
+                    "sm": sm,
+                    "sm_dyn": sm_dyn,
+                    "ucPreset": req.uc_preset,
+                    "qualityToggle": req.quality_tags,
+                    "cfg_rescale": req.cfg_rescale,
+                    "request_type": req.nai_model,
+                    # PeroPix 확장
+                    "peropix": peropix_ext
+                }
+
             if pnginfo:
-                pnginfo.add_text("peropix", json.dumps(peropix_metadata))
+                # Comment 필드에 통합 메타데이터 저장 (NAI 호환)
+                pnginfo.add_text("Comment", json.dumps(unified_metadata))
                 # 기존 호환성용 개별 필드
                 pnginfo.add_text("prompt", full_prompt)
                 pnginfo.add_text("seed", str(actual_seed))
-                pnginfo.add_text("negative_prompt", req.negative_prompt or "")
 
             # 포맷별 저장
             save_path = save_dir / filename
@@ -1781,42 +1808,37 @@ async def get_gallery(folder: str = ""):
         try:
             image = Image.open(filepath)
             metadata = {}
-            nai_metadata = None
 
             if hasattr(image, 'info'):
                 for key, value in image.info.items():
                     if isinstance(value, str):
                         metadata[key] = value
 
-            # NAI 메타데이터 (Comment 필드)
-            nai_metadata = None
+            # 통합 메타데이터 (Comment 필드에서 읽기)
+            comment_meta = None
             if 'Comment' in metadata:
                 try:
-                    nai_metadata = json.loads(metadata['Comment'])
+                    comment_meta = json.loads(metadata['Comment'])
                 except:
                     pass
 
-            # PeroPix 메타데이터 (peropix 필드) - 우선 사용
-            peropix_metadata = None
-            if 'peropix' in metadata:
+            # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
+            if not comment_meta and 'peropix' in metadata:
                 try:
-                    peropix_metadata = json.loads(metadata['peropix'])
+                    legacy = json.loads(metadata['peropix'])
+                    # 레거시 형식을 NAI 호환 형식으로 변환
+                    comment_meta = {
+                        "prompt": legacy.get("prompt", ""),
+                        "seed": legacy.get("seed"),
+                        "peropix": legacy  # 전체를 peropix 확장으로
+                    }
                 except:
                     pass
 
-            # seed와 prompt 추출 (peropix 우선, nai로 보완)
-            seed = None
-            prompt = ""
-            has_metadata = False
-
-            if peropix_metadata:
-                seed = peropix_metadata.get("seed")
-                prompt = peropix_metadata.get("prompt", "")[:100]
-                has_metadata = True
-            elif nai_metadata:
-                seed = nai_metadata.get("seed")
-                prompt = nai_metadata.get("prompt", "")[:100]
-                has_metadata = True
+            # seed와 prompt 추출
+            seed = comment_meta.get("seed") if comment_meta else None
+            prompt = (comment_meta.get("prompt", "") or "")[:100] if comment_meta else ""
+            has_metadata = comment_meta is not None
 
             # 썸네일 생성 (고해상도 디스플레이용 2x)
             thumb = image.copy()
@@ -1906,34 +1928,50 @@ async def get_gallery_image(filename: str, folder: str = ""):
     try:
         image = Image.open(filepath)
         raw_metadata = {}
-        nai_metadata = None
-        peropix_metadata = None
 
         if hasattr(image, 'info'):
             for key, value in image.info.items():
                 if isinstance(value, str):
                     raw_metadata[key] = value
 
-        # NAI 메타데이터 (Comment 필드)
+        # 통합 메타데이터 (Comment 필드에서 읽기)
+        comment_meta = None
         if 'Comment' in raw_metadata:
             try:
-                nai_metadata = json.loads(raw_metadata['Comment'])
+                comment_meta = json.loads(raw_metadata['Comment'])
             except:
                 pass
 
-        # PeroPix 메타데이터 (peropix 필드)
-        if 'peropix' in raw_metadata:
+        # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
+        if not comment_meta and 'peropix' in raw_metadata:
             try:
-                peropix_metadata = json.loads(raw_metadata['peropix'])
+                legacy = json.loads(raw_metadata['peropix'])
+                # 레거시 형식을 NAI 호환 형식으로 변환
+                comment_meta = {
+                    "prompt": legacy.get("prompt", ""),
+                    "uc": legacy.get("negative_prompt", ""),
+                    "seed": legacy.get("seed"),
+                    "width": legacy.get("width"),
+                    "height": legacy.get("height"),
+                    "steps": legacy.get("steps"),
+                    "scale": legacy.get("cfg"),
+                    "sampler": legacy.get("sampler"),
+                    "noise_schedule": legacy.get("scheduler"),
+                    "request_type": legacy.get("nai_model"),
+                    "ucPreset": legacy.get("uc_preset"),
+                    "qualityToggle": legacy.get("quality_tags"),
+                    "cfg_rescale": legacy.get("cfg_rescale"),
+                    "peropix": {
+                        "version": 0,  # 레거시
+                        "provider": legacy.get("provider", "nai"),
+                        "character_prompts": legacy.get("character_prompts", []),
+                        "variety_plus": legacy.get("variety_plus", False),
+                        "furry_mode": legacy.get("furry_mode", False),
+                        "local_model": legacy.get("model", "")
+                    }
+                }
             except:
                 pass
-
-        # 메타데이터 병합 (peropix 우선, NAI로 보완)
-        merged_metadata = {}
-        if nai_metadata:
-            merged_metadata = {**nai_metadata}
-        if peropix_metadata:
-            merged_metadata = {**merged_metadata, **peropix_metadata}
 
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
@@ -1942,7 +1980,7 @@ async def get_gallery_image(filename: str, folder: str = ""):
         return {
             "success": True,
             "image": image_base64,
-            "metadata": merged_metadata,
+            "metadata": comment_meta or {},
             "filename": filename
         }
     except Exception as e:

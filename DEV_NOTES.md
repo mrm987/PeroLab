@@ -158,6 +158,54 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 
 ## 주요 데이터 구조
 
+### 통합 이미지 메타데이터 (PNG Comment 필드)
+
+NAI 웹과 100% 호환되는 형식. PeroPix 전용 설정은 `peropix` 확장 필드에 저장.
+
+```json
+{
+  // === NAI 표준 필드 ===
+  "prompt": "1girl, ...",
+  "uc": "lowres, bad anatomy, ...",     // negative_prompt
+  "steps": 28,
+  "width": 1216,
+  "height": 832,
+  "scale": 5.0,                          // cfg
+  "seed": 123456789,
+  "sampler": "k_euler_ancestral",
+  "noise_schedule": "karras",            // scheduler
+  "sm": false,                           // SMEA
+  "sm_dyn": false,                       // SMEA+DYN
+  "ucPreset": 0,                         // uc_preset (0=Heavy, 1=Light, 2=Human Focus, 3=None)
+  "qualityToggle": true,                 // quality_tags
+  "cfg_rescale": 0.0,
+  "request_type": "nai-diffusion-4-5-full",  // nai_model
+  "v4_prompt": {...},                    // V4 캐릭터 프롬프트 구조
+  "v4_negative_prompt": {...},
+
+  // === PeroPix 확장 필드 ===
+  "peropix": {
+    "version": 1,
+    "provider": "nai",                   // 'nai' | 'local'
+    "character_prompts": ["girl, ..."],  // 캐릭터별 프롬프트
+    "variety_plus": false,
+    "furry_mode": false,
+    "local_model": ""                    // local provider용 모델명
+  }
+}
+```
+
+#### 필드 매핑 (NAI ↔ 앱 내부)
+| NAI 필드 | 앱 내부 필드 |
+|----------|-------------|
+| `uc` | `negative_prompt` |
+| `scale` | `cfg` |
+| `noise_schedule` | `scheduler` |
+| `request_type` | `nai_model` |
+| `ucPreset` | `uc_preset` |
+| `qualityToggle` | `quality_tags` |
+| `sm` / `sm_dyn` | `smea` |
+
 ### 슬롯 이미지 데이터 (card._imageData)
 ```javascript
 {
