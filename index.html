@@ -7521,15 +7521,15 @@
                 // 이미지 그리기
                 maskEditor.imageCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
-                // 기존 마스크 로드 또는 클리어
+                // 기존 마스크 로드 또는 클리어 (검정 배경)
+                maskEditor.maskCtx.fillStyle = 'black';
+                maskEditor.maskCtx.fillRect(0, 0, canvasWidth, canvasHeight);
                 if (existingMask) {
                     const maskImg = new Image();
                     maskImg.onload = () => {
                         maskEditor.maskCtx.drawImage(maskImg, 0, 0, canvasWidth, canvasHeight);
                     };
                     maskImg.src = existingMask;
-                } else {
-                    maskEditor.maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
                 }
 
                 // 설정 복원
@@ -7569,15 +7569,8 @@
 
                 ctx.beginPath();
                 ctx.arc(pos.x, pos.y, size / 2, 0, Math.PI * 2);
-
-                if (maskEditor.tool === 'brush') {
-                    ctx.fillStyle = 'white';
-                    ctx.fill();
-                } else {
-                    ctx.globalCompositeOperation = 'destination-out';
-                    ctx.fill();
-                    ctx.globalCompositeOperation = 'source-over';
-                }
+                ctx.fillStyle = maskEditor.tool === 'brush' ? 'white' : 'black';
+                ctx.fill();
             }
 
             drawCanvas.addEventListener('mousedown', (e) => {
@@ -7618,34 +7611,24 @@
                 document.getElementById('maskBrushSizeValue').textContent = this.value;
             };
 
-            // Clear
+            // Clear (검정으로 채우기 = 마스크 없음)
             document.getElementById('maskToolClear').onclick = () => {
-                maskEditor.maskCtx.clearRect(0, 0, maskEditor.maskCanvas.width, maskEditor.maskCanvas.height);
+                maskEditor.maskCtx.fillStyle = 'black';
+                maskEditor.maskCtx.fillRect(0, 0, maskEditor.maskCanvas.width, maskEditor.maskCanvas.height);
             };
 
-            // Invert
+            // Invert (검정 ↔ 흰색 반전)
             document.getElementById('maskToolInvert').onclick = () => {
                 const ctx = maskEditor.maskCtx;
                 const imageData = ctx.getImageData(0, 0, maskEditor.maskCanvas.width, maskEditor.maskCanvas.height);
                 const data = imageData.data;
                 for (let i = 0; i < data.length; i += 4) {
-                    // Invert alpha (make transparent -> opaque, opaque -> transparent)
-                    if (data[i + 3] > 0) {
-                        data[i] = data[i + 1] = data[i + 2] = 0;
-                        data[i + 3] = 0;
-                    } else {
-                        data[i] = data[i + 1] = data[i + 2] = 255;
-                        data[i + 3] = 255;
-                    }
+                    data[i] = 255 - data[i];       // R
+                    data[i + 1] = 255 - data[i + 1]; // G
+                    data[i + 2] = 255 - data[i + 2]; // B
+                    data[i + 3] = 255;             // A (항상 불투명)
                 }
-                // Fill with white where there was nothing
                 ctx.putImageData(imageData, 0, 0);
-                // Actually do proper invert
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = 'white';
-                ctx.globalCompositeOperation = 'xor';
-                ctx.fillRect(0, 0, maskEditor.maskCanvas.width, maskEditor.maskCanvas.height);
-                ctx.globalCompositeOperation = 'source-over';
             };
 
             // Strength/Noise sliders
