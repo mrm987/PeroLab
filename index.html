@@ -2662,7 +2662,7 @@
 
                             <div class="row">
                                 <div>
-                                    <label>UC Preset</label>
+                                    <label>Undesired Content Preset</label>
                                     <select id="ucPreset">
                                         <option value="Heavy">Heavy</option>
                                         <option value="Light">Light</option>
@@ -5960,8 +5960,7 @@
             // 순수 NAI 이미지에 대한 경고 메시지
             const naiWarningHtml = isPureNaiImage ? `
                 <div style="background: #3a3520; border: 1px solid #665c30; padding: 8px; margin-bottom: 8px; border-radius: 4px; font-size: 11px;">
-                    ⚠️ <strong>순수 NAI 이미지</strong> - Quality Tags와 UC Preset 태그가 자동으로 제거되었습니다.
-                    생성 시 현재 설정에 따라 새 태그가 추가됩니다.
+                    ⚠️ <strong>순수 NAI 이미지</strong> - Vibe Transfer, Character Reference, Base Image 설정은 적용되지 않습니다.
                 </div>
             ` : '';
 
@@ -5997,10 +5996,6 @@
 • Vibe Transfer 설정
 • Character Reference
 • Base Image (img2img/inpaint)
-
-[프롬프트 관련]
-• Quality Tags와 UC Preset 태그가 제거되었습니다.
-• 생성 시 현재 설정에 따라 새 태그가 자동으로 추가됩니다.
 
 계속하시겠습니까?`;
             if (confirm(msg)) {
