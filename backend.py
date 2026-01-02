@@ -2296,6 +2296,95 @@ async def delete_vibe_cache_file(filename: str):
         return {"success": False, "error": str(e)}
 
 
+@app.post("/api/test-vibe-encode")
+async def test_vibe_encode(request: dict):
+    """NAI 원본 이미지로 encode-vibe 테스트 (디버그용)
+
+    Request body:
+    {
+        "image": "base64 이미지",
+        "model": "nai-diffusion-4-5-full",
+        "info_extracted": 0.7
+    }
+
+    Response:
+    {
+        "success": true,
+        "input_hash": "이미지 SHA256",
+        "input_length": 12345,
+        "output_length": 65000,
+        "output_hash": "인코딩 결과 SHA256"
+    }
+    """
+    import httpx
+    import hashlib
+
+    token = CONFIG.get("nai_token", "")
+    if not token:
+        return {"success": False, "error": "NAI token not set"}
+
+    image_b64 = request.get("image", "")
+    model = request.get("model", "nai-diffusion-4-5-full")
+    info_extracted = request.get("info_extracted", 1.0)
+
+    # 입력 이미지 정보
+    input_bytes = base64.b64decode(image_b64)
+    input_hash = hashlib.sha256(input_bytes).hexdigest()
+
+    print(f"[TEST-VIBE] Input image: {len(image_b64)} chars, {len(input_bytes)} bytes")
+    print(f"[TEST-VIBE] Input SHA256: {input_hash}")
+    print(f"[TEST-VIBE] Model: {model}, info_extracted: {info_extracted}")
+
+    # NAI API는 정수 값일 때 정수로 전송
+    info_val = int(info_extracted) if info_extracted == int(info_extracted) else info_extracted
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "image": image_b64,
+        "model": model,
+        "parameters": {
+            "information_extracted": info_val
+        }
+    }
+
+    print(f"[TEST-VIBE] Payload info_extracted: {info_val} (type: {type(info_val).__name__})")
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(
+            "https://image.novelai.net/ai/encode-vibe",
+            headers=headers,
+            json=payload
+        )
+
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "error": f"API error {response.status_code}: {response.text[:200]}"
+            }
+
+        # 응답 분석
+        output_bytes = response.content
+        output_b64 = base64.b64encode(output_bytes).decode('utf-8')
+        output_hash = hashlib.sha256(output_bytes).hexdigest()
+
+        print(f"[TEST-VIBE] Output: {len(output_b64)} chars, {len(output_bytes)} bytes")
+        print(f"[TEST-VIBE] Output SHA256: {output_hash}")
+
+        return {
+            "success": True,
+            "input_length": len(image_b64),
+            "input_bytes": len(input_bytes),
+            "input_hash": input_hash,
+            "output_length": len(output_b64),
+            "output_bytes": len(output_bytes),
+            "output_hash": output_hash
+        }
+
+
 @app.get("/")
 async def serve_index():
     """Serve index.html (캐시 비활성화)"""
