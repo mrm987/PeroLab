@@ -5317,6 +5317,29 @@
                     if (currentProvider === 'nai') {
                         fetchAnlasBalance();
                         updateAnlasCost();
+
+                        // V4+ 모델에서 바이브가 사용된 경우, vibeList의 인코딩 상태 갱신
+                        // (생성 완료 후 해당 설정으로 캐시됨)
+                        const currentModel = document.getElementById('naiModel').value;
+                        if (currentModel.includes('diffusion-4') && vibeList.length > 0) {
+                            let updated = false;
+                            vibeList.forEach(v => {
+                                // 현재 모델과 info_extracted가 인코딩된 값과 다르면 갱신
+                                const baseModel = currentModel.replace('-inpainting', '');
+                                const encodedBaseModel = (v.encoded_model || '').replace('-inpainting', '');
+                                const infoMatch = Math.abs((v.info_extracted || 1.0) - (v.encoded_info_extracted || v.info_extracted || 1.0)) <= 0.001;
+
+                                if (encodedBaseModel !== baseModel || !infoMatch) {
+                                    v.encoded_model = currentModel;
+                                    v.encoded_info_extracted = v.info_extracted || 1.0;
+                                    updated = true;
+                                }
+                            });
+                            if (updated) {
+                                renderVibeList();
+                                saveAppSettings();
+                            }
+                        }
                     }
 
                     if (data.progress?.queue_length === 0) {
@@ -6051,13 +6074,15 @@
                             // 기존 바이브에 같은 이름이 있으면 건너뛰기
                             const exists = vibeList.some(v => v.name === vibeInfo.name);
                             if (!exists && vibeList.length < 16) {
+                                const infoExtracted = vibeInfo.info_extracted || detail.info_extracted || 1.0;
                                 vibeList.push({
                                     image: detail.image,
-                                    strength: vibeInfo.strength || 0.6,
-                                    info_extracted: vibeInfo.info_extracted || 1.0,
+                                    strength: vibeInfo.strength || detail.strength || 0.6,
+                                    info_extracted: infoExtracted,
                                     name: vibeInfo.name,
                                     encoded: detail.vibe_data,
-                                    encoded_model: cached.model
+                                    encoded_model: cached.model,
+                                    encoded_info_extracted: detail.info_extracted || 1.0  // 캐시된 인코딩 시 사용된 값
                                 });
                                 loadedCount++;
                             }
@@ -6470,7 +6495,8 @@
                 image: v.image,
                 info_extracted: v.info_extracted,
                 encoded: !!v.encoded,  // 이미 인코딩된 바이브인지 여부
-                encoded_model: v.encoded_model  // 인코딩된 모델
+                encoded_model: v.encoded_model,  // 인코딩된 모델
+                encoded_info_extracted: v.encoded_info_extracted  // 인코딩 시 사용된 info_extracted
             })) : [];
 
             try {
@@ -7550,7 +7576,8 @@
                                 info_extracted: result.info_extracted,
                                 name: displayName,
                                 encoded: result.vibe_data,  // Pre-encoded vibe data
-                                encoded_model: result.model  // Model used for encoding
+                                encoded_model: result.model,  // Model used for encoding
+                                encoded_info_extracted: result.info_extracted  // Info extracted used for encoding
                             });
                             renderVibeList();
                             saveAppSettings();
@@ -7691,7 +7718,8 @@
                         info_extracted: result.vibe_info_extracted,
                         name: file.name,
                         encoded: result.vibe_data || null,
-                        encoded_model: result.vibe_model || null
+                        encoded_model: result.vibe_model || null,
+                        encoded_info_extracted: result.vibe_data ? result.vibe_info_extracted : null  // 캐시된 경우 인코딩 시 사용된 info_extracted
                     };
                 } else if (result.is_nai && result.nai_metadata) {
                     // NAI 생성 이미지 - 정규화된 메타데이터로 표시
@@ -7830,6 +7858,7 @@
                     if (pendingDropData.encoded) {
                         vibeEntry.encoded = pendingDropData.encoded;
                         vibeEntry.encoded_model = pendingDropData.encoded_model;
+                        vibeEntry.encoded_info_extracted = pendingDropData.encoded_info_extracted || vibeEntry.info_extracted;  // 인코딩 시 사용된 값
                     }
                     vibeList.push(vibeEntry);
                     renderVibeList();

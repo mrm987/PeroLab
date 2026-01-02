@@ -879,7 +879,11 @@ async def call_nai_api(req: GenerateRequest):
                     base_model = req.nai_model.replace("-inpainting", "")
                     encoded_base_model = encoded_model.replace("-inpainting", "") if encoded_model else ""
 
-                    if v.get("encoded") and encoded_base_model == base_model:
+                    # info_extracted 값도 비교 (인코딩 시점의 값과 현재 값)
+                    encoded_info_extracted = v.get("encoded_info_extracted", info_extracted)
+                    info_match = abs(info_extracted - encoded_info_extracted) <= 0.001
+
+                    if v.get("encoded") and encoded_base_model == base_model and info_match:
                         print(f"[NAI] Vibe {i+1}: using pre-encoded data (cached, model match)")
                         vibe_images.append(v["encoded"])
                     else:
@@ -889,6 +893,8 @@ async def call_nai_api(req: GenerateRequest):
 
                         if v.get("encoded") and encoded_base_model != base_model:
                             print(f"[NAI] Vibe {i+1}: model mismatch ({encoded_model} -> {req.nai_model}), re-encoding...")
+                        elif v.get("encoded") and not info_match:
+                            print(f"[NAI] Vibe {i+1}: info_extracted changed ({encoded_info_extracted} -> {info_extracted}), re-encoding...")
                         else:
                             print(f"[NAI] Vibe {i+1}: {orig_size[0]}x{orig_size[1]}, encoding for V4+...")
 
@@ -2473,12 +2479,17 @@ async def calculate_cost(request: dict):
     if vibes and "diffusion-4" in model:
         base_model = model.replace("-inpainting", "")
         for v in vibes:
-            # 이미 인코딩된 바이브: 모델 일치 여부 확인
+            # 이미 인코딩된 바이브: 모델 및 info_extracted 일치 여부 확인
             if v.get("encoded"):
                 encoded_model = v.get("encoded_model", "")
                 encoded_base_model = encoded_model.replace("-inpainting", "") if encoded_model else ""
-                # 모델 불일치 시 재인코딩 필요
-                if encoded_base_model != base_model:
+
+                # 현재 info_extracted vs 인코딩 시 사용된 값 비교
+                current_info = v.get("info_extracted", 1.0)
+                encoded_info = v.get("encoded_info_extracted", current_info)
+
+                # 모델 또는 info_extracted 불일치 시 재인코딩 필요
+                if encoded_base_model != base_model or abs(current_info - encoded_info) > 0.001:
                     uncached_vibe_count += 1
                 continue
 
