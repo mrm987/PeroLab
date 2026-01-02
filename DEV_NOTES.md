@@ -218,6 +218,22 @@ const normalized = normalizeMetadata(naiMetadata);
 applyMetadataSettings(normalized);
 ```
 
+#### 메타데이터 복원 가능 여부
+| 설정 | NAI 원본 | PeroPix 생성 | 비고 |
+|------|:--------:|:------------:|------|
+| 프롬프트/네거티브 | ✓ | ✓ | |
+| 시드/크기/스텝/CFG | ✓ | ✓ | |
+| 샘플러/스케줄러 | ✓ | ✓ | |
+| SMEA/Variety+/Furry | ✓ | ✓ | |
+| UC Preset/Quality Tags | ✓ | ✓ | |
+| 캐릭터 프롬프트 | ✓ | ✓ | v4_prompt에서 추출 |
+| 모델명 | △ | ✓ | NAI는 내부 타입명일 수 있음 |
+| **바이브 설정** | ✗ | △ | 캐시에서 이름 매칭 필요 |
+| **캐릭터 레퍼런스** | ✗ | ✗ | 이미지 데이터 필요 |
+| **베이스 이미지/마스크** | ✗ | ✗ | 이미지 데이터 필요 |
+
+**원칙**: 이미지 데이터가 필요한 설정은 메타데이터에 저장/복원 불가 (파일 크기)
+
 ### 슬롯 이미지 데이터 (card._imageData)
 ```javascript
 {

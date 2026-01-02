@@ -6011,9 +6011,15 @@
 
             autoSaveSettings();
 
-            // 바이브 정보 없음 경고 (NAI 원본 이미지인 경우)
-            if (!metadata.vibe_transfer && vibeList.length > 0) {
-                showToast('설정 적용됨 (바이브는 복원 불가)', 'warning');
+            // NAI 원본 이미지: 이미지 데이터가 필요한 설정은 복원 불가
+            // (바이브, 캐릭터 레퍼런스, 베이스 이미지 - 메타데이터에 이미지 없음)
+            const hasVibeActive = vibeList.length > 0;
+            const hasCharRefActive = charRefData !== null;
+            const hasBaseImageActive = baseImageData.enabled;
+            const isNaiOriginal = !metadata.vibe_transfer;  // PeroPix 확장 필드 없음
+
+            if (isNaiOriginal && (hasVibeActive || hasCharRefActive || hasBaseImageActive)) {
+                showToast('설정 적용됨 (이미지 기반 설정은 유지됨)', 'warning');
             } else {
                 showToast('설정을 불러왔습니다', 'success');
             }
