@@ -156,14 +156,19 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 
 ### 8. NAI 웹과 바이브 생성 결과 불일치
 **문제**: 동일한 설정/바이브로 생성해도 NAI 웹과 PeroPix 결과물이 다름
-**원인**: `ensure_png_base64()` 함수가 RGBA 이미지를 RGB로 변환 (흰색 배경 추가)
-- NAI 웹: RGBA 원본 이미지로 `/ai/encode-vibe` 호출
-- PeroPix: RGB 변환된 이미지로 호출 → 다른 바이브 인코딩 결과
-**해결**: RGBA PNG 이미지도 원본 그대로 유지하도록 수정
+**원인**: `/ai/encode-vibe` API payload 구조가 NAI 웹과 달랐음
+- NAI 웹: `{ image, information_extracted, model }` (최상위 레벨)
+- PeroPix: `{ image, model, parameters: { information_extracted } }` (잘못된 구조)
+**해결**:
+1. payload 구조를 NAI 웹과 동일하게 수정
+2. RGBA PNG 이미지도 원본 그대로 유지 (불필요한 RGB 변환 제거)
 ```python
-# 이미 PNG이고 RGB 또는 RGBA이면 원본 그대로 반환
-if not force_reencode and pil_img.format == 'PNG' and pil_img.mode in ('RGB', 'RGBA'):
-    return base64_image
+# encode-vibe payload (NAI 웹과 동일)
+payload = {
+    "image": image_base64,
+    "information_extracted": info_val,
+    "model": model
+}
 ```
 
 ---
