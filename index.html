@@ -2810,9 +2810,11 @@
             <h3 id="dropModalTitle">이미지 가져오기</h3>
             <img id="dropModalPreview" class="preview" src="" alt="">
             <div id="dropModalMetadata" class="metadata"></div>
-            <div class="buttons">
+            <div class="buttons" id="dropModalButtons">
                 <button type="button" class="btn btn-secondary" id="dropModalCancel">취소</button>
                 <button type="button" class="btn" id="dropModalPromptOnly" style="display: none;">프롬프트만</button>
+                <button type="button" class="btn" id="dropModalSeedOnly" style="display: none;">시드만</button>
+                <button type="button" class="btn" id="dropModalAsVibe" style="display: none;">바이브 추가</button>
                 <button type="button" class="btn btn-primary" id="dropModalConfirm">적용</button>
             </div>
         </div>
@@ -6981,7 +6983,10 @@
                         <div><strong>SMEA:</strong> ${smeaStr}, <strong>Variety+:</strong> ${varietyStr}</div>
                         <div><strong>Model:</strong> ${meta.request_type || 'N/A'}</div>
                     `;
-                    document.getElementById('dropModalConfirm').textContent = '설정에 적용';
+                    document.getElementById('dropModalConfirm').textContent = '전체 적용';
+                    document.getElementById('dropModalPromptOnly').style.display = 'inline-block';
+                    document.getElementById('dropModalSeedOnly').style.display = 'inline-block';
+                    document.getElementById('dropModalAsVibe').style.display = 'inline-block';
                     pendingDropData = {
                         type: 'nai',
                         metadata: meta,
@@ -7007,25 +7012,71 @@
             }
         });
 
-        // 모달 버튼 이벤트
-        document.getElementById('dropModalCancel').onclick = () => {
+        // 모달 닫기 헬퍼
+        function closeDropModal() {
             dropModal.classList.remove('active');
             pendingDropData = null;
             window._pendingLoadMetadata = null;
             document.getElementById('dropModalPreview').style.display = '';
             document.getElementById('dropModalPromptOnly').style.display = 'none';
+            document.getElementById('dropModalSeedOnly').style.display = 'none';
+            document.getElementById('dropModalAsVibe').style.display = 'none';
             document.getElementById('dropModalConfirm').textContent = '확인';
+        }
+
+        // 모달 버튼 이벤트
+        document.getElementById('dropModalCancel').onclick = () => {
+            closeDropModal();
         };
 
         // 프롬프트만 적용 버튼
         document.getElementById('dropModalPromptOnly').onclick = () => {
             if (window._pendingLoadMetadata) {
                 applyPromptOnly(window._pendingLoadMetadata);
-                window._pendingLoadMetadata = null;
-                dropModal.classList.remove('active');
-                document.getElementById('dropModalPreview').style.display = '';
-                document.getElementById('dropModalPromptOnly').style.display = 'none';
-                document.getElementById('dropModalConfirm').textContent = '확인';
+                closeDropModal();
+            } else if (pendingDropData && pendingDropData.type === 'nai') {
+                const meta = pendingDropData.metadata;
+                if (meta.prompt) document.getElementById('basePrompt').value = meta.prompt;
+                if (meta.uc) document.getElementById('negativePrompt').value = meta.uc;
+                saveAppSettings();
+                showToast('프롬프트만 적용됨', 'success');
+                closeDropModal();
+            }
+        };
+
+        // 시드만 적용 버튼
+        document.getElementById('dropModalSeedOnly').onclick = () => {
+            if (pendingDropData && pendingDropData.type === 'nai') {
+                const meta = pendingDropData.metadata;
+                if (meta.seed) {
+                    document.getElementById('seed').value = meta.seed;
+                    saveAppSettings();
+                    showToast(`시드 ${meta.seed} 적용됨`, 'success');
+                }
+                closeDropModal();
+            }
+        };
+
+        // 바이브로 추가 버튼
+        document.getElementById('dropModalAsVibe').onclick = () => {
+            if (pendingDropData && pendingDropData.image) {
+                if (vibeList.length >= 16) {
+                    showToast('바이브는 최대 16개까지만 추가할 수 있습니다', 'error');
+                } else {
+                    vibeList.push({
+                        image: pendingDropData.image,
+                        strength: 0.6,
+                        info_extracted: 1.0,
+                        name: pendingDropData.name
+                    });
+                    renderVibeList();
+                    saveAppSettings();
+                    updateAnlasCost();
+                    document.getElementById('enableVibeTransfer').checked = true;
+                    document.getElementById('vibeTransferSettings').style.display = 'block';
+                    showToast('바이브에 추가됨', 'success');
+                }
+                closeDropModal();
             }
         };
 
@@ -7033,11 +7084,7 @@
             // 설정 불러오기 처리
             if (window._pendingLoadMetadata) {
                 applyMetadataSettings(window._pendingLoadMetadata);
-                window._pendingLoadMetadata = null;
-                dropModal.classList.remove('active');
-                document.getElementById('dropModalPreview').style.display = '';
-                document.getElementById('dropModalPromptOnly').style.display = 'none';
-                document.getElementById('dropModalConfirm').textContent = '확인';
+                closeDropModal();
                 return;
             }
 
@@ -7161,8 +7208,7 @@
                 }
             }
 
-            dropModal.classList.remove('active');
-            pendingDropData = null;
+            closeDropModal();
         };
     </script>
 </body>
