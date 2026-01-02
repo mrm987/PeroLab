@@ -7951,8 +7951,20 @@
                 }
             } else if (pendingDropData.type === 'nai') {
                 // NAI 메타데이터 적용 - 정규화 후 applyMetadataSettings 사용
-                const normalized = normalizeMetadata(pendingDropData.metadata);
-                applyMetadataSettings(normalized);
+                const doApply = () => {
+                    const normalized = normalizeMetadata(pendingDropData.metadata);
+                    applyMetadataSettings(normalized);
+                    closeDropModal();
+                };
+
+                // 순수 NAI 이미지면 경고 팝업 표시
+                if (window._isPureNaiImage) {
+                    showPureNaiWarning(doApply);
+                    return;  // closeDropModal은 doApply 안에서 호출
+                } else {
+                    doApply();
+                    return;
+                }
             } else if (pendingDropData.type === 'plain') {
                 // 일반 이미지를 바이브로 추가
                 if (vibeList.length >= 16) {
