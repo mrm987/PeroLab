@@ -1780,6 +1780,37 @@ async def extract_metadata(request: dict):
             except:
                 pass
 
+        # 하위 호환: 레거시 peropix 필드 (Comment가 없는 경우)
+        if not nai_metadata and 'peropix' in metadata:
+            try:
+                legacy = json.loads(metadata['peropix'])
+                # 레거시 형식을 NAI 호환 형식으로 변환
+                nai_metadata = {
+                    "prompt": legacy.get("prompt", ""),
+                    "uc": legacy.get("negative_prompt", ""),
+                    "seed": legacy.get("seed"),
+                    "width": legacy.get("width"),
+                    "height": legacy.get("height"),
+                    "steps": legacy.get("steps"),
+                    "scale": legacy.get("cfg"),
+                    "sampler": legacy.get("sampler"),
+                    "noise_schedule": legacy.get("scheduler"),
+                    "request_type": legacy.get("nai_model"),
+                    "ucPreset": legacy.get("uc_preset"),
+                    "qualityToggle": legacy.get("quality_tags"),
+                    "cfg_rescale": legacy.get("cfg_rescale"),
+                    "peropix": {
+                        "version": 0,  # 레거시
+                        "provider": legacy.get("provider", "nai"),
+                        "character_prompts": legacy.get("character_prompts", []),
+                        "variety_plus": legacy.get("variety_plus", False),
+                        "furry_mode": legacy.get("furry_mode", False),
+                        "local_model": legacy.get("model", "")
+                    }
+                }
+            except:
+                pass
+
         return {
             "success": True,
             "is_vibe": is_vibe,
