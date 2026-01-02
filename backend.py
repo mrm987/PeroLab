@@ -727,7 +727,18 @@ async def encode_vibe_v4(image_base64: str, model: str, info_extracted: float,
     cache_key = get_vibe_cache_key(image_base64, model, info_extracted)
     cached = get_cached_vibe(cache_key)
     if cached:
-        print(f"[NAI] Vibe cache hit: {cache_key}")
+        print(f"[NAI] Vibe cache hit: {cache_key}, data length: {len(cached)}")
+        # 캐시 데이터 기본 검증 (base64 형식 확인)
+        try:
+            import base64 as b64
+            decoded = b64.b64decode(cached)
+            print(f"[NAI] Vibe cache data valid, decoded size: {len(decoded)} bytes")
+        except Exception as e:
+            print(f"[NAI] Vibe cache data invalid (not valid base64): {e}")
+            # 손상된 캐시 무시하고 새로 인코딩
+            cached = None
+
+    if cached:
         return cached
 
     print(f"[NAI] Vibe cache miss, encoding...")
