@@ -761,12 +761,11 @@ async def encode_vibe_v4(image_base64: str, model: str, info_extracted: float,
     # NAI API는 정수 값일 때 정수로 전송 (1.0 -> 1)
     info_val = int(info_extracted) if info_extracted == int(info_extracted) else info_extracted
 
+    # NAI 웹과 동일한 payload 구조 (information_extracted는 최상위 레벨)
     payload = {
         "image": image_base64,
-        "model": model,
-        "parameters": {
-            "information_extracted": info_val
-        }
+        "information_extracted": info_val,
+        "model": model
     }
 
     async with httpx.AsyncClient(timeout=120) as client:
@@ -2343,12 +2342,11 @@ async def test_vibe_encode(request: dict):
         "Content-Type": "application/json",
     }
 
+    # NAI 웹과 동일한 payload 구조
     payload = {
         "image": image_b64,
-        "model": model,
-        "parameters": {
-            "information_extracted": info_val
-        }
+        "information_extracted": info_val,
+        "model": model
     }
 
     print(f"[TEST-VIBE] Payload info_extracted: {info_val} (type: {type(info_val).__name__})")
