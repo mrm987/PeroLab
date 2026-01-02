@@ -5844,6 +5844,15 @@
             }
 
             // NAI 형식 → 앱 내부 형식 변환
+            // 모델명: request_type이 실제 모델명인지 확인 (NAI 내부 타입명 필터)
+            let naiModel = '';
+            if (meta.request_type && meta.request_type.startsWith('nai-diffusion')) {
+                naiModel = meta.request_type;
+            } else if (meta.model && meta.model.startsWith('nai-diffusion')) {
+                naiModel = meta.model;
+            }
+            // request_type이 "PromptGenerateRequest" 같은 내부 타입이면 무시
+
             return {
                 prompt: meta.prompt || '',
                 negative_prompt: meta.uc || '',
@@ -5855,7 +5864,7 @@
                 cfg: meta.scale,
                 sampler: meta.sampler,
                 scheduler: meta.noise_schedule || 'karras',
-                nai_model: meta.request_type || '',
+                nai_model: naiModel,
                 smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
                 uc_preset: ucPreset,
                 quality_tags: meta.qualityToggle,
