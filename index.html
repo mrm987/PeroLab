@@ -2566,6 +2566,29 @@
                             </div>
                         </div>
 
+                        <!-- NAI Advanced Settings -->
+                        <div id="naiAdvancedSettings" class="provider-section" data-provider="nai">
+                            <div class="row">
+                                <div>
+                                    <label>Prompt Guidance Rescale</label>
+                                    <input type="range" id="cfgRescale" value="0" min="0" max="1" step="0.02" style="width: 100%;">
+                                    <small style="display: flex; justify-content: space-between;"><span>0</span><span id="cfgRescaleValue">0</span><span>1</span></small>
+                                </div>
+                                <div>
+                                    <label>Uncond Scale</label>
+                                    <input type="number" id="uncondScale" value="1.0" min="0" max="1.5" step="0.05">
+                                </div>
+                            </div>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="varietyPlus">
+                                <label for="varietyPlus">Variety+</label>
+                            </div>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="decrisper">
+                                <label for="decrisper">Decrisper</label>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div>
                                 <label>Sampler</label>
@@ -4514,6 +4537,10 @@
                 request.uc_preset = document.getElementById('ucPreset').value;
                 request.quality_tags = document.getElementById('qualityTags').checked;
                 request.furry_mode = furryModeEnabled;
+                request.cfg_rescale = parseFloat(document.getElementById('cfgRescale').value);
+                request.uncond_scale = parseFloat(document.getElementById('uncondScale').value);
+                request.variety_plus = document.getElementById('varietyPlus').checked;
+                request.decrisper = document.getElementById('decrisper').checked;
 
                 // Vibe Transfer
                 if (document.getElementById('enableVibeTransfer').checked && vibeList.length > 0) {
@@ -5502,6 +5529,11 @@
             document.getElementById('upscaleDenoiseValue').textContent = this.value;
         };
 
+        // CFG Rescale slider value display
+        document.getElementById('cfgRescale').oninput = function() {
+            document.getElementById('cfgRescaleValue').textContent = this.value;
+        };
+
         // ============================================================
         // Vibe Transfer
         // ============================================================
@@ -5878,6 +5910,10 @@
                 ucPreset: document.getElementById('ucPreset').value,
                 qualityTags: document.getElementById('qualityTags').checked,
                 furryModeEnabled: furryModeEnabled,
+                cfgRescale: document.getElementById('cfgRescale').value,
+                uncondScale: document.getElementById('uncondScale').value,
+                varietyPlus: document.getElementById('varietyPlus').checked,
+                decrisper: document.getElementById('decrisper').checked,
 
                 // Vibe Transfer
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
@@ -5993,6 +6029,13 @@
                     modeToggle.title = '퍼리 모드';
                     modeToggle.classList.add('furry');
                 }
+                if (settings.cfgRescale !== undefined) {
+                    document.getElementById('cfgRescale').value = settings.cfgRescale;
+                    document.getElementById('cfgRescaleValue').textContent = settings.cfgRescale;
+                }
+                if (settings.uncondScale !== undefined) document.getElementById('uncondScale').value = settings.uncondScale;
+                if (settings.varietyPlus !== undefined) document.getElementById('varietyPlus').checked = settings.varietyPlus;
+                if (settings.decrisper !== undefined) document.getElementById('decrisper').checked = settings.decrisper;
 
                 // Vibe Transfer
                 if (settings.enableVibeTransfer !== undefined) {
@@ -6102,7 +6145,8 @@
                 'sampler', 'scheduler', 'seed', 'randomSeed', 'naiModel', 'smea',
                 'ucPreset', 'qualityTags', 'localModel', 'enableUpscale', 'upscaleModel',
                 'downscaleRatio', 'sizeAlignment', 'upscaleSteps', 'upscaleCfg',
-                'upscaleDenoise', 'repeatCount', 'sizePreset'
+                'upscaleDenoise', 'repeatCount', 'sizePreset',
+                'cfgRescale', 'uncondScale', 'varietyPlus', 'decrisper'
             ];
             
             inputs.forEach(id => {
@@ -6917,14 +6961,25 @@
                 } else if (result.is_nai && result.nai_metadata) {
                     // NAI 생성 이미지
                     const meta = result.nai_metadata;
-                    document.getElementById('dropModalTitle').textContent = '🖼️ 생성 이미지 메타데이터';
+                    document.getElementById('dropModalTitle').textContent = '🖼️ NAI 생성 이미지';
+
+                    // SMEA 표시
+                    let smeaStr = 'None';
+                    if (meta.sm_dyn) smeaStr = 'SMEA+DYN';
+                    else if (meta.sm) smeaStr = 'SMEA';
+
+                    // Variety+ 표시
+                    const varietyStr = (meta.skip_cfg_above_sigma !== undefined && meta.skip_cfg_above_sigma !== null) ? 'On' : 'Off';
+
                     metadataDiv.innerHTML = `
                         <div><strong>Prompt:</strong> ${(meta.prompt || '').substring(0, 100)}${(meta.prompt || '').length > 100 ? '...' : ''}</div>
                         <div><strong>Negative:</strong> ${(meta.uc || '').substring(0, 50)}${(meta.uc || '').length > 50 ? '...' : ''}</div>
                         <div><strong>Seed:</strong> ${meta.seed || 'N/A'}</div>
                         <div><strong>Size:</strong> ${meta.width}x${meta.height}</div>
-                        <div><strong>Steps:</strong> ${meta.steps}, <strong>CFG:</strong> ${meta.scale}</div>
-                        <div><strong>Sampler:</strong> ${meta.sampler}</div>
+                        <div><strong>Steps:</strong> ${meta.steps}, <strong>CFG:</strong> ${meta.scale}, <strong>Rescale:</strong> ${meta.cfg_rescale || 0}</div>
+                        <div><strong>Sampler:</strong> ${meta.sampler}, <strong>Scheduler:</strong> ${meta.noise_schedule || 'native'}</div>
+                        <div><strong>SMEA:</strong> ${smeaStr}, <strong>Variety+:</strong> ${varietyStr}</div>
+                        <div><strong>Model:</strong> ${meta.request_type || 'N/A'}</div>
                     `;
                     document.getElementById('dropModalConfirm').textContent = '설정에 적용';
                     pendingDropData = {
@@ -7010,6 +7065,8 @@
             } else if (pendingDropData.type === 'nai') {
                 // NAI 메타데이터 적용
                 const meta = pendingDropData.metadata;
+
+                // 기본 설정
                 if (meta.prompt) document.getElementById('basePrompt').value = meta.prompt;
                 if (meta.uc) document.getElementById('negativePrompt').value = meta.uc;
                 if (meta.seed) document.getElementById('seed').value = meta.seed;
@@ -7017,14 +7074,73 @@
                 if (meta.height) document.getElementById('height').value = meta.height;
                 if (meta.steps) document.getElementById('steps').value = meta.steps;
                 if (meta.scale) document.getElementById('cfg').value = meta.scale;
+
+                // Sampler (NAI uses k_ prefix)
                 if (meta.sampler) {
                     const samplerSelect = document.getElementById('sampler');
                     if ([...samplerSelect.options].some(o => o.value === meta.sampler)) {
                         samplerSelect.value = meta.sampler;
                     }
                 }
+
+                // Scheduler (noise_schedule)
+                if (meta.noise_schedule) {
+                    const schedulerSelect = document.getElementById('scheduler');
+                    const schedMap = { 'karras': 'karras', 'exponential': 'exponential', 'polyexponential': 'polyexponential', 'native': 'native' };
+                    const mappedSched = schedMap[meta.noise_schedule] || meta.noise_schedule;
+                    if ([...schedulerSelect.options].some(o => o.value === mappedSched)) {
+                        schedulerSelect.value = mappedSched;
+                    }
+                }
+
+                // SMEA
+                if (meta.sm_dyn) {
+                    document.getElementById('smea').value = 'SMEA+DYN';
+                } else if (meta.sm) {
+                    document.getElementById('smea').value = 'SMEA';
+                } else {
+                    document.getElementById('smea').value = 'none';
+                }
+
+                // Model (request_type에서 추출)
+                if (meta.request_type) {
+                    const modelSelect = document.getElementById('naiModel');
+                    if ([...modelSelect.options].some(o => o.value === meta.request_type)) {
+                        modelSelect.value = meta.request_type;
+                    }
+                }
+
+                // Advanced NAI settings
+                if (meta.cfg_rescale !== undefined) {
+                    document.getElementById('cfgRescale').value = meta.cfg_rescale;
+                    document.getElementById('cfgRescaleValue').textContent = meta.cfg_rescale;
+                }
+                if (meta.uncond_scale !== undefined) {
+                    document.getElementById('uncondScale').value = meta.uncond_scale;
+                }
+                if (meta.skip_cfg_above_sigma !== undefined && meta.skip_cfg_above_sigma !== null) {
+                    document.getElementById('varietyPlus').checked = true;
+                } else {
+                    document.getElementById('varietyPlus').checked = false;
+                }
+                if (meta.dynamic_thresholding !== undefined) {
+                    document.getElementById('decrisper').checked = meta.dynamic_thresholding;
+                }
+
+                // UC Preset
+                if (meta.ucPreset !== undefined) {
+                    const ucMap = { 0: 'Heavy', 1: 'Light', 2: 'Human Focus', 3: 'None' };
+                    const ucValue = ucMap[meta.ucPreset] || 'Heavy';
+                    document.getElementById('ucPreset').value = ucValue;
+                }
+
+                // Quality Tags
+                if (meta.qualityToggle !== undefined) {
+                    document.getElementById('qualityTags').checked = meta.qualityToggle;
+                }
+
                 saveAppSettings();
-                showToast('설정이 적용됨', 'success');
+                showToast('NAI 설정이 적용됨', 'success');
             } else if (pendingDropData.type === 'plain') {
                 // 일반 이미지를 바이브로 추가
                 if (vibeList.length >= 16) {

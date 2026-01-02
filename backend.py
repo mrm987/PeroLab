@@ -441,6 +441,10 @@ class GenerateRequest(BaseModel):
     uc_preset: str = "Heavy"
     quality_tags: bool = True
     furry_mode: bool = False
+    cfg_rescale: float = 0.0
+    uncond_scale: float = 1.0
+    variety_plus: bool = False
+    decrisper: bool = False
 
     # NAI Vibe Transfer (최대 16개)
     vibe_transfer: List[dict] = []  # [{"image": base64, "info_extracted": 1.0, "strength": 0.6}, ...]
@@ -486,6 +490,11 @@ class MultiGenerateRequest(BaseModel):
     smea: str = "none"
     uc_preset: str = "Heavy"
     quality_tags: bool = True
+    furry_mode: bool = False
+    cfg_rescale: float = 0.0
+    uncond_scale: float = 1.0
+    variety_plus: bool = False
+    decrisper: bool = False
     model: str = ""
     loras: List[dict] = []
     output_folder: str = ""  # 비어있으면 outputs에 직접 저장, 있으면 outputs/폴더명에 저장
@@ -787,14 +796,14 @@ async def call_nai_api(req: GenerateRequest):
         "qualityToggle": req.quality_tags,
         "sm": sm,
         "sm_dyn": sm_dyn,
-        "dynamic_thresholding": False,
+        "dynamic_thresholding": req.decrisper,
         "controlnet_strength": 1.0,
         "legacy": False,
         "add_original_image": True,
-        "cfg_rescale": 0.0,
+        "cfg_rescale": req.cfg_rescale,
         "noise_schedule": nai_scheduler,
         "legacy_v3_extend": False,
-        "uncond_scale": 1.0,
+        "uncond_scale": req.uncond_scale,
         "negative_prompt": req.negative_prompt,
         "prompt": prompt_for_nai,
         "extra_noise_seed": int(seed),
@@ -815,7 +824,7 @@ async def call_nai_api(req: GenerateRequest):
                 "char_captions": [{"char_caption": "", "centers": [{"x": 0.5, "y": 0.5}]} for _ in req.character_prompts] if req.character_prompts else []
             }
         },
-        "skip_cfg_above_sigma": None
+        "skip_cfg_above_sigma": 19 if req.variety_plus else None
     }
     
     # k_euler_ancestral + non-native scheduler 조합에서 필수 파라미터
@@ -1364,6 +1373,11 @@ async def process_job(job):
             smea=req.smea,
             uc_preset=req.uc_preset,
             quality_tags=req.quality_tags,
+            furry_mode=req.furry_mode,
+            cfg_rescale=req.cfg_rescale,
+            uncond_scale=req.uncond_scale,
+            variety_plus=req.variety_plus,
+            decrisper=req.decrisper,
             model=req.model,
             loras=req.loras,
             # NAI Vibe Transfer & Character Reference
@@ -1456,6 +1470,10 @@ async def process_job(job):
                 "smea": req.smea,
                 "uc_preset": req.uc_preset,
                 "quality_tags": req.quality_tags,
+                "cfg_rescale": req.cfg_rescale,
+                "uncond_scale": req.uncond_scale,
+                "variety_plus": req.variety_plus,
+                "decrisper": req.decrisper,
                 # Local 설정
                 "model": req.model,
             }
