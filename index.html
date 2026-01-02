@@ -3870,7 +3870,6 @@
 
                 // 저장되지 않은 경우 갤러리에 저장
                 try {
-                    // 백엔드에서 원본 파일의 메타데이터를 직접 읽음
                     // 현재 열린 갤러리 폴더에 저장
                     const response = await fetch(`${API_BASE}/api/gallery/save`, {
                         method: 'POST',
@@ -3879,7 +3878,8 @@
                             image: card._imageData.image,  // base64 (하위 호환)
                             image_path: card._imageData.image_path,  // 파일 경로
                             filename: card._imageData.filename,
-                            folder: currentGalleryFolder || ''  // 현재 갤러리 폴더
+                            folder: currentGalleryFolder || '',  // 현재 갤러리 폴더
+                            metadata: card._imageData.metadata  // 메타데이터 (JPG/WebP 저장 시 필요)
                         })
                     });
                     const result = await response.json();
