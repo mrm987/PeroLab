@@ -1788,11 +1788,35 @@ async def get_gallery(folder: str = ""):
                     if isinstance(value, str):
                         metadata[key] = value
 
+            # NAI 메타데이터 (Comment 필드)
+            nai_metadata = None
             if 'Comment' in metadata:
                 try:
                     nai_metadata = json.loads(metadata['Comment'])
                 except:
                     pass
+
+            # PeroPix 메타데이터 (peropix 필드) - 우선 사용
+            peropix_metadata = None
+            if 'peropix' in metadata:
+                try:
+                    peropix_metadata = json.loads(metadata['peropix'])
+                except:
+                    pass
+
+            # seed와 prompt 추출 (peropix 우선, nai로 보완)
+            seed = None
+            prompt = ""
+            has_metadata = False
+
+            if peropix_metadata:
+                seed = peropix_metadata.get("seed")
+                prompt = peropix_metadata.get("prompt", "")[:100]
+                has_metadata = True
+            elif nai_metadata:
+                seed = nai_metadata.get("seed")
+                prompt = nai_metadata.get("prompt", "")[:100]
+                has_metadata = True
 
             # 썸네일 생성 (고해상도 디스플레이용 2x)
             thumb = image.copy()
@@ -1804,9 +1828,9 @@ async def get_gallery(folder: str = ""):
             images.append({
                 "filename": filepath.name,
                 "thumbnail": thumb_base64,
-                "seed": nai_metadata.get("seed") if nai_metadata else None,
-                "prompt": nai_metadata.get("prompt", "")[:100] if nai_metadata else "",
-                "has_metadata": nai_metadata is not None
+                "seed": seed,
+                "prompt": prompt,
+                "has_metadata": has_metadata
             })
         except Exception as e:
             print(f"[Gallery] Error loading {filepath}: {e}")

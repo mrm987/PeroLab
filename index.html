@@ -4484,7 +4484,6 @@
             { value: 'k_dpmpp_sde', label: 'DPM++ SDE' },
         ];
         const NAI_SCHEDULERS = [
-            { value: 'native', label: 'Native' },
             { value: 'karras', label: 'Karras' },
             { value: 'exponential', label: 'Exponential' },
             { value: 'polyexponential', label: 'Polyexponential' },
@@ -7253,7 +7252,7 @@
                                 steps: meta.steps,
                                 cfg: meta.cfg || meta.scale,
                                 sampler: meta.sampler,
-                                scheduler: meta.scheduler || meta.noise_schedule || 'native',
+                                scheduler: meta.scheduler || meta.noise_schedule || 'karras',
                                 nai_model: meta.nai_model || meta.request_type || '',
                                 smea: meta.smea || (meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none')),
                                 uc_preset: meta.uc_preset || meta.ucPreset || '',
