@@ -921,6 +921,7 @@ async def call_nai_api(req: GenerateRequest):
 
     # Base Image (img2img / inpaint) 처리
     action = "generate"
+    model_to_use = req.nai_model
     if req.base_image:
         # 이미지를 PNG로 변환
         base_png = ensure_png_base64(req.base_image)
@@ -931,8 +932,11 @@ async def call_nai_api(req: GenerateRequest):
             action = "infill"
             mask_png = ensure_png_base64(req.base_mask)
             params["mask"] = mask_png
-            # 인페인트는 noise 파라미터 없음
-            print(f"[NAI] Mode: Inpaint, strength={req.base_strength}")
+            # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
+            # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
+            if not model_to_use.endswith("-inpainting"):
+                model_to_use = f"{model_to_use}-inpainting"
+            print(f"[NAI] Mode: Inpaint, model={model_to_use}, strength={req.base_strength}")
         else:
             action = "img2img"
             # img2img만 noise 파라미터 사용
@@ -941,7 +945,7 @@ async def call_nai_api(req: GenerateRequest):
 
     payload = {
         "input": req.prompt,
-        "model": req.nai_model,
+        "model": model_to_use,
         "action": action,
         "parameters": params
     }
@@ -956,7 +960,7 @@ async def call_nai_api(req: GenerateRequest):
         debug_params["image"] = f"<base64 len={len(debug_params['image'])}>"
     if "mask" in debug_params:
         debug_params["mask"] = f"<base64 len={len(debug_params['mask'])}>"
-    debug_payload = {"input": req.prompt[:100], "model": req.nai_model, "action": action, "parameters": debug_params}
+    debug_payload = {"input": req.prompt[:100], "model": model_to_use, "action": action, "parameters": debug_params}
     with open("nai_debug_payload.json", "w", encoding="utf-8") as f:
         json.dump(debug_payload, f, indent=2, ensure_ascii=False)
     print(f"[NAI] Debug payload saved to nai_debug_payload.json")
@@ -964,7 +968,7 @@ async def call_nai_api(req: GenerateRequest):
     # 디버깅 로그
     vibe_count = len(params.get("reference_image_multiple", []))
     has_char_ref = "director_reference_images" in params
-    print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={req.nai_model}")
+    print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={model_to_use}")
     print(f"[NAI] Vibe Transfer: {vibe_count} images, Character Reference: {has_char_ref}")
     
     # Vibe 상세 로그
