@@ -1769,6 +1769,8 @@ async def extract_metadata(request: dict):
                 if isinstance(value, str):
                     metadata[key] = value
 
+        print(f"[DEBUG extract_metadata] keys found: {list(metadata.keys())}")
+
         # 바이브 파일 여부 확인
         is_vibe = 'vibe_data' in metadata
 
