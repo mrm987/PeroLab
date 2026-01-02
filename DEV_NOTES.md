@@ -154,6 +154,18 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 **문제**: 이미지보다 하단 info bar가 먼저 표시됨
 **해결**: `img.onload` 콜백에서 카드 삽입
 
+### 8. NAI 웹과 바이브 생성 결과 불일치
+**문제**: 동일한 설정/바이브로 생성해도 NAI 웹과 PeroPix 결과물이 다름
+**원인**: `ensure_png_base64()` 함수가 RGBA 이미지를 RGB로 변환 (흰색 배경 추가)
+- NAI 웹: RGBA 원본 이미지로 `/ai/encode-vibe` 호출
+- PeroPix: RGB 변환된 이미지로 호출 → 다른 바이브 인코딩 결과
+**해결**: RGBA PNG 이미지도 원본 그대로 유지하도록 수정
+```python
+# 이미 PNG이고 RGB 또는 RGBA이면 원본 그대로 반환
+if not force_reencode and pil_img.format == 'PNG' and pil_img.mode in ('RGB', 'RGBA'):
+    return base64_image
+```
+
 ---
 
 ## 주요 데이터 구조
