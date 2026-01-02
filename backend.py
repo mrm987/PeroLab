@@ -759,11 +759,14 @@ async def encode_vibe_v4(image_base64: str, model: str, info_extracted: float,
         "Content-Type": "application/json",
     }
 
+    # NAI API는 정수 값일 때 정수로 전송 (1.0 -> 1)
+    info_val = int(info_extracted) if info_extracted == int(info_extracted) else info_extracted
+
     payload = {
         "image": image_base64,
         "model": model,
         "parameters": {
-            "information_extracted": info_extracted
+            "information_extracted": info_val
         }
     }
 
@@ -918,7 +921,11 @@ async def call_nai_api(req: GenerateRequest):
                     vibe_images.append(png_image)
                     print(f"[NAI] Vibe {i+1}: using raw image for V3")
 
-                info_extracted_list.append(info_extracted)
+                # NAI API는 정수 값일 때 정수로 전송 (1.0 -> 1)
+                if info_extracted == int(info_extracted):
+                    info_extracted_list.append(int(info_extracted))
+                else:
+                    info_extracted_list.append(info_extracted)
                 strength_list.append(strength)
             except Exception as e:
                 print(f"[NAI] Vibe {i+1} error: {e}")
