@@ -1567,9 +1567,12 @@ async def process_job(job):
             strip_metadata = getattr(req, 'strip_metadata', False)
             jpg_quality = getattr(req, 'jpg_quality', 95)
 
+            print(f"[DEBUG save] save_format={save_format}, strip_metadata={strip_metadata}")
+
             # 메타데이터 보존 및 추가 (PNG only, strip_metadata가 False일 때만)
             from PIL.PngImagePlugin import PngInfo
             pnginfo = PngInfo() if save_format == 'png' and not strip_metadata else None
+            print(f"[DEBUG save] pnginfo created: {pnginfo is not None}")
 
             # 기존 메타데이터 복사 (Comment 제외 - 나중에 통합 메타데이터로 대체)
             if pnginfo and hasattr(image, 'info') and image.info:
