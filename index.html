@@ -6455,6 +6455,7 @@
                 cfg: document.getElementById('cfg').value,
                 sampler: document.getElementById('sampler').value,
                 scheduler: document.getElementById('scheduler').value,
+                seed: document.getElementById('seed').value,
                 randomSeed: document.getElementById('randomSeed').checked,
                 lockSeed: document.getElementById('lockSeed').checked,
 
@@ -6465,9 +6466,7 @@
                 qualityTags: document.getElementById('qualityTags').checked,
                 furryModeEnabled: furryModeEnabled,
                 cfgRescale: document.getElementById('cfgRescale').value,
-                uncondScale: document.getElementById('uncondScale').value,
                 varietyPlus: document.getElementById('varietyPlus').checked,
-                decrisper: document.getElementById('decrisper').checked,
 
                 // Vibe Transfer
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
@@ -6568,7 +6567,8 @@
                 // 샘플러/스케줄러는 provider에 따라 옵션이 다르므로 pending으로 저장
                 window._pendingSampler = settings.sampler;
                 window._pendingScheduler = settings.scheduler;
-                
+
+                if (settings.seed !== undefined && settings.seed !== '') document.getElementById('seed').value = settings.seed;
                 if (settings.randomSeed !== undefined) document.getElementById('randomSeed').checked = settings.randomSeed;
                 if (settings.lockSeed !== undefined) document.getElementById('lockSeed').checked = settings.lockSeed;
 
@@ -6587,9 +6587,7 @@
                     document.getElementById('cfgRescale').value = settings.cfgRescale;
                     document.getElementById('cfgRescaleValue').textContent = settings.cfgRescale;
                 }
-                if (settings.uncondScale !== undefined) document.getElementById('uncondScale').value = settings.uncondScale;
                 if (settings.varietyPlus !== undefined) document.getElementById('varietyPlus').checked = settings.varietyPlus;
-                if (settings.decrisper !== undefined) document.getElementById('decrisper').checked = settings.decrisper;
 
                 // Vibe Transfer
                 if (settings.enableVibeTransfer !== undefined) {
@@ -6700,7 +6698,7 @@
                 'ucPreset', 'qualityTags', 'localModel', 'enableUpscale', 'upscaleModel',
                 'downscaleRatio', 'sizeAlignment', 'upscaleSteps', 'upscaleCfg',
                 'upscaleDenoise', 'repeatCount', 'sizePreset',
-                'cfgRescale', 'uncondScale', 'varietyPlus', 'decrisper'
+                'cfgRescale', 'varietyPlus', 'lockSeed'
             ];
             
             inputs.forEach(id => {
