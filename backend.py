@@ -816,6 +816,36 @@ async def call_nai_api(req: GenerateRequest):
     # Furry Mode: 프롬프트 앞에 "fur dataset, " 추가
     prompt_for_nai = f"fur dataset, {req.prompt}" if req.furry_mode else req.prompt
 
+    # V4.5 Quality Tags (NAI 서버가 처리하지 않으므로 클라이언트에서 직접 추가)
+    V45_QUALITY_TAGS = ", very aesthetic, masterpiece, no text"
+
+    # V4.5 UC Presets (NAI 서버가 처리하지 않으므로 클라이언트에서 직접 추가)
+    V45_UC_PRESETS = {
+        "Heavy": "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page",
+        "Light": "nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page",
+        "Furry Focus": "nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic",
+        "Human Focus": "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy",
+    }
+
+    # V4+ 모델에서만 클라이언트 태그 적용
+    if is_v4_model:
+        # Quality Tags 적용 (프롬프트 끝에 추가)
+        if req.quality_tags:
+            prompt_for_nai = prompt_for_nai + V45_QUALITY_TAGS
+
+        # UC Preset 태그 적용 (네거티브 프롬프트 앞에 추가)
+        uc_preset_tags = V45_UC_PRESETS.get(req.uc_preset, "")
+        if uc_preset_tags:
+            if req.negative_prompt:
+                negative_for_nai = uc_preset_tags + ", " + req.negative_prompt
+            else:
+                negative_for_nai = uc_preset_tags
+        else:
+            negative_for_nai = req.negative_prompt
+    else:
+        # V3 이하 모델은 NAI 서버가 처리
+        negative_for_nai = req.negative_prompt
+
     params = {
         "params_version": 3,
         "width": req.width,
@@ -837,7 +867,7 @@ async def call_nai_api(req: GenerateRequest):
         "noise_schedule": nai_scheduler,
         "legacy_v3_extend": False,
         "uncond_scale": 1.0,
-        "negative_prompt": req.negative_prompt,
+        "negative_prompt": negative_for_nai,
         "prompt": prompt_for_nai,
         "extra_noise_seed": int(seed),
         "use_coords": False,
@@ -853,7 +883,7 @@ async def call_nai_api(req: GenerateRequest):
         "v4_negative_prompt": {
             "legacy_uc": False,
             "caption": {
-                "base_caption": req.negative_prompt,
+                "base_caption": negative_for_nai,
                 "char_captions": [{"char_caption": "", "centers": [{"x": 0.5, "y": 0.5}]} for _ in req.character_prompts] if req.character_prompts else []
             }
         },
@@ -989,7 +1019,7 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Mode: Img2Img, strength={req.base_strength}, noise={req.base_noise}")
 
     payload = {
-        "input": req.prompt,
+        "input": prompt_for_nai,
         "model": model_to_use,
         "action": action,
         "parameters": params
@@ -1005,7 +1035,7 @@ async def call_nai_api(req: GenerateRequest):
         debug_params["image"] = f"<base64 len={len(debug_params['image'])}>"
     if "mask" in debug_params:
         debug_params["mask"] = f"<base64 len={len(debug_params['mask'])}>"
-    debug_payload = {"input": req.prompt[:100], "model": model_to_use, "action": action, "parameters": debug_params}
+    debug_payload = {"input": prompt_for_nai[:100], "model": model_to_use, "action": action, "parameters": debug_params}
     with open("nai_debug_payload.json", "w", encoding="utf-8") as f:
         json.dump(debug_payload, f, indent=2, ensure_ascii=False)
     print(f"[NAI] Debug payload saved to nai_debug_payload.json")

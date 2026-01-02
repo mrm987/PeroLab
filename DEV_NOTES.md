@@ -171,6 +171,29 @@ payload = {
 }
 ```
 
+### 9. Quality Tags / UC Preset이 결과에 영향 없음
+**문제**: `qualityToggle`과 `ucPreset` 옵션을 켜거나 꺼도 생성 결과가 동일함
+**원인**: NAI 서버가 V4.5에서 이 파라미터를 처리하지 않음. NAI 웹은 클라이언트에서 직접 태그를 추가함.
+**해결**: 클라이언트에서 직접 프롬프트에 태그 추가
+
+```python
+# V4.5 Quality Tags (프롬프트 끝에 추가)
+V45_QUALITY_TAGS = ", very aesthetic, masterpiece, no text"
+
+# V4.5 UC Presets (네거티브 프롬프트 앞에 추가)
+V45_UC_PRESETS = {
+    "Heavy": "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page",
+    "Light": "nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page",
+    "Furry Focus": "nsfw, {worst quality}, distracting watermark, unfinished, bad quality, ...",
+    "Human Focus": "... + @_@, mismatched pupils, glowing eyes, bad anatomy",
+}
+```
+
+**참고**:
+- `ucPreset`과 `qualityToggle` 파라미터는 여전히 NAI API에 전송됨 (메타데이터용)
+- NAI 이미지 임포트 시 중복 방지를 위해 기존 태그를 자동으로 제거함 (`normalizeMetadata`)
+- 순수 NAI 이미지 임포트 시 경고 메시지 표시
+
 ---
 
 ## 주요 데이터 구조
