@@ -442,9 +442,7 @@ class GenerateRequest(BaseModel):
     quality_tags: bool = True
     furry_mode: bool = False
     cfg_rescale: float = 0.0
-    uncond_scale: float = 1.0
     variety_plus: bool = False
-    decrisper: bool = False
 
     # NAI Vibe Transfer (최대 16개)
     vibe_transfer: List[dict] = []  # [{"image": base64, "info_extracted": 1.0, "strength": 0.6}, ...]
@@ -499,9 +497,7 @@ class MultiGenerateRequest(BaseModel):
     quality_tags: bool = True
     furry_mode: bool = False
     cfg_rescale: float = 0.0
-    uncond_scale: float = 1.0
     variety_plus: bool = False
-    decrisper: bool = False
     model: str = ""
     loras: List[dict] = []
     output_folder: str = ""  # 비어있으면 outputs에 직접 저장, 있으면 outputs/폴더명에 저장
@@ -810,14 +806,14 @@ async def call_nai_api(req: GenerateRequest):
         "qualityToggle": req.quality_tags,
         "sm": sm,
         "sm_dyn": sm_dyn,
-        "dynamic_thresholding": req.decrisper,
+        "dynamic_thresholding": False,
         "controlnet_strength": 1.0,
         "legacy": False,
         "add_original_image": True,
         "cfg_rescale": req.cfg_rescale,
         "noise_schedule": nai_scheduler,
         "legacy_v3_extend": False,
-        "uncond_scale": req.uncond_scale,
+        "uncond_scale": 1.0,
         "negative_prompt": req.negative_prompt,
         "prompt": prompt_for_nai,
         "extra_noise_seed": int(seed),
@@ -930,15 +926,17 @@ async def call_nai_api(req: GenerateRequest):
         base_png = ensure_png_base64(req.base_image)
         params["image"] = base_png
         params["strength"] = req.base_strength
-        params["noise"] = req.base_noise
 
         if req.base_mode == "inpaint" and req.base_mask:
             action = "infill"
             mask_png = ensure_png_base64(req.base_mask)
             params["mask"] = mask_png
-            print(f"[NAI] Mode: Inpaint, strength={req.base_strength}, noise={req.base_noise}")
+            # 인페인트는 noise 파라미터 없음
+            print(f"[NAI] Mode: Inpaint, strength={req.base_strength}")
         else:
             action = "img2img"
+            # img2img만 noise 파라미터 사용
+            params["noise"] = req.base_noise
             print(f"[NAI] Mode: Img2Img, strength={req.base_strength}, noise={req.base_noise}")
 
     payload = {
@@ -1411,14 +1409,18 @@ async def process_job(job):
             quality_tags=req.quality_tags,
             furry_mode=req.furry_mode,
             cfg_rescale=req.cfg_rescale,
-            uncond_scale=req.uncond_scale,
             variety_plus=req.variety_plus,
-            decrisper=req.decrisper,
             model=req.model,
             loras=req.loras,
             # NAI Vibe Transfer & Character Reference
             vibe_transfer=req.vibe_transfer,
             character_reference=req.character_reference,
+            # Base Image (img2img / inpaint)
+            base_image=req.base_image,
+            base_mask=req.base_mask,
+            base_mode=req.base_mode,
+            base_strength=req.base_strength,
+            base_noise=req.base_noise,
             # Upscale params
             enable_upscale=req.enable_upscale,
             upscale_model=req.upscale_model,
@@ -1507,9 +1509,7 @@ async def process_job(job):
                 "uc_preset": req.uc_preset,
                 "quality_tags": req.quality_tags,
                 "cfg_rescale": req.cfg_rescale,
-                "uncond_scale": req.uncond_scale,
                 "variety_plus": req.variety_plus,
-                "decrisper": req.decrisper,
                 # Local 설정
                 "model": req.model,
             }

@@ -2882,7 +2882,7 @@
                                     <label>Strength: <span id="baseImageStrengthValue">0.7</span></label>
                                     <input type="range" id="baseImageStrength" min="0" max="1" step="0.05" value="0.7" style="width: 100%;">
                                 </div>
-                                <div>
+                                <div id="baseImageNoiseContainer">
                                     <label>Noise: <span id="baseImageNoiseValue">0</span></label>
                                     <input type="range" id="baseImageNoise" min="0" max="1" step="0.05" value="0" style="width: 100%;">
                                 </div>
@@ -2937,7 +2937,7 @@
                                 <input type="number" id="steps" value="28">
                             </div>
                             <div>
-                                <label>CFG</label>
+                                <label id="cfgLabel">CFG</label>
                                 <input type="number" id="cfg" value="5.0" step="0.1">
                             </div>
                         </div>
@@ -2945,23 +2945,15 @@
                         <!-- NAI Advanced Settings -->
                         <div id="naiAdvancedSettings" class="provider-section" data-provider="nai">
                             <div class="row">
-                                <div>
+                                <div style="flex: 1;">
                                     <label>Prompt Guidance Rescale</label>
                                     <input type="range" id="cfgRescale" value="0" min="0" max="1" step="0.02" style="width: 100%;">
                                     <small style="display: flex; justify-content: space-between;"><span>0</span><span id="cfgRescaleValue">0</span><span>1</span></small>
-                                </div>
-                                <div>
-                                    <label>Uncond Scale</label>
-                                    <input type="number" id="uncondScale" value="1.0" min="0" max="1.5" step="0.05">
                                 </div>
                             </div>
                             <div class="checkbox-row">
                                 <input type="checkbox" id="varietyPlus">
                                 <label for="varietyPlus">Variety+</label>
-                            </div>
-                            <div class="checkbox-row">
-                                <input type="checkbox" id="decrisper">
-                                <label for="decrisper">Decrisper</label>
                             </div>
                         </div>
 
@@ -3303,7 +3295,7 @@
                     <input type="range" id="maskEditorStrength" min="0" max="1" step="0.05" value="0.7">
                     <span id="maskEditorStrengthValue">0.7</span>
                 </div>
-                <div class="slider-group">
+                <div class="slider-group" id="maskEditorNoiseGroup">
                     <label>Noise:</label>
                     <input type="range" id="maskEditorNoise" min="0" max="1" step="0.05" value="0">
                     <span id="maskEditorNoiseValue">0</span>
@@ -4563,7 +4555,7 @@
                     showLocalInstallModal();
                     return;
                 }
-                
+
                 currentProvider = tab.dataset.provider;
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
@@ -4572,9 +4564,18 @@
                 });
                 updateSamplerSchedulerOptions(currentProvider);
                 updateAnlasVisibility();
+                updateProviderLabels();
                 autoSaveSettings();
             });
         });
+
+        // Provider별 라벨 업데이트
+        function updateProviderLabels() {
+            const cfgLabel = document.getElementById('cfgLabel');
+            if (cfgLabel) {
+                cfgLabel.textContent = currentProvider === 'nai' ? 'Prompt Guidance' : 'CFG';
+            }
+        }
         
         // === Prompt Presets ===
         async function loadPromptPresets(category) {
@@ -5092,9 +5093,7 @@
                 request.quality_tags = document.getElementById('qualityTags').checked;
                 request.furry_mode = furryModeEnabled;
                 request.cfg_rescale = parseFloat(document.getElementById('cfgRescale').value);
-                request.uncond_scale = parseFloat(document.getElementById('uncondScale').value);
                 request.variety_plus = document.getElementById('varietyPlus').checked;
-                request.decrisper = document.getElementById('decrisper').checked;
 
                 // Vibe Transfer
                 if (document.getElementById('enableVibeTransfer').checked && vibeList.length > 0) {
@@ -7895,6 +7894,7 @@
                 document.getElementById('maskEditorStrengthValue').textContent = baseImageData.strength;
                 document.getElementById('maskEditorNoise').value = baseImageData.noise;
                 document.getElementById('maskEditorNoiseValue').textContent = baseImageData.noise;
+                updateMaskEditorNoiseVisibility();
 
                 modal.classList.add('active');
             };
@@ -7995,6 +7995,10 @@
             document.getElementById('maskEditorNoise').oninput = function() {
                 document.getElementById('maskEditorNoiseValue').textContent = this.value;
             };
+            // Mode change - hide noise for inpaint
+            document.getElementById('maskEditorMode').onchange = function() {
+                updateMaskEditorNoiseVisibility();
+            };
 
             // Cancel
             document.getElementById('maskEditorCancel').onclick = closeMaskEditor;
@@ -8060,6 +8064,7 @@
                 document.getElementById('baseImageStrengthValue').textContent = baseImageData.strength;
                 document.getElementById('baseImageNoise').value = baseImageData.noise;
                 document.getElementById('baseImageNoiseValue').textContent = baseImageData.noise;
+                updateBaseImageNoiseVisibility();
 
                 // 사이즈 동기화
                 document.getElementById('width').value = baseImageData.width;
@@ -8106,7 +8111,22 @@
             };
             document.getElementById('baseImageMode').onchange = function() {
                 baseImageData.mode = this.value;
+                updateBaseImageNoiseVisibility();
             };
+        }
+
+        // Noise 슬라이더 가시성 업데이트 (인페인트는 noise 없음)
+        function updateBaseImageNoiseVisibility() {
+            const noiseContainer = document.getElementById('baseImageNoiseContainer');
+            const mode = document.getElementById('baseImageMode').value;
+            noiseContainer.style.display = mode === 'inpaint' ? 'none' : 'block';
+        }
+
+        // 마스크 에디터 Noise 가시성 업데이트
+        function updateMaskEditorNoiseVisibility() {
+            const noiseGroup = document.getElementById('maskEditorNoiseGroup');
+            const mode = document.getElementById('maskEditorMode').value;
+            noiseGroup.style.display = mode === 'inpaint' ? 'none' : 'flex';
         }
 
         // Inpaint용 이미지 설정 함수 (외부에서 호출)
@@ -8121,6 +8141,8 @@
         // 초기화
         setupMaskEditorEvents();
         setupBaseImageEvents();
+        updateBaseImageNoiseVisibility();
+        updateProviderLabels();
 
         // ============================================================
         // Censor Mode
