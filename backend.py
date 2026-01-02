@@ -1532,6 +1532,16 @@ async def process_job(job):
             sm = req.smea in ['SMEA', 'SMEA+DYN']
             sm_dyn = req.smea == 'SMEA+DYN'
 
+            # Vibe Transfer 정보 (이미지 제외, 설정값만)
+            vibe_info = []
+            if req.vibe_transfer:
+                for v in req.vibe_transfer:
+                    vibe_info.append({
+                        "strength": v.get("strength", 0.6),
+                        "info_extracted": v.get("info_extracted", 1.0),
+                        "name": v.get("name", "")
+                    })
+
             # PeroPix 확장 필드
             peropix_ext = {
                 "version": 1,
@@ -1539,7 +1549,8 @@ async def process_job(job):
                 "character_prompts": req.character_prompts or [],
                 "variety_plus": req.variety_plus,
                 "furry_mode": req.furry_mode,
-                "local_model": req.model if req.provider == 'local' else ""
+                "local_model": req.model if req.provider == 'local' else "",
+                "vibe_transfer": vibe_info if vibe_info else None
             }
 
             if existing_comment:

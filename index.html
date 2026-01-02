@@ -5807,8 +5807,60 @@
             setTimeout(() => input.focus(), 100);
         }
 
+        // NAI 형식 메타데이터를 앱 내부 형식으로 변환
+        function normalizeMetadata(meta) {
+            if (!meta) return null;
+
+            // 이미 앱 내부 형식이면 그대로 반환
+            if (meta.negative_prompt !== undefined || meta.cfg !== undefined || meta.nai_model !== undefined) {
+                return meta;
+            }
+
+            // 캐릭터 프롬프트 추출 (peropix 또는 NAI 형식)
+            let charPrompts = [];
+            const ppx = meta.peropix || {};
+            if (ppx.character_prompts && ppx.character_prompts.length > 0) {
+                charPrompts = ppx.character_prompts;
+            } else if (meta.v4_prompt?.caption?.char_captions) {
+                charPrompts = meta.v4_prompt.caption.char_captions.map(c => c.char_caption).filter(c => c);
+            } else if (meta.characterPrompts) {
+                charPrompts = meta.characterPrompts.map(c => c.prompt).filter(c => c);
+            }
+
+            // UC Preset: 숫자 → 문자열 변환
+            const ucPresetMap = { 0: 'Heavy', 1: 'Light', 2: 'Human Focus', 3: 'None' };
+            const ucPreset = ucPresetMap[meta.ucPreset] || meta.ucPreset || 'Heavy';
+
+            // NAI 형식 → 앱 내부 형식 변환
+            return {
+                prompt: meta.prompt || '',
+                negative_prompt: meta.uc || '',
+                character_prompts: charPrompts,
+                seed: meta.seed,
+                width: meta.width,
+                height: meta.height,
+                steps: meta.steps,
+                cfg: meta.scale,
+                sampler: meta.sampler,
+                scheduler: meta.noise_schedule || 'karras',
+                nai_model: meta.request_type || '',
+                smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
+                uc_preset: ucPreset,
+                quality_tags: meta.qualityToggle,
+                cfg_rescale: meta.cfg_rescale,
+                variety_plus: ppx.variety_plus || false,
+                furry_mode: ppx.furry_mode || false,
+                provider: ppx.provider || 'nai',
+                model: ppx.local_model || '',
+                vibe_transfer: ppx.vibe_transfer || null
+            };
+        }
+
         // 설정 불러오기 확인 팝업 (드롭 모달 재사용)
-        function showLoadSettingsConfirm(metadata) {
+        function showLoadSettingsConfirm(rawMetadata) {
+            // NAI 형식을 앱 내부 형식으로 변환
+            const metadata = normalizeMetadata(rawMetadata) || rawMetadata;
+
             const dropModal = document.getElementById('dropModal');
             document.getElementById('dropModalTitle').textContent = '📋 설정 불러오기';
             document.getElementById('dropModalPreview').src = '';
@@ -5820,11 +5872,18 @@
                 ? `<div><strong>캐릭터 (${charPrompts.length}):</strong> ${charPrompts.map((c, i) => `[${i+1}] ${(c || '').substring(0, 30)}${(c || '').length > 30 ? '...' : ''}`).join(', ')}</div>`
                 : '';
 
+            // 바이브 정보
+            const vibes = metadata.vibe_transfer || [];
+            const vibeHtml = vibes.length > 0
+                ? `<div><strong>Vibe (${vibes.length}):</strong> ${vibes.map(v => v.name || `S:${v.strength} I:${v.info_extracted}`).join(', ')}</div>`
+                : '';
+
             const metadataDiv = document.getElementById('dropModalMetadata');
             metadataDiv.innerHTML = `
                 <div><strong>Prompt:</strong> ${(metadata.prompt || '').substring(0, 100)}${(metadata.prompt || '').length > 100 ? '...' : ''}</div>
                 <div><strong>Negative:</strong> ${(metadata.negative_prompt || '').substring(0, 50)}${(metadata.negative_prompt || '').length > 50 ? '...' : ''}</div>
                 ${charPromptsHtml}
+                ${vibeHtml}
                 <div><strong>Seed:</strong> ${metadata.seed || 'N/A'}</div>
                 <div><strong>Size:</strong> ${metadata.width}x${metadata.height}</div>
                 <div><strong>Steps:</strong> ${metadata.steps}, <strong>CFG:</strong> ${metadata.cfg}</div>
@@ -5835,7 +5894,7 @@
             document.getElementById('dropModalConfirm').textContent = '전체 적용';
             document.getElementById('dropModalPromptOnly').style.display = 'inline-block';
 
-            // 임시 데이터 저장
+            // 정규화된 데이터 저장
             window._pendingLoadMetadata = metadata;
 
             dropModal.classList.add('active');
@@ -5922,8 +5981,69 @@
                 showToast(`원본 Provider: ${metadata.provider}`, 'warning');
             }
 
+            // Vibe Transfer 설정 (캐시에서 이름 매칭)
+            if (metadata.vibe_transfer && metadata.vibe_transfer.length > 0) {
+                loadVibesFromMetadata(metadata.vibe_transfer);
+            }
+
             autoSaveSettings();
             showToast('설정을 불러왔습니다', 'success');
+        }
+
+        // 메타데이터에서 바이브 로드 (캐시에서 이름 매칭)
+        async function loadVibesFromMetadata(vibeInfoList) {
+            if (!vibeInfoList || vibeInfoList.length === 0) return;
+
+            try {
+                // 캐시된 바이브 목록 가져오기
+                const response = await fetch(`${API_BASE}/api/vibe-cache`);
+                const data = await response.json();
+                const cachedVibes = data.vibes || [];
+
+                let loadedCount = 0;
+                let matchedCount = 0;
+
+                for (const vibeInfo of vibeInfoList) {
+                    if (!vibeInfo.name) continue;
+
+                    // 캐시에서 이름 매칭
+                    const cached = cachedVibes.find(v => v.name === vibeInfo.name || v.filename === vibeInfo.name);
+                    if (cached) {
+                        // 상세 데이터 로드
+                        const detailRes = await fetch(`${API_BASE}/api/vibe-cache/${cached.filename}`);
+                        const detail = await detailRes.json();
+                        if (detail.success && detail.vibe_data) {
+                            // 기존 바이브에 같은 이름이 있으면 건너뛰기
+                            const exists = vibeList.some(v => v.name === vibeInfo.name);
+                            if (!exists && vibeList.length < 16) {
+                                vibeList.push({
+                                    image: detail.image,
+                                    strength: vibeInfo.strength || 0.6,
+                                    info_extracted: vibeInfo.info_extracted || 1.0,
+                                    name: vibeInfo.name,
+                                    encoded: detail.vibe_data,
+                                    encoded_model: cached.model
+                                });
+                                loadedCount++;
+                            }
+                        }
+                        matchedCount++;
+                    }
+                }
+
+                if (loadedCount > 0) {
+                    renderVibeList();
+                    saveAppSettings();
+                    updateAnlasCost();
+                    document.getElementById('enableVibeTransfer').checked = true;
+                    document.getElementById('vibeTransferSettings').style.display = 'block';
+                    showToast(`바이브 ${loadedCount}개 로드됨`, 'success');
+                } else if (matchedCount === 0 && vibeInfoList.length > 0) {
+                    showToast(`바이브 ${vibeInfoList.length}개: 캐시에서 찾을 수 없음`, 'warning');
+                }
+            } catch (err) {
+                console.error('[Vibe] 메타데이터에서 로드 실패:', err);
+            }
         }
 
         // Event listeners
@@ -7232,39 +7352,8 @@
                         const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
                         const result = await response.json();
                         if (result.success && result.metadata) {
-                            const meta = result.metadata;
-                            // 캐릭터 프롬프트 추출 (peropix 또는 NAI 형식)
-                            let charPrompts = meta.character_prompts || [];
-                            if (charPrompts.length === 0 && meta.v4_prompt?.caption?.char_captions) {
-                                charPrompts = meta.v4_prompt.caption.char_captions.map(c => c.char_caption).filter(c => c);
-                            }
-                            if (charPrompts.length === 0 && meta.characterPrompts) {
-                                charPrompts = meta.characterPrompts.map(c => c.prompt).filter(c => c);
-                            }
-                            // 메타데이터 형식 변환 (NAI 통합 형식 → 앱 내부 형식)
-                            // peropix 확장 필드에서 PeroPix 전용 설정 추출
-                            const ppx = meta.peropix || {};
-
-                            const normalizedMeta = {
-                                prompt: meta.prompt || '',
-                                negative_prompt: meta.uc || '',
-                                character_prompts: ppx.character_prompts || charPrompts,
-                                seed: meta.seed,
-                                width: meta.width,
-                                height: meta.height,
-                                steps: meta.steps,
-                                cfg: meta.scale,
-                                sampler: meta.sampler,
-                                scheduler: meta.noise_schedule || 'karras',
-                                nai_model: meta.request_type || '',
-                                smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
-                                uc_preset: meta.ucPreset,
-                                quality_tags: meta.qualityToggle,
-                                cfg_rescale: meta.cfg_rescale,
-                                variety_plus: ppx.variety_plus || false,
-                                furry_mode: ppx.furry_mode || false
-                            };
-                            showLoadSettingsConfirm(normalizedMeta);
+                            // showLoadSettingsConfirm 내부에서 normalizeMetadata 호출
+                            showLoadSettingsConfirm(result.metadata);
                         } else {
                             showToast('메타데이터 없음', 'warning');
                         }
