@@ -5984,8 +5984,22 @@
 
             // 정규화된 데이터 저장
             window._pendingLoadMetadata = metadata;
+            window._isPureNaiImage = isPureNaiImage;
 
             dropModal.classList.add('active');
+        }
+
+        // 순수 NAI 이미지 적용 시 경고 팝업
+        function showPureNaiWarning(callback) {
+            const msg = `⚠️ 순수 NAI 이미지입니다.
+
+• Quality Tags와 UC Preset 태그가 프롬프트에서 제거되었습니다.
+• 생성 시 현재 설정에 따라 새 태그가 자동으로 추가됩니다.
+
+계속하시겠습니까?`;
+            if (confirm(msg)) {
+                callback();
+            }
         }
 
         // 프롬프트만 적용 (시드 포함)
@@ -7830,14 +7844,23 @@
 
         // 프롬프트만 적용 버튼
         document.getElementById('dropModalPromptOnly').onclick = () => {
-            if (window._pendingLoadMetadata) {
-                applyPromptOnly(window._pendingLoadMetadata);
-                closeDropModal();
-            } else if (pendingDropData && pendingDropData.type === 'nai') {
-                // 정규화된 메타데이터로 applyPromptOnly 호출 (캐릭터 프롬프트 포함)
-                const normalized = normalizeMetadata(pendingDropData.metadata);
-                applyPromptOnly(normalized);
-                closeDropModal();
+            const doApply = () => {
+                if (window._pendingLoadMetadata) {
+                    applyPromptOnly(window._pendingLoadMetadata);
+                    closeDropModal();
+                } else if (pendingDropData && pendingDropData.type === 'nai') {
+                    // 정규화된 메타데이터로 applyPromptOnly 호출 (캐릭터 프롬프트 포함)
+                    const normalized = normalizeMetadata(pendingDropData.metadata);
+                    applyPromptOnly(normalized);
+                    closeDropModal();
+                }
+            };
+
+            // 순수 NAI 이미지면 경고 팝업 표시
+            if (window._isPureNaiImage) {
+                showPureNaiWarning(doApply);
+            } else {
+                doApply();
             }
         };
 
@@ -7880,8 +7903,17 @@
         document.getElementById('dropModalConfirm').onclick = () => {
             // 설정 불러오기 처리
             if (window._pendingLoadMetadata) {
-                applyMetadataSettings(window._pendingLoadMetadata);
-                closeDropModal();
+                const doApply = () => {
+                    applyMetadataSettings(window._pendingLoadMetadata);
+                    closeDropModal();
+                };
+
+                // 순수 NAI 이미지면 경고 팝업 표시
+                if (window._isPureNaiImage) {
+                    showPureNaiWarning(doApply);
+                } else {
+                    doApply();
+                }
                 return;
             }
 
