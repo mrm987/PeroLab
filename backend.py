@@ -214,22 +214,21 @@ def resize_image_to_size_base64(base64_image: str, target_width: int, target_hei
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 def ensure_png_base64(base64_image: str, force_reencode: bool = False) -> str:
-    """base64 이미지를 PNG 포맷으로 변환 (필요한 경우에만 재인코딩)"""
+    """base64 이미지를 PNG 포맷으로 변환 (필요한 경우에만 재인코딩)
+
+    RGBA 이미지는 그대로 유지 (NAI API가 RGBA 지원, 바이브 인코딩 호환성)
+    """
     from PIL import Image as PILImage
 
     image_data = base64.b64decode(base64_image)
     pil_img = PILImage.open(io.BytesIO(image_data))
 
-    # 이미 RGB PNG이고 강제 재인코딩이 아니면 원본 그대로 반환
-    if not force_reencode and pil_img.format == 'PNG' and pil_img.mode == 'RGB':
+    # 이미 PNG이고 RGB 또는 RGBA이면 원본 그대로 반환
+    if not force_reencode and pil_img.format == 'PNG' and pil_img.mode in ('RGB', 'RGBA'):
         return base64_image
 
-    # RGB로 변환 (NAI API 호환성)
-    if pil_img.mode == 'RGBA':
-        background = PILImage.new('RGB', pil_img.size, (255, 255, 255))
-        background.paste(pil_img, mask=pil_img.split()[3])
-        pil_img = background
-    elif pil_img.mode != 'RGB':
+    # PNG가 아니거나 다른 모드인 경우에만 변환
+    if pil_img.mode not in ('RGB', 'RGBA'):
         pil_img = pil_img.convert('RGB')
 
     # PNG로 저장
