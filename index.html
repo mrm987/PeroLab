@@ -8067,6 +8067,8 @@
                     const msg = pendingDropData.encoded ? 'NAI 바이브 추가됨 (캐시 사용)' : 'NAI 바이브 추가됨';
                     showToast(msg, 'success');
                 }
+                closeDropModal();
+                return;
             } else if (pendingDropData.type === 'plain') {
                 // 일반 이미지를 바이브로 추가
                 if (vibeList.length >= 16) {
