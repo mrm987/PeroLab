@@ -2368,7 +2368,7 @@ async def open_gallery_folder(request: dict = None):
         system = platform.system()
 
         if system == "Windows":
-            subprocess.Popen(f'explorer /select,"{folder_path}"', shell=True)
+            subprocess.run(f'start "" "{folder_path}"', shell=True)
         elif system == "Darwin":  # macOS
             subprocess.Popen(["open", folder_path])
         else:  # Linux
@@ -2566,7 +2566,7 @@ async def open_folder(request: dict):
 
         if system == "Windows":
             # start 명령으로 탐색기 열고 포커스 이동
-            subprocess.Popen(f'explorer /select,"{abs_path}"', shell=True)
+            subprocess.run(f'start "" "{abs_path}"', shell=True)
         elif system == "Darwin":
             subprocess.Popen(["open", abs_path])
         else:
