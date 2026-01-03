@@ -1180,16 +1180,14 @@ async def call_nai_api(req: GenerateRequest):
         style_aware = req.character_reference.get("style_aware", True)
         caption_type = "character&style" if style_aware else "character"
 
-        # 이미지 크기 확인 후 캔버스 패딩 (1472×1472, 1536×1024, 1024×1536)
+        # 테스트: 리사이즈 없이 원본 이미지 그대로 전송 (NAI 서버가 처리하는지 확인)
         raw_image = req.character_reference["image"]
         try:
             w_raw, h_raw = get_image_size_from_base64(raw_image)
-            canvas_w, canvas_h = _choose_cr_canvas(w_raw, h_raw)
-            padded_image = pad_image_to_canvas_base64(raw_image, (canvas_w, canvas_h))
-            print(f"[NAI] Character Reference: {w_raw}x{h_raw} -> padded to {canvas_w}x{canvas_h}")
+            print(f"[NAI] Character Reference: {w_raw}x{h_raw} (no resize, sending original)")
         except Exception as e:
-            print(f"[NAI] Character Reference padding failed, using original: {e}")
-            padded_image = raw_image
+            print(f"[NAI] Character Reference: size unknown")
+        padded_image = raw_image  # 원본 그대로 사용
 
         # NAI 웹 방식: director_reference_images_cached 사용
         import hashlib
