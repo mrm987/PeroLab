@@ -241,15 +241,11 @@ def ensure_png_base64(base64_image: str, force_reencode: bool = False) -> str:
 
 
 def binarize_mask(base64_mask: str, threshold: int = 1) -> str:
-    """마스크를 이진화 (NAI는 순수 흑백 RGBA 마스크만 지원)
+    """마스크를 이진화하고 원본 PNG 형식 유지
 
-    안티앨리어싱된 회색 픽셀을 순수 흑백으로 변환.
-    threshold 이상은 흰색(255), 미만은 검정(0).
-
-    NAIS2 참고: alpha > 10 기준 사용 (페인팅된 영역 최대한 포착)
-    threshold=1로 설정하여 검정(0)이 아닌 모든 픽셀을 흰색으로 처리.
-
-    출력: RGBA 형식, alpha=255 (완전 불투명)
+    PIL 재인코딩이 NAI와 호환 안될 수 있으므로,
+    이미 순수 흑백이면 원본 그대로 반환.
+    회색 픽셀이 있으면 이진화 후 반환.
     """
     from PIL import Image as PILImage
 
@@ -257,27 +253,32 @@ def binarize_mask(base64_mask: str, threshold: int = 1) -> str:
     mask_data = base64.b64decode(base64_mask)
     mask_img = PILImage.open(io.BytesIO(mask_data))
 
-    # 그레이스케일로 변환
+    # 픽셀값 확인
+    if mask_img.mode == 'RGBA':
+        # R 채널만 확인 (흑백이면 R=G=B)
+        r_channel = list(mask_img.split()[0].getdata())
+        unique_values = set(r_channel)
+    else:
+        gray = mask_img.convert('L')
+        unique_values = set(gray.getdata())
+
+    print(f"[DEBUG] Mask unique values: {unique_values}")
+
+    # 이미 순수 흑백(0, 255만 있음)이면 원본 그대로 반환
+    if unique_values <= {0, 255}:
+        print(f"[DEBUG] Mask is already binary, using original PNG")
+        return base64_mask
+
+    # 회색 픽셀이 있으면 이진화 필요
+    print(f"[DEBUG] Mask has gray pixels, binarizing...")
     mask_gray = mask_img.convert('L')
-
-    # 이진화: threshold 이상 → 255, 미만 → 0
     mask_binary = mask_gray.point(lambda x: 255 if x >= threshold else 0, mode='L')
-
-    # RGBA로 변환 (NAI 형식과 동일: R=G=B=값, A=255)
-    alpha = PILImage.new('L', mask_binary.size, 255)  # 완전 불투명
+    alpha = PILImage.new('L', mask_binary.size, 255)
     mask_rgba = PILImage.merge('RGBA', (mask_binary, mask_binary, mask_binary, alpha))
 
-    # 디버그: 이진화된 마스크 저장 및 검증
+    # 디버그 저장
     mask_rgba.save("debug_binarized_mask.png")
-
-    # 고유 픽셀값 확인 (NAI는 2개만 허용: 0과 255)
-    import numpy as np
-    mask_array = np.array(mask_rgba)
-    unique_r = set(mask_array[:, :, 0].flatten())
-    unique_a = set(mask_array[:, :, 3].flatten())
-    print(f"[DEBUG] Binarized mask: size={mask_rgba.size}, mode={mask_rgba.mode}")
-    print(f"[DEBUG] Unique R values: {unique_r} (should be {{0, 255}})")
-    print(f"[DEBUG] Unique A values: {unique_a} (should be {{255}})")
+    print(f"[DEBUG] Binarized mask saved")
 
     # PNG로 저장
     buffer = io.BytesIO()
@@ -1224,7 +1225,7 @@ async def call_nai_api(req: GenerateRequest):
             mask_png = binarize_mask(req.base_mask)
 
             # DEBUG: NAI 웹 마스크 파일로 테스트 (True로 변경하여 테스트)
-            USE_NAI_TEST_MASK = True  # 테스트 후 False로 변경
+            USE_NAI_TEST_MASK = False
             if USE_NAI_TEST_MASK:
                 import os
                 nai_mask_path = os.path.join(os.path.dirname(__file__), "test_data", "nai_mask.png")
