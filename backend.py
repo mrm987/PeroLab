@@ -115,15 +115,15 @@ def _choose_cr_canvas(w: int, h: int) -> tuple:
     return best
 
 def pad_image_to_canvas_base64(base64_image: str, target_size: tuple) -> str:
-    """base64 이미지를 캔버스 크기에 맞게 letterbox 패딩 후 base64 반환 (NAIS2 방식: JPEG 0.95)"""
+    """base64 이미지를 캔버스 크기에 맞게 letterbox 패딩 후 base64 반환 (ComfyUI 방식: PNG)"""
     from PIL import Image as PILImage
 
     # base64 디코딩
     image_data = base64.b64decode(base64_image)
     pil_img = PILImage.open(io.BytesIO(image_data))
 
-    # JPEG는 RGB만 지원하므로 RGB로 변환
-    if pil_img.mode != 'RGB':
+    # PNG는 RGB/RGBA 모두 지원, RGB로 통일
+    if pil_img.mode not in ('RGB', 'RGBA'):
         pil_img = pil_img.convert('RGB')
 
     W, H = pil_img.size
@@ -135,14 +135,14 @@ def pad_image_to_canvas_base64(base64_image: str, target_size: tuple) -> str:
     new_h = max(1, int(H * scale))
     pil_resized = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
 
-    # 검은 캔버스에 중앙 배치 (NAIS2: black letterbox)
+    # 검은 캔버스에 중앙 배치 (ComfyUI: black letterbox)
     canvas = PILImage.new('RGB', (tw, th), (0, 0, 0))
     offset = ((tw - new_w) // 2, (th - new_h) // 2)
     canvas.paste(pil_resized, offset)
 
-    # NAIS2 방식: JPEG 0.95 quality
+    # ComfyUI 방식: PNG
     buffer = io.BytesIO()
-    canvas.save(buffer, format='JPEG', quality=95)
+    canvas.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 def get_image_size_from_base64(base64_image: str) -> tuple:
@@ -1189,18 +1189,21 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Character Reference padding failed, using original: {e}")
             padded_image = raw_image
 
-        # NAIS2 방식: director_reference_images 사용 (cache 없이 raw 이미지)
+        # ComfyUI NAIDGenerator 방식: director_reference_images + 올바른 descriptions 구조
         params["director_reference_images"] = [padded_image]
         params["director_reference_information_extracted"] = [1.0]
         params["director_reference_strength_values"] = [1.0]
         # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
         params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
+        # ComfyUI 구조: use_coords, use_order 포함
         params["director_reference_descriptions"] = [{
+            "use_coords": False,
+            "use_order": False,
+            "legacy_uc": False,
             "caption": {
                 "base_caption": caption_type,
                 "char_captions": []
-            },
-            "legacy_uc": False
+            }
         }]
 
         print(f"[NAI] CharRef: fidelity={fidelity}, secondary={round(1.0 - fidelity, 2)}, caption={caption_type}, data_len={len(padded_image)}")
