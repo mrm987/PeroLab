@@ -6477,6 +6477,9 @@
                 const data = await response.json();
                 if (data.error) {
                     showToast(`폴더 열기 실패: ${data.error}`, 'error');
+                } else {
+                    // 브라우저 포커스 해제하여 탐색기가 앞으로 오도록
+                    window.blur();
                 }
             } catch (e) {
                 showToast('폴더 열기 실패', 'error');
@@ -7414,6 +7417,8 @@
                 const result = await response.json();
                 if (!result.success) {
                     showToast('폴더 열기 실패', 'error');
+                } else {
+                    window.blur();
                 }
             } catch (err) {
                 showToast('폴더 열기 오류', 'error');
@@ -9524,11 +9529,15 @@
                     ? censorState.currentUncensoredFolder 
                     : censorState.currentCensoredFolder;
                 try {
-                    await fetch(`${API_BASE}/api/open-folder`, {
+                    const response = await fetch(`${API_BASE}/api/open-folder`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ folder: folder, subfolder: subfolder })
                     });
+                    const result = await response.json();
+                    if (!result.error) {
+                        window.blur();
+                    }
                 } catch (err) {
                     showToast('폴더 열기 실패', 'error');
                 }
