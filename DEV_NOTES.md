@@ -111,6 +111,35 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 #### 마스크 형식
 - 검정(black) = 유지할 영역
 - 흰색(white) = 인페인트할 영역
+- RGBA PNG, alpha=255 (완전 불투명)
+- 반드시 순수 흑백 (0 또는 255만, 회색 금지)
+- 8x8 픽셀 그리드 기반 브러시 (NAI 웹과 동일)
+
+#### NAI 웹 인페인트 파라미터 (2025-01 캡처)
+```json
+{
+  "action": "infill",
+  "model": "nai-diffusion-4-5-full-inpainting",
+  "parameters": {
+    "add_original_image": false,
+    "image_format": "png",
+    "inpaintImg2ImgStrength": 1,
+    "legacy": false,
+    "legacy_v3_extend": false,
+    "noise": 0,
+    "strength": 0.7,
+    "image": "<base64 PNG>",
+    "mask": "<base64 PNG, 순수 흑백>"
+  }
+}
+```
+
+**주의사항:**
+- `add_original_image: false` (true로 하면 seam 발생)
+- `inpaintImg2ImgStrength: 1` (고정값)
+- `noise: 0` (삭제가 아니라 0으로 설정)
+- `img2img` 중첩 객체 **사용 안함**
+- 바이브/캐릭터레퍼런스는 인페인트에서 **미지원** (UI에만 표시, 실제 적용 안됨)
 
 #### 참고 자료
 - novelai-python SDK: https://github.com/LlmKira/novelai-python
