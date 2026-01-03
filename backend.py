@@ -1180,6 +1180,8 @@ async def call_nai_api(req: GenerateRequest):
 
     # Character Reference (V4.5 only) - 이미지를 특정 캔버스 크기로 패딩
     if req.character_reference and req.character_reference.get("image"):
+        import hashlib
+
         fidelity = req.character_reference.get("fidelity", 0.5)
         style_aware = req.character_reference.get("style_aware", True)
         caption_type = "character&style" if style_aware else "character"
@@ -1195,8 +1197,12 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Character Reference padding failed, using original: {e}")
             padded_image = raw_image
 
-        # NAI 웹과 동일한 구조 (use_coords, use_order 제거)
+        # NAI 웹 방식: cache_secret_key 사용 (이미지 해시)
+        cache_key = hashlib.sha256(padded_image.encode()).hexdigest()
+
+        # director_reference_images (raw) + director_reference_images_cached (key) 둘 다 전송
         params["director_reference_images"] = [padded_image]
+        params["director_reference_images_cached"] = [{"cache_secret_key": cache_key}]
         params["director_reference_descriptions"] = [{
             "caption": {
                 "base_caption": caption_type,
@@ -1208,6 +1214,8 @@ async def call_nai_api(req: GenerateRequest):
         # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
         params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
         params["director_reference_information_extracted"] = [1.0]
+
+        print(f"[NAI] CharRef cache_key: {cache_key[:32]}...")
 
     # Base Image (img2img / inpaint) 처리
     action = "generate"
