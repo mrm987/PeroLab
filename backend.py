@@ -240,11 +240,16 @@ def ensure_png_base64(base64_image: str, force_reencode: bool = False) -> str:
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
-def binarize_mask(base64_mask: str, threshold: int = 128) -> str:
-    """마스크를 이진화 (NAI는 순수 흑백 마스크만 지원)
+def binarize_mask(base64_mask: str, threshold: int = 1) -> str:
+    """마스크를 이진화 (NAI는 순수 흑백 RGBA 마스크만 지원)
 
     안티앨리어싱된 회색 픽셀을 순수 흑백으로 변환.
     threshold 이상은 흰색(255), 미만은 검정(0).
+
+    NAIS2 참고: alpha > 10 기준 사용 (페인팅된 영역 최대한 포착)
+    threshold=1로 설정하여 검정(0)이 아닌 모든 픽셀을 흰색으로 처리.
+
+    출력: RGBA 형식, alpha=255 (완전 불투명)
     """
     from PIL import Image as PILImage
 
@@ -252,24 +257,31 @@ def binarize_mask(base64_mask: str, threshold: int = 128) -> str:
     mask_data = base64.b64decode(base64_mask)
     mask_img = PILImage.open(io.BytesIO(mask_data))
 
-    # RGBA → L (그레이스케일) 변환 후 이진화
-    if mask_img.mode == 'RGBA':
-        # RGB 평균으로 그레이스케일 변환
-        mask_gray = mask_img.convert('L')
-    elif mask_img.mode == 'RGB':
-        mask_gray = mask_img.convert('L')
-    else:
-        mask_gray = mask_img
+    # 그레이스케일로 변환
+    mask_gray = mask_img.convert('L')
 
     # 이진화: threshold 이상 → 255, 미만 → 0
     mask_binary = mask_gray.point(lambda x: 255 if x >= threshold else 0, mode='L')
 
-    # RGB로 변환 (흑백 이미지)
-    mask_rgb = PILImage.merge('RGB', (mask_binary, mask_binary, mask_binary))
+    # RGBA로 변환 (NAI 형식과 동일: R=G=B=값, A=255)
+    alpha = PILImage.new('L', mask_binary.size, 255)  # 완전 불투명
+    mask_rgba = PILImage.merge('RGBA', (mask_binary, mask_binary, mask_binary, alpha))
+
+    # 디버그: 이진화된 마스크 저장 및 검증
+    mask_rgba.save("debug_binarized_mask.png")
+
+    # 고유 픽셀값 확인 (NAI는 2개만 허용: 0과 255)
+    import numpy as np
+    mask_array = np.array(mask_rgba)
+    unique_r = set(mask_array[:, :, 0].flatten())
+    unique_a = set(mask_array[:, :, 3].flatten())
+    print(f"[DEBUG] Binarized mask: size={mask_rgba.size}, mode={mask_rgba.mode}")
+    print(f"[DEBUG] Unique R values: {unique_r} (should be {{0, 255}})")
+    print(f"[DEBUG] Unique A values: {unique_a} (should be {{255}})")
 
     # PNG로 저장
     buffer = io.BytesIO()
-    mask_rgb.save(buffer, format='PNG')
+    mask_rgba.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 
@@ -1204,12 +1216,22 @@ async def call_nai_api(req: GenerateRequest):
             # 마스크를 이진화 (NAI는 순수 흑백만 지원, 회색 가장자리 제거)
             mask_png = binarize_mask(req.base_mask)
             params["mask"] = mask_png
-            # NAI 웹과 동일한 인페인트 파라미터
-            params["add_original_image"] = False
-            params["image_format"] = "png"
-            params["inpaintImg2ImgStrength"] = 1
-            params["legacy"] = False
-            params["legacy_v3_extend"] = False
+
+            # NAIS2 참고: 인페인트 파라미터 설정
+            # - add_original_image: True (NAIS2와 동일)
+            # - img2img: strength + color_correct 중첩 객체
+            # - inpaintImg2ImgStrength: 사용자 strength 값
+            # - noise 파라미터 삭제 (인페인트에서 미사용)
+            params["add_original_image"] = True
+            params["img2img"] = {
+                "strength": req.base_strength,
+                "color_correct": True
+            }
+            params["inpaintImg2ImgStrength"] = req.base_strength
+
+            # noise 파라미터 삭제 (인페인트와 호환 안됨)
+            if "noise" in params:
+                del params["noise"]
 
             # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
             # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
