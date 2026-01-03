@@ -1866,6 +1866,31 @@
             gap: 12px;
             align-items: center;
         }
+        .censor-folder-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+        .censor-folder-label {
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        .censor-folder-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .censor-folder-btn:hover {
+            background: var(--bg-light);
+        }
         .censor-folder-select, .censor-model-select {
             padding: 8px 12px;
             border-radius: 6px;
@@ -3342,14 +3367,25 @@
 
             <!-- 검열 모드 -->
             <div class="censor-container" id="censorContainer" style="display: none;">
-                <!-- 상단: 검열전/검열후 탭 + 폴더 선택 -->
+                <!-- 상단: 검열전/검열후 탭 + 폴더 버튼 -->
                 <div class="censor-header">
                     <div class="censor-tabs">
                         <button type="button" class="censor-tab active" id="censorTabBefore">검열 전</button>
                         <button type="button" class="censor-tab" id="censorTabAfter">검열 후</button>
                     </div>
                     <div class="censor-folder-row">
-                        <select id="censorSourceFolder" class="censor-folder-select">
+                        <!-- 검열 전 폴더 (uncensored) -->
+                        <div class="censor-folder-group" id="censorFolderBefore">
+                            <span class="censor-folder-label">📂 censoring/uncensored</span>
+                            <button type="button" class="censor-folder-btn" id="censorOpenUncensoredBtn" title="폴더 열기">📂</button>
+                        </div>
+                        <!-- 검열 후 폴더 (censored) -->
+                        <div class="censor-folder-group" id="censorFolderAfter" style="display: none;">
+                            <span class="censor-folder-label">📂 censoring/censored</span>
+                            <button type="button" class="censor-folder-btn" id="censorOpenCensoredBtn" title="폴더 열기">📂</button>
+                        </div>
+                        <!-- 모델 선택 -->
+                        <select id="censorSourceFolder" class="censor-folder-select" style="display: none;">
                             <option value="">📂 outputs</option>
                         </select>
                         <select id="censorModel" class="censor-model-select">
@@ -9272,6 +9308,10 @@
             document.getElementById('censorOptionsBefore').style.display = tab === 'before' ? 'flex' : 'none';
             document.getElementById('censorOptionsAfter').style.display = tab === 'after' ? 'flex' : 'none';
             
+            // 폴더 그룹 표시/숨김
+            document.getElementById('censorFolderBefore').style.display = tab === 'before' ? 'flex' : 'none';
+            document.getElementById('censorFolderAfter').style.display = tab === 'after' ? 'flex' : 'none';
+            
             loadCensorImages();
         }
         
@@ -9292,6 +9332,31 @@
             // 폴더 변경
             document.getElementById('censorSourceFolder').onchange = () => {
                 loadCensorImages();
+            };
+            
+            // 폴더 열기 버튼
+            document.getElementById('censorOpenUncensoredBtn').onclick = async () => {
+                try {
+                    await fetch(`${API_BASE}/api/open-folder`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folder: 'uncensored' })
+                    });
+                } catch (err) {
+                    showToast('폴더 열기 실패', 'error');
+                }
+            };
+            
+            document.getElementById('censorOpenCensoredBtn').onclick = async () => {
+                try {
+                    await fetch(`${API_BASE}/api/open-folder`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ folder: 'censored' })
+                    });
+                } catch (err) {
+                    showToast('폴더 열기 실패', 'error');
+                }
             };
             
             // 전체 검열 실행

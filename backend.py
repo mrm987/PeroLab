@@ -2534,6 +2534,8 @@ async def open_folder(request: dict):
         "gallery": GALLERY_DIR,
         "checkpoints": Path(CONFIG.get("checkpoints_dir", CHECKPOINTS_DIR)),
         "loras": Path(CONFIG.get("lora_dir", LORA_DIR)),
+        "uncensored": UNCENSORED_DIR,
+        "censored": CENSORED_DIR,
     }
 
     folder_path = folder_map.get(folder_type)
