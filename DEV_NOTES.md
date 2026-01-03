@@ -4,6 +4,25 @@
 - `index.html` - 프론트엔드 (HTML + CSS + JavaScript 단일 파일)
 - `backend.py` - FastAPI 백엔드
 
+### 의존성 관리
+```
+requirements.txt       # 전체 의존성 (개발용, torch/diffusers 포함)
+requirements-core.txt  # 릴리즈용 핵심 의존성만
+```
+
+- **릴리즈 빌드**: `requirements-core.txt` 사용 (GitHub Actions 워크플로우)
+- **의존성 추가 시**: `requirements-core.txt` 수정하면 Windows/macOS 빌드에 자동 반영
+- **Local 생성 기능**: `requirements.txt`의 torch/diffusers는 런타임에 자동 설치
+
+### 빌드 워크플로우
+```
+.github/workflows/
+├── build.yml         # Windows 빌드 (PeroPix-Windows.zip)
+└── build-macos.yml   # macOS 빌드 (PeroPix-macOS.zip)
+```
+- 릴리즈 생성 시 양쪽 모두 자동 빌드 및 업로드
+- `workflow_dispatch`로 수동 테스트 빌드 가능
+
 ---
 
 ## NAI (NovelAI) API

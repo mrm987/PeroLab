@@ -8,9 +8,15 @@ NAI API + Local Diffusers 이미지 생성기
 
 ## 설치
 
+### Windows
 1. `PeroPix-Windows.zip` 다운로드
 2. 압축 해제
-3. `PeroPix.exe` 실행
+3. `PeroPix.bat` 실행
+
+### macOS
+1. `PeroPix-macOS.zip` 다운로드
+2. 압축 해제
+3. `PeroPix.command` 실행 (처음 실행 시 우클릭 → 열기)
 
 ## 사용법
 
@@ -71,10 +77,11 @@ NAI API + Local Diffusers 이미지 생성기
 
 ```
 PeroPix/
-├── PeroPix.exe
+├── PeroPix.bat       # Windows 런처
+├── PeroPix.command   # macOS 런처
 ├── backend.py
 ├── index.html
-├── python_env/       # Python 환경 (포함)
+├── python/           # Python 환경 (포함)
 ├── prompts/          # 프롬프트 프리셋
 ├── vibes/            # Vibe Transfer 이미지
 ├── gallery/          # 갤러리 저장 이미지
@@ -88,11 +95,11 @@ PeroPix/
 ## 시스템 요구사항
 
 ### NAI 생성
-- Windows 10/11
+- Windows 10/11 또는 macOS
 - 인터넷 연결
 - NAI 구독 및 API 토큰
 
-### Local 생성
+### Local 생성 (Windows만 지원)
 - Windows 10/11
 - NVIDIA GPU (CUDA)
 - 8GB+ VRAM 권장
