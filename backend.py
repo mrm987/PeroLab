@@ -115,41 +115,34 @@ def _choose_cr_canvas(w: int, h: int) -> tuple:
     return best
 
 def pad_image_to_canvas_base64(base64_image: str, target_size: tuple) -> str:
-    """base64 이미지를 캔버스 크기에 맞게 letterbox 패딩 후 base64 반환"""
+    """base64 이미지를 캔버스 크기에 맞게 letterbox 패딩 후 base64 반환 (NAIS2 방식: JPEG 0.95)"""
     from PIL import Image as PILImage
-    
+
     # base64 디코딩
     image_data = base64.b64decode(base64_image)
     pil_img = PILImage.open(io.BytesIO(image_data))
-    
-    # RGBA/RGB 처리
-    if pil_img.mode == 'RGBA':
-        mode = 'RGBA'
-    else:
+
+    # JPEG는 RGB만 지원하므로 RGB로 변환
+    if pil_img.mode != 'RGB':
         pil_img = pil_img.convert('RGB')
-        mode = 'RGB'
-    
+
     W, H = pil_img.size
     tw, th = target_size
-    
+
     # 비율 유지하면서 리사이즈
     scale = min(tw / W, th / H)
     new_w = max(1, int(W * scale))
     new_h = max(1, int(H * scale))
     pil_resized = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
-    
-    # 캔버스에 중앙 배치
-    if mode == 'RGBA':
-        canvas = PILImage.new('RGBA', (tw, th), (0, 0, 0, 0))
-    else:
-        canvas = PILImage.new('RGB', (tw, th), (0, 0, 0))
-    
+
+    # 검은 캔버스에 중앙 배치 (NAIS2: black letterbox)
+    canvas = PILImage.new('RGB', (tw, th), (0, 0, 0))
     offset = ((tw - new_w) // 2, (th - new_h) // 2)
     canvas.paste(pil_resized, offset)
-    
-    # base64로 인코딩
+
+    # NAIS2 방식: JPEG 0.95 quality
     buffer = io.BytesIO()
-    canvas.save(buffer, format='PNG')
+    canvas.save(buffer, format='JPEG', quality=95)
     return base64.b64encode(buffer.getvalue()).decode('utf-8')
 
 def get_image_size_from_base64(base64_image: str) -> tuple:
