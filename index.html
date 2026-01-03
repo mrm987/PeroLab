@@ -8202,14 +8202,20 @@
             img.onload = () => {
                 maskEditor.originalImage = img;
 
-                // 캔버스 크기 계산 (최대 70vh, 95vw 내에서)
+                // 원본 크기로 캔버스 설정 (축소/업스케일 없음)
+                // 디스플레이는 CSS로 조정
                 const maxWidth = window.innerWidth * 0.9;
                 const maxHeight = window.innerHeight * 0.65;
-                let scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
-                maskEditor.scale = scale;
+                let displayScale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+                maskEditor.scale = displayScale;
 
-                const canvasWidth = Math.round(img.width * scale);
-                const canvasHeight = Math.round(img.height * scale);
+                // 캔버스 실제 크기 = 원본 이미지 크기
+                const canvasWidth = img.width;
+                const canvasHeight = img.height;
+
+                // 디스플레이 크기 (CSS)
+                const displayWidth = Math.round(img.width * displayScale);
+                const displayHeight = Math.round(img.height * displayScale);
 
                 // 캔버스 초기화
                 maskEditor.imageCanvas = document.getElementById('maskEditorImageCanvas');
@@ -8217,17 +8223,17 @@
                 maskEditor.drawCanvas = document.getElementById('maskEditorDrawCanvas');
 
                 [maskEditor.imageCanvas, maskEditor.maskCanvas, maskEditor.drawCanvas].forEach(c => {
-                    c.width = canvasWidth;
+                    c.width = canvasWidth;      // 실제 해상도 = 원본
                     c.height = canvasHeight;
-                    c.style.width = canvasWidth + 'px';
-                    c.style.height = canvasHeight + 'px';
+                    c.style.width = displayWidth + 'px';   // 디스플레이만 축소
+                    c.style.height = displayHeight + 'px';
                 });
 
                 maskEditor.imageCtx = maskEditor.imageCanvas.getContext('2d');
                 maskEditor.maskCtx = maskEditor.maskCanvas.getContext('2d');
                 maskEditor.drawCtx = maskEditor.drawCanvas.getContext('2d');
 
-                // 이미지 그리기
+                // 이미지 그리기 (원본 크기)
                 maskEditor.imageCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
                 // 기존 마스크 로드 또는 클리어 (검정 배경)
@@ -8267,8 +8273,11 @@
 
             function getPos(e) {
                 const rect = drawCanvas.getBoundingClientRect();
-                const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-                const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+                const displayX = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
+                const displayY = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
+                // CSS 스케일링 보정: 디스플레이 좌표 → 캔버스 좌표
+                const x = displayX * (drawCanvas.width / rect.width);
+                const y = displayY * (drawCanvas.height / rect.height);
                 return { x, y };
             }
 
@@ -8484,29 +8493,19 @@
 
             // Apply
             document.getElementById('maskEditorApply').onclick = () => {
-                // 원본 크기로 마스크 생성 (RGBA 포맷)
-                const fullMaskCanvas = document.createElement('canvas');
-                fullMaskCanvas.width = maskEditor.originalImage.width;
-                fullMaskCanvas.height = maskEditor.originalImage.height;
-                const fullCtx = fullMaskCanvas.getContext('2d');
-
-                // 픽셀 정확한 스케일 업 (안티앨리어싱 비활성화)
+                // 캔버스가 이미 원본 해상도이므로 직접 사용 (업스케일 불필요)
                 // NAI는 순수 흑백 마스크만 지원 - 회색 픽셀이 생기면 경계선 아티팩트 발생
-                fullCtx.imageSmoothingEnabled = false;
-                fullCtx.drawImage(maskEditor.maskCanvas, 0, 0, fullMaskCanvas.width, fullMaskCanvas.height);
-
-                // Base Image 데이터 설정
-                baseImageData.enabled = true;
-                baseImageData.image = maskEditor.imageCanvas.toDataURL('image/png').split(',')[1];
 
                 // 원본 크기 이미지
                 const fullImageCanvas = document.createElement('canvas');
                 fullImageCanvas.width = maskEditor.originalImage.width;
                 fullImageCanvas.height = maskEditor.originalImage.height;
                 fullImageCanvas.getContext('2d').drawImage(maskEditor.originalImage, 0, 0);
-                baseImageData.image = fullImageCanvas.toDataURL('image/png').split(',')[1];
 
-                baseImageData.mask = fullMaskCanvas.toDataURL('image/png').split(',')[1];
+                // Base Image 데이터 설정
+                baseImageData.enabled = true;
+                baseImageData.image = fullImageCanvas.toDataURL('image/png').split(',')[1];
+                baseImageData.mask = maskEditor.maskCanvas.toDataURL('image/png').split(',')[1];  // 이미 원본 크기
                 baseImageData.mode = 'inpaint';  // 마스크 에디터는 항상 인페인트
                 baseImageData.strength = parseFloat(document.getElementById('maskEditorStrength').value);
                 baseImageData.noise = 0;  // 인페인트는 noise 미사용
