@@ -1227,18 +1227,25 @@ async def call_nai_api(req: GenerateRequest):
             params["inpaintImg2ImgStrength"] = req.base_strength
             params["add_original_image"] = True
 
-            # 인페인트와 호환 안되는 파라미터 삭제 (NAIS2와 동일)
+            # 인페인트와 호환 안되는 파라미터 삭제
+            # 바이브/캐릭터레퍼런스가 인페인트 참조를 방해할 수 있음
             params_to_delete = [
                 "noise",
+                # Character Reference
                 "director_reference_images",
                 "director_reference_information_extracted",
                 "director_reference_strength_values",
                 "director_reference_secondary_strength_values",
-                "director_reference_descriptions"
+                "director_reference_descriptions",
+                # Vibe Transfer (인페인트 시 원본 참조 방해 가능)
+                "reference_image_multiple",
+                "reference_information_extracted_multiple",
+                "reference_strength_multiple"
             ]
             for param in params_to_delete:
                 if param in params:
                     del params[param]
+                    print(f"[NAI] Deleted param for inpaint: {param}")
 
             # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
             # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting

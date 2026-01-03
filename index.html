@@ -8366,7 +8366,7 @@
                 lastGridPos = gridPos;
             }
 
-            // 브러시 커서 미리보기 (그리드 정렬)
+            // 브러시 커서 미리보기 (그리드 정렬, 실제 칠해지는 영역과 동일)
             function drawCursor(e) {
                 const pos = getPos(e);
                 const ctx = maskEditor.drawCtx;
@@ -8377,10 +8377,11 @@
                 // 이전 커서 지우기
                 ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
-                // 그리드 영역 표시
+                // 실제 칠해지는 영역: -halfBrush ~ +halfBrush (총 halfBrush*2+1 셀)
+                const cellCount = halfBrush * 2 + 1;
                 const startX = (gridPos.gx - halfBrush) * GRID_SIZE;
                 const startY = (gridPos.gy - halfBrush) * GRID_SIZE;
-                const size = (brushGridSize * 2 - 1) * GRID_SIZE;
+                const size = cellCount * GRID_SIZE;
 
                 ctx.strokeStyle = maskEditor.tool === 'brush' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)';
                 ctx.lineWidth = 2;
