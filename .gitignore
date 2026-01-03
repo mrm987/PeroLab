@@ -37,3 +37,9 @@ Thumbs.db
 # Build outputs
 dist/
 *.zip
+
+# Test/Debug data
+test_data/
+DEV_backup/
+debug_*.png
+*_debug_*.json

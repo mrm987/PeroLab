@@ -5118,7 +5118,7 @@
                 // Character Reference (V4.5 only)
                 if (document.getElementById('enableCharRef').checked && charRefData) {
                     request.character_reference = {
-                        image: charRefData.image,
+                        image: charRefData.processedImage || charRefData.image,  // Canvas 처리된 이미지 우선
                         fidelity: parseFloat(document.getElementById('charRefFidelity').value),
                         style_aware: document.getElementById('charRefStyleAware').checked
                     };
@@ -6518,7 +6518,56 @@
         // ============================================================
         // Character Reference (V4.5 only)
         // ============================================================
-        let charRefData = null; // {image: base64, fidelity: 0.5, style_aware: true}
+        let charRefData = null; // {image: base64, processedImage: base64, fidelity: 0.5, style_aware: true}
+
+        // Canvas 기반 이미지 처리 (NAIS2/NAI 웹과 동일한 방식)
+        async function processCharacterReferenceImage(base64Image) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = function() {
+                    const width = img.width;
+                    const height = img.height;
+                    
+                    // 캔버스 크기 선택 (1472x1472, 1536x1024, 1024x1536)
+                    let targetW = 1472, targetH = 1472;
+                    if (width > height) {
+                        targetW = 1536;
+                        targetH = 1024;
+                    } else if (width < height) {
+                        targetW = 1024;
+                        targetH = 1536;
+                    }
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = targetW;
+                    canvas.height = targetH;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 검은 배경으로 채우기 (letterbox)
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, targetW, targetH);
+                    
+                    // 비율 유지하면서 리사이즈 계산
+                    const scale = Math.min(targetW / width, targetH / height);
+                    const w = width * scale;
+                    const h = height * scale;
+                    const x = (targetW - w) / 2;
+                    const y = (targetH - h) / 2;
+                    
+                    // 이미지 그리기
+                    ctx.drawImage(img, x, y, w, h);
+                    
+                    console.log(`[CharRef] Canvas processed: ${width}x${height} -> ${targetW}x${targetH}`);
+                    
+                    // JPEG 95% 품질로 출력 (NAIS2와 동일)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                    const base64Only = dataUrl.split(',')[1];
+                    resolve(base64Only);
+                };
+                img.onerror = () => reject(new Error('Image load failed'));
+                img.src = base64Image.startsWith('data:') ? base64Image : 'data:image/png;base64,' + base64Image;
+            });
+        }
 
         document.getElementById('enableCharRef').onchange = function() {
             document.getElementById('charRefSettings').style.display = this.checked ? 'block' : 'none';
@@ -6539,8 +6588,20 @@
             const file = this.files[0];
             if (!file) return;
             const base64 = await fileToBase64(file);
+            
+            // Canvas로 이미지 처리 (NAI 웹/NAIS2와 동일한 방식)
+            let processedImage;
+            try {
+                processedImage = await processCharacterReferenceImage(base64);
+                console.log(`[CharRef] Image processed, length: ${processedImage.length}`);
+            } catch (e) {
+                console.error('[CharRef] Processing failed:', e);
+                processedImage = base64; // 실패시 원본 사용
+            }
+            
             charRefData = {
-                image: base64,
+                image: base64,  // 원본 (프리뷰용)
+                processedImage: processedImage,  // 처리된 이미지 (API용)
                 fidelity: parseFloat(document.getElementById('charRefFidelity').value),
                 style_aware: document.getElementById('charRefStyleAware').checked
             };
