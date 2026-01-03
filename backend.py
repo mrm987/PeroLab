@@ -1213,13 +1213,27 @@ async def call_nai_api(req: GenerateRequest):
 
         if req.base_mode == "inpaint" and req.base_mask:
             action = "infill"
+
+            # 이미지와 마스크 크기 확인
+            from PIL import Image as PILImage
+            img_data = base64.b64decode(base_png)
+            img_pil = PILImage.open(io.BytesIO(img_data))
+            print(f"[NAI] Source image size: {img_pil.size}")
+
             # 마스크를 이진화 (NAI는 순수 흑백만 지원, 회색 가장자리 제거)
             mask_png = binarize_mask(req.base_mask)
             params["mask"] = mask_png
 
-            # NAIS2 방식: 인페인트 파라미터 (정확한 구조)
-            # 최상위 strength는 고정 0.7, img2img 안에 실제 사용자 값
-            params["strength"] = 0.7  # 고정값 (NAIS2와 동일)
+            # 마스크 크기 확인
+            mask_data = base64.b64decode(mask_png)
+            mask_pil = PILImage.open(io.BytesIO(mask_data))
+            print(f"[NAI] Mask size: {mask_pil.size}")
+
+            if img_pil.size != mask_pil.size:
+                print(f"[NAI] WARNING: Image and mask size mismatch!")
+
+            # NAIS2 방식: 인페인트 파라미터
+            params["strength"] = 0.7
             params["img2img"] = {
                 "strength": req.base_strength,
                 "color_correct": True
@@ -1227,25 +1241,19 @@ async def call_nai_api(req: GenerateRequest):
             params["inpaintImg2ImgStrength"] = req.base_strength
             params["add_original_image"] = True
 
-            # 인페인트와 호환 안되는 파라미터 삭제
-            # 바이브/캐릭터레퍼런스가 인페인트 참조를 방해할 수 있음
+            # 인페인트와 호환 안되는 파라미터 삭제 (noise, character reference만)
+            # 바이브는 NAI 웹에서도 사용하므로 유지
             params_to_delete = [
                 "noise",
-                # Character Reference
                 "director_reference_images",
                 "director_reference_information_extracted",
                 "director_reference_strength_values",
                 "director_reference_secondary_strength_values",
-                "director_reference_descriptions",
-                # Vibe Transfer (인페인트 시 원본 참조 방해 가능)
-                "reference_image_multiple",
-                "reference_information_extracted_multiple",
-                "reference_strength_multiple"
+                "director_reference_descriptions"
             ]
             for param in params_to_delete:
                 if param in params:
                     del params[param]
-                    print(f"[NAI] Deleted param for inpaint: {param}")
 
             # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
             # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
