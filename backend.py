@@ -4112,6 +4112,114 @@ async def batch_censor(request: dict):
     }
 
 
+# ============================================================
+# Image Set Save (Slot Mode)
+# ============================================================
+
+def select_folder_dialog(title: str = "폴더 선택") -> Optional[str]:
+    """시스템 폴더 선택 다이얼로그 (Windows/macOS/Linux)"""
+    import platform
+    system = platform.system()
+    
+    if system == "Windows":
+        # PowerShell로 폴더 선택 다이얼로그
+        import subprocess
+        ps_script = '''
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = "''' + title + '''"
+$dialog.ShowNewFolderButton = $true
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    Write-Output $dialog.SelectedPath
+}
+'''
+        try:
+            result = subprocess.run(
+                ["powershell", "-Command", ps_script],
+                capture_output=True,
+                text=True,
+                timeout=300  # 5분 타임아웃
+            )
+            folder_path = result.stdout.strip()
+            return folder_path if folder_path else None
+        except Exception as e:
+            print(f"[FolderDialog] PowerShell error: {e}")
+            return None
+    else:
+        # macOS/Linux: tkinter 사용
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            folder_path = filedialog.askdirectory(title=title)
+            root.destroy()
+            return folder_path if folder_path else None
+        except Exception as e:
+            print(f"[FolderDialog] tkinter error: {e}")
+            return None
+
+
+class SaveImageSetRequest(BaseModel):
+    image_paths: List[str]  # outputs 폴더 기준 상대 경로 목록
+
+
+@app.post("/api/save-image-set")
+async def save_image_set(req: SaveImageSetRequest):
+    """현재 슬롯에 표시된 이미지들을 선택한 폴더로 복사"""
+    if not req.image_paths:
+        return {"success": False, "error": "저장할 이미지가 없습니다"}
+    
+    # 폴더 선택 다이얼로그
+    target_folder = select_folder_dialog("이미지 세트 저장 폴더 선택")
+    
+    if not target_folder:
+        return {"success": False, "cancelled": True, "error": "폴더 선택이 취소되었습니다"}
+    
+    target_path = Path(target_folder)
+    if not target_path.exists():
+        return {"success": False, "error": f"폴더가 존재하지 않습니다: {target_folder}"}
+    
+    saved_count = 0
+    errors = []
+    
+    for image_path in req.image_paths:
+        try:
+            # outputs 폴더 기준 상대 경로
+            source = OUTPUT_DIR / image_path
+            if not source.exists():
+                errors.append(f"파일 없음: {image_path}")
+                continue
+            
+            # 대상 경로
+            dest = target_path / source.name
+            
+            # 파일명 충돌 시 처리
+            if dest.exists():
+                stem = source.stem
+                suffix = source.suffix
+                counter = 1
+                while dest.exists():
+                    dest = target_path / f"{stem}_{counter}{suffix}"
+                    counter += 1
+            
+            # 파일 복사 (메타데이터 포함)
+            shutil.copy2(str(source), str(dest))
+            saved_count += 1
+            
+        except Exception as e:
+            errors.append(f"{image_path}: {str(e)}")
+    
+    return {
+        "success": saved_count > 0,
+        "saved_count": saved_count,
+        "total_count": len(req.image_paths),
+        "target_folder": target_folder,
+        "errors": errors if errors else None
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

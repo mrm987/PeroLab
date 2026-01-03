@@ -3275,6 +3275,10 @@
                             </div>
                         </div>
                     </div>
+                    <button type="button" class="header-btn" id="saveImageSetBtn" title="현재 슬롯 이미지들을 폴더에 저장">
+                        <span>💾</span>
+                        <span>세트 저장</span>
+                    </button>
                     <button type="button" class="header-btn icon-only" id="openOutputFolderBtn" title="출력 폴더 열기">📂</button>
                 </div>
             </div>
@@ -4535,6 +4539,45 @@
                     showToast('폴더 생성 오류', 'error');
                 }
             }, '생성');
+        };
+
+        // 세트 저장 버튼 - 현재 슬롯에 표시된 이미지들을 폴더로 저장
+        document.getElementById('saveImageSetBtn').onclick = async () => {
+            // 모든 슬롯에서 표시된 이미지 경로 수집
+            const imagePaths = [];
+            slotsContainer.querySelectorAll('.slot').forEach(slot => {
+                const imagesContainer = slot.querySelector('.slot-images');
+                imagesContainer.querySelectorAll('.slot-image-card').forEach(card => {
+                    if (card._imageData && card._imageData.image_path) {
+                        imagePaths.push(card._imageData.image_path);
+                    }
+                });
+            });
+
+            if (imagePaths.length === 0) {
+                showToast('저장할 이미지가 없습니다', 'warning');
+                return;
+            }
+
+            try {
+                showToast('폴더를 선택하세요...', 'info');
+                const response = await fetch(`${API_BASE}/api/save-image-set`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_paths: imagePaths })
+                });
+                const result = await response.json();
+
+                if (result.cancelled) {
+                    showToast('저장 취소됨', 'warning');
+                } else if (result.success) {
+                    showToast(`${result.saved_count}개 이미지 저장됨`, 'success');
+                } else {
+                    showToast(result.error || '저장 실패', 'error');
+                }
+            } catch (err) {
+                showToast('저장 오류: ' + err.message, 'error');
+            }
         };
 
         // Sync scroll 토글
