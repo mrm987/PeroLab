@@ -1170,6 +1170,12 @@ async def call_nai_api(req: GenerateRequest):
             action = "infill"
             mask_png = ensure_png_base64(req.base_mask)
             params["mask"] = mask_png
+            # NAI 웹과 동일한 인페인트 파라미터
+            params["add_original_image"] = False
+            params["image_format"] = "png"
+            params["inpaintImg2ImgStrength"] = 1
+            params["legacy"] = False
+            params["legacy_v3_extend"] = False
             # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
             # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
             if not model_to_use.endswith("-inpainting"):
