@@ -8389,9 +8389,8 @@
                 fullMaskCanvas.height = maskEditor.originalImage.height;
                 const fullCtx = fullMaskCanvas.getContext('2d');
 
-                // 스케일 업 (부드러운 보간으로 자연스러운 가장자리 블렌딩)
-                fullCtx.imageSmoothingEnabled = true;
-                fullCtx.imageSmoothingQuality = 'high';
+                // 스케일 업 (NAI와 동일하게 픽셀화된 hard edge 유지)
+                fullCtx.imageSmoothingEnabled = false;
                 fullCtx.drawImage(maskEditor.maskCanvas, 0, 0, fullMaskCanvas.width, fullMaskCanvas.height);
 
                 // Base Image 데이터 설정
