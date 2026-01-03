@@ -1020,6 +1020,13 @@
             gap: 8px;
         }
 
+        .toolbar-label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
         .add-slot-btn {
             background: var(--accent);
             border: none;
@@ -3254,12 +3261,17 @@
                         <span>🔗</span>
                         <span>Sync</span>
                     </button>
+                    <button type="button" class="header-btn" id="saveImageSetBtn" title="현재 슬롯 이미지들을 폴더에 저장">
+                        <span>💾</span>
+                        <span>세트 저장</span>
+                    </button>
+                </div>
+                <div class="toolbar-right">
                     <button type="button" class="header-btn" id="clearImagesBtn" title="미리보기 이미지 지우기 (파일은 삭제되지 않음)">
                         <span>🧹</span>
                         <span>Clear</span>
                     </button>
-                </div>
-                <div class="toolbar-right">
+                    <span class="toolbar-label">Save to:</span>
                     <div class="folder-dropdown" id="outputFolderDropdown">
                         <button type="button" class="header-btn folder-btn" id="outputFolderBtn">
                             <span class="folder-icon">📁</span>
@@ -3275,10 +3287,6 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="header-btn" id="saveImageSetBtn" title="현재 슬롯 이미지들을 폴더에 저장">
-                        <span>💾</span>
-                        <span>세트 저장</span>
-                    </button>
                     <button type="button" class="header-btn icon-only" id="openOutputFolderBtn" title="출력 폴더 열기">📂</button>
                 </div>
             </div>
@@ -3696,7 +3704,7 @@
         function updateSlotNumbers() {
             const slots = slotsContainer.querySelectorAll('.slot');
             slots.forEach((slot, index) => {
-                slot.querySelector('.slot-number').textContent = String(index + 1).padStart(3, '0');
+                slot.querySelector('.slot-number').textContent = '🎰 ' + String(index + 1).padStart(3, '0');
             });
         }
         
@@ -3790,7 +3798,7 @@
                 <div class="slot-resize-handle"></div>
                 <div class="slot-prompt">
                     <div class="slot-prompt-header">
-                        <span class="slot-number">001</span>
+                        <span class="slot-number">🎰 001</span>
                         <input type="text" placeholder="이름 (선택)" value="${name}" class="slot-name">
                         <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
