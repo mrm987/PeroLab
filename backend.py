@@ -129,12 +129,13 @@ def pad_image_to_canvas_base64(base64_image: str, target_size: tuple) -> str:
     W, H = pil_img.size
     tw, th = target_size
 
-    # 비율 유지하면서 리사이즈 (NAI 웹은 ceil 사용)
+    # 비율 유지하면서 리사이즈 (NAI 웹은 ceil 사용, BILINEAR 알고리즘)
     import math
     scale = min(tw / W, th / H)
     new_w = min(tw, max(1, math.ceil(W * scale)))
     new_h = min(th, max(1, math.ceil(H * scale)))
-    pil_resized = pil_img.resize((new_w, new_h), PILImage.LANCZOS)
+    # ComfyUI_NAIDGenerator와 동일하게 BILINEAR 사용
+    pil_resized = pil_img.resize((new_w, new_h), PILImage.BILINEAR)
 
     # 검은 캔버스에 중앙 배치 (NAI 웹: RGBA, 알파=255)
     canvas = PILImage.new('RGBA', (tw, th), (0, 0, 0, 255))
@@ -1198,9 +1199,10 @@ async def call_nai_api(req: GenerateRequest):
             "cache_secret_key": cache_key,
             "data": padded_image
         }]
-        params["director_reference_information_extracted"] = [1]
-        params["director_reference_strength_values"] = [1]
-        # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
+        # NAI 웹은 float 타입 사용 (1.0, not 1)
+        params["director_reference_information_extracted"] = [1.0]
+        params["director_reference_strength_values"] = [1.0]
+        # fidelity: 1.0 → secondary=0.0, fidelity: 0.0 → secondary=1.0
         params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
         # NAI 웹 구조: use_coords, use_order 없음
         params["director_reference_descriptions"] = [{
