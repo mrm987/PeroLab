@@ -1195,18 +1195,18 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Character Reference padding failed, using original: {e}")
             padded_image = raw_image
 
+        # NAI 웹과 동일한 구조 (use_coords, use_order 제거)
         params["director_reference_images"] = [padded_image]
         params["director_reference_descriptions"] = [{
-            "use_coords": False,
-            "use_order": False,
-            "legacy_uc": False,
             "caption": {
                 "base_caption": caption_type,
                 "char_captions": []
-            }
+            },
+            "legacy_uc": False
         }]
         params["director_reference_strength_values"] = [1.0]
-        params["director_reference_secondary_strength_values"] = [1.0 - fidelity]
+        # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
+        params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
         params["director_reference_information_extracted"] = [1.0]
 
     # Base Image (img2img / inpaint) 처리
