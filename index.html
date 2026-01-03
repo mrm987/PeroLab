@@ -814,6 +814,24 @@
             background: rgba(255,100,100,0.4);
         }
 
+        .nai-vibe-placeholder {
+            width: 48px;
+            height: 48px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .vibe-cached-badge {
+            color: #4ade80;
+            font-size: 0.7rem;
+            margin-left: 4px;
+        }
+
         .vibe-sliders {
             display: flex;
             flex-direction: column;
@@ -5928,7 +5946,13 @@
                 furry_mode: furryMode,
                 provider: ppx.provider || 'nai',
                 model: ppx.local_model || '',
-                vibe_transfer: ppx.vibe_transfer || null
+                vibe_transfer: ppx.vibe_transfer || null,
+                // NAI 바이브 데이터 (순수 NAI 이미지용)
+                nai_vibes: {
+                    images: meta.reference_image_multiple || [],
+                    strengths: meta.reference_strength_multiple || [],
+                    info_extracted: meta.reference_information_extracted_multiple || []
+                }
             };
         }
 
@@ -6084,24 +6108,53 @@
                 showToast(`원본 Provider: ${metadata.provider}`, 'warning');
             }
 
-            // Vibe Transfer 설정 (캐시에서 이름 매칭)
-            // 바이브 정보가 없으면 기존 설정 유지 (변경하지 않음)
+            // Vibe Transfer 설정
+            let vibesRestored = false;
             if (metadata.vibe_transfer && metadata.vibe_transfer.length > 0) {
+                // PeroPix 형식 바이브 (캐시에서 이름 매칭)
                 loadVibesFromMetadata(metadata.vibe_transfer);
+                vibesRestored = true;
+            } else if (metadata.nai_vibes && metadata.nai_vibes.images && metadata.nai_vibes.images.length > 0) {
+                // NAI 원본 이미지의 바이브 복원 (인코딩 데이터만 있음)
+                const naiVibes = metadata.nai_vibes;
+                vibeList = [];  // 기존 바이브 클리어
+
+                for (let i = 0; i < naiVibes.images.length; i++) {
+                    const encodedData = naiVibes.images[i];
+                    const strength = naiVibes.strengths[i] || 0.6;
+                    // info_extracted는 배열이 비어있을 수 있음 - 기본값 1.0
+                    const infoExtracted = (naiVibes.info_extracted && naiVibes.info_extracted[i] !== undefined)
+                        ? naiVibes.info_extracted[i]
+                        : 1.0;
+
+                    // 플레이스홀더 이미지 생성 (1x1 투명 PNG)
+                    const placeholderImage = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+                    vibeList.push({
+                        image: placeholderImage,
+                        strength: strength,
+                        info_extracted: infoExtracted,
+                        name: `NAI Vibe ${i + 1}`,
+                        encoded: encodedData,
+                        encoded_model: metadata.nai_model || 'nai-diffusion-4-5-full',
+                        encoded_info_extracted: infoExtracted,
+                        _isNaiVibe: true  // NAI 바이브 표시용
+                    });
+                }
+
+                renderVibeList();
+                saveAppSettings();
+                updateAnlasCost();
+                document.getElementById('enableVibeTransfer').checked = true;
+                document.getElementById('vibeTransferSettings').style.display = 'block';
+                vibesRestored = true;
             }
-            // vibe_transfer가 없으면 (NAI 원본 이미지) 바이브는 건드리지 않음
 
             autoSaveSettings();
 
-            // NAI 원본 이미지: 이미지 데이터가 필요한 설정은 복원 불가
-            // (바이브, 캐릭터 레퍼런스, 베이스 이미지 - 메타데이터에 이미지 없음)
-            const hasVibeActive = vibeList.length > 0;
-            const hasCharRefActive = charRefData !== null;
-            const hasBaseImageActive = baseImageData.enabled;
-            const isNaiOriginal = !metadata.vibe_transfer;  // PeroPix 확장 필드 없음
-
-            if (isNaiOriginal && (hasVibeActive || hasCharRefActive || hasBaseImageActive)) {
-                showToast('설정 적용됨 (이미지 기반 설정은 유지됨)', 'warning');
+            // 결과 메시지
+            if (vibesRestored && metadata.nai_vibes?.images?.length > 0) {
+                showToast(`설정 적용됨 (바이브 ${metadata.nai_vibes.images.length}개 복원)`, 'success');
             } else {
                 showToast('설정을 불러왔습니다', 'success');
             }
@@ -6395,10 +6448,16 @@
             vibeList.forEach((vibe, idx) => {
                 const item = document.createElement('div');
                 item.className = 'vibe-item';
+                // NAI 바이브 (원본 이미지 없음)는 특별 표시
+                const isNaiVibe = vibe._isNaiVibe;
+                const imgContent = isNaiVibe
+                    ? `<div class="nai-vibe-placeholder" title="NAI에서 복원된 바이브 (원본 이미지 없음)">🎨</div>`
+                    : `<img src="data:image/png;base64,${vibe.image}" alt="vibe">`;
+                const cachedBadge = vibe.encoded ? '<span class="vibe-cached-badge" title="인코딩 캐시됨">✓</span>' : '';
                 item.innerHTML = `
                     <div class="vibe-item-header">
-                        <img src="data:image/png;base64,${vibe.image}" alt="vibe">
-                        <span class="vibe-info">${vibe.name || 'Vibe ' + (idx + 1)}</span>
+                        ${imgContent}
+                        <span class="vibe-info">${vibe.name || 'Vibe ' + (idx + 1)}${cachedBadge}</span>
                         <button type="button" class="remove-btn" data-idx="${idx}">×</button>
                     </div>
                     <div class="vibe-sliders">
