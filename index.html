@@ -7734,6 +7734,82 @@
             if (files.length === 0) return;
 
             const file = files[0];
+
+            // NAI 바이브 파일 (.naiv4vibe) 처리
+            if (file.name.endsWith('.naiv4vibe')) {
+                try {
+                    const text = await file.text();
+                    const vibeData = JSON.parse(text);
+
+                    // NAI 바이브 파일 검증
+                    if (vibeData.identifier !== 'novelai-vibe-transfer') {
+                        showToast('유효하지 않은 NAI 바이브 파일입니다', 'error');
+                        return;
+                    }
+
+                    // 바이브 정보 추출
+                    const importInfo = vibeData.importInfo || {};
+                    const model = importInfo.model || 'nai-diffusion-4-5-full';
+                    const strength = importInfo.strength || 0.6;
+                    const infoExtracted = importInfo.information_extracted || 1.0;
+
+                    // 모델에 맞는 인코딩 찾기
+                    const modelKeyMap = {
+                        'nai-diffusion-4-5-full': 'v4-5full',
+                        'nai-diffusion-4-curated-preview': 'v4-curated',
+                        'nai-diffusion-4-full': 'v4-full'
+                    };
+                    const encodingKey = modelKeyMap[model] || 'v4-5full';
+                    const modelEncodings = vibeData.encodings?.[encodingKey] || {};
+
+                    // info_extracted에 맞는 인코딩 찾기 (없으면 첫 번째 사용)
+                    let encodedData = null;
+                    let encodedInfoExtracted = infoExtracted;
+                    for (const [hash, data] of Object.entries(modelEncodings)) {
+                        if (data.params?.information_extracted === infoExtracted) {
+                            encodedData = data.encoding;
+                            break;
+                        }
+                        if (!encodedData) {
+                            encodedData = data.encoding;
+                            encodedInfoExtracted = data.params?.information_extracted || infoExtracted;
+                        }
+                    }
+
+                    // 모달 표시
+                    const thumbnail = vibeData.thumbnail || '';
+                    const imageBase64 = vibeData.image || '';
+
+                    document.getElementById('dropModalPreview').src = thumbnail || 'data:image/png;base64,' + imageBase64;
+                    document.getElementById('dropModalTitle').textContent = '🎨 NAI 바이브 파일';
+                    document.getElementById('dropModalMetadata').innerHTML = `
+                        <div><strong>Name:</strong> ${vibeData.name || file.name}</div>
+                        <div><strong>Model:</strong> ${model}</div>
+                        <div><strong>Strength:</strong> ${strength}</div>
+                        <div><strong>Info Extracted:</strong> ${infoExtracted}</div>
+                        ${encodedData ? '<div style="color:#4ade80">✓ 인코딩 캐시 있음 (Anlas 무료)</div>' : '<div style="color:#fbbf24">⚠ 인코딩 없음 - 생성 시 인코딩됨</div>'}
+                    `;
+                    document.getElementById('dropModalConfirm').textContent = '바이브에 추가';
+
+                    pendingDropData = {
+                        type: 'nai-vibe',
+                        image: imageBase64,
+                        strength: strength,
+                        info_extracted: infoExtracted,
+                        name: vibeData.name || file.name.replace('.naiv4vibe', ''),
+                        encoded: encodedData,
+                        encoded_model: encodedData ? model : null,
+                        encoded_info_extracted: encodedData ? encodedInfoExtracted : null
+                    };
+
+                    dropModal.classList.add('active');
+                    return;
+                } catch (err) {
+                    showToast('NAI 바이브 파일 파싱 오류: ' + err.message, 'error');
+                    return;
+                }
+            }
+
             if (!file.type.startsWith('image/')) {
                 showToast('이미지 파일만 드롭할 수 있습니다', 'error');
                 return;
@@ -7964,6 +8040,32 @@
                 } else {
                     doApply();
                     return;
+                }
+            } else if (pendingDropData.type === 'nai-vibe') {
+                // NAI 바이브 파일 (.naiv4vibe) 처리
+                if (vibeList.length >= 16) {
+                    showToast('바이브는 최대 16개까지만 추가할 수 있습니다', 'error');
+                } else {
+                    const vibeEntry = {
+                        image: pendingDropData.image,
+                        strength: pendingDropData.strength || 0.6,
+                        info_extracted: pendingDropData.info_extracted || 1.0,
+                        name: pendingDropData.name
+                    };
+                    // NAI 인코딩 데이터가 있으면 포함
+                    if (pendingDropData.encoded) {
+                        vibeEntry.encoded = pendingDropData.encoded;
+                        vibeEntry.encoded_model = pendingDropData.encoded_model;
+                        vibeEntry.encoded_info_extracted = pendingDropData.encoded_info_extracted || vibeEntry.info_extracted;
+                    }
+                    vibeList.push(vibeEntry);
+                    renderVibeList();
+                    saveAppSettings();
+                    updateAnlasCost();
+                    document.getElementById('enableVibeTransfer').checked = true;
+                    document.getElementById('vibeTransferSettings').style.display = 'block';
+                    const msg = pendingDropData.encoded ? 'NAI 바이브 추가됨 (캐시 사용)' : 'NAI 바이브 추가됨';
+                    showToast(msg, 'success');
                 }
             } else if (pendingDropData.type === 'plain') {
                 // 일반 이미지를 바이브로 추가
