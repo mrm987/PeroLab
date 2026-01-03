@@ -8266,11 +8266,23 @@
                 return { x, y };
             }
 
+            // 그리드 스냅 (NAI와 동일하게 브러시가 그리드에 맞춰 움직임)
+            function snapToGrid(pos, gridSize) {
+                return {
+                    x: Math.round(pos.x / gridSize) * gridSize,
+                    y: Math.round(pos.y / gridSize) * gridSize
+                };
+            }
+
             function draw(e) {
                 if (!maskEditor.isDrawing) return;
-                const pos = getPos(e);
+                const rawPos = getPos(e);
                 const ctx = maskEditor.maskCtx;
                 const size = maskEditor.brushSize;
+
+                // 그리드 스냅 - 브러시 크기의 절반을 그리드 단위로 사용
+                const gridSize = Math.max(size / 2, 4);
+                const pos = snapToGrid(rawPos, gridSize);
 
                 // 스퀘어 브러시 (NAI와 동일)
                 ctx.fillStyle = maskEditor.tool === 'brush' ? 'white' : 'black';
@@ -8279,14 +8291,18 @@
 
             // 브러시 커서 미리보기
             function drawCursor(e) {
-                const pos = getPos(e);
+                const rawPos = getPos(e);
                 const ctx = maskEditor.drawCtx;
                 const size = maskEditor.brushSize;
+
+                // 그리드 스냅 적용
+                const gridSize = Math.max(size / 2, 4);
+                const pos = snapToGrid(rawPos, gridSize);
 
                 // 이전 커서 지우기
                 ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
-                // 커서 사각형 그리기 (NAI와 동일)
+                // 커서 사각형 그리기 (NAI와 동일 - 그리드에 스냅)
                 const x = pos.x - size / 2;
                 const y = pos.y - size / 2;
                 ctx.strokeStyle = maskEditor.tool === 'brush' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)';
