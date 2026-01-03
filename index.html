@@ -2511,7 +2511,8 @@
         /* Load settings button */
         .slot-image-card .load-settings-btn,
         .slot-image-card .apply-seed-btn,
-        .slot-image-card .inpaint-btn {
+        .slot-image-card .inpaint-btn,
+        .slot-image-card .clear-card-btn {
             background: var(--bg-lighter);
             border: 1px solid var(--border);
             color: var(--text-dim);
@@ -2536,6 +2537,11 @@
             background: #9b59b6;
             color: white;
             border-color: #9b59b6;
+        }
+        .slot-image-card .clear-card-btn:hover {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
         }
 
         /* Settings Modal */
@@ -3992,6 +3998,7 @@
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="info-row">
+                        <button type="button" class="clear-card-btn" title="미리보기 지우기">🧹</button>
                         <div class="filename" title="${data.filename}">${data.filename}</div>
                         <button type="button" class="inpaint-btn" title="Inpaint">🎨</button>
                         <button type="button" class="apply-seed-btn" title="이 시드 적용">🎲</button>
@@ -4123,6 +4130,13 @@
                 } else {
                     showToast('이미지 데이터가 없습니다', 'error');
                 }
+            };
+
+            // 미리보기 지우기 버튼
+            const clearCardBtn = card.querySelector('.clear-card-btn');
+            clearCardBtn.onclick = (e) => {
+                e.stopPropagation();
+                card.remove();
             };
 
             // 드래그와 클릭 구분
