@@ -1437,6 +1437,12 @@
             gap: 6px;
         }
         
+        .slot-emoji {
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            margin-right: 4px;
+        }
+
         .slot-number {
             font-size: 0.75rem;
             color: var(--accent-gold);
@@ -3704,7 +3710,7 @@
         function updateSlotNumbers() {
             const slots = slotsContainer.querySelectorAll('.slot');
             slots.forEach((slot, index) => {
-                slot.querySelector('.slot-number').textContent = '🎰 ' + String(index + 1).padStart(3, '0');
+                slot.querySelector('.slot-number').textContent = String(index + 1).padStart(3, '0');
             });
         }
         
@@ -3798,7 +3804,7 @@
                 <div class="slot-resize-handle"></div>
                 <div class="slot-prompt">
                     <div class="slot-prompt-header">
-                        <span class="slot-number">🎰 001</span>
+                        <span class="slot-emoji">🎰</span><span class="slot-number">001</span>
                         <input type="text" placeholder="이름 (선택)" value="${name}" class="slot-name">
                         <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
