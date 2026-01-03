@@ -1478,6 +1478,13 @@ async def lifespan(app: FastAPI):
     # 큐 처리 백그라운드 태스크 시작
     queue_task = asyncio.create_task(process_queue())
     
+    # 서버 준비 완료 후 브라우저 열기 (짧은 지연으로 서버가 완전히 시작되도록)
+    async def open_browser_delayed():
+        await asyncio.sleep(0.5)
+        import webbrowser
+        webbrowser.open("http://127.0.0.1:8765")
+    asyncio.create_task(open_browser_delayed())
+    
     yield
     
     # 종료 시 태스크 취소

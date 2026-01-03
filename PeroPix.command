@@ -14,9 +14,5 @@ echo "PeroPix is running at http://127.0.0.1:8765"
 echo "Press Ctrl+C or close this window to stop."
 echo
 
-# 브라우저 열기 (백그라운드)
-sleep 1
-open "http://127.0.0.1:8765" &
-
-# 백엔드 실행 (포그라운드 - 창 닫으면 종료됨)
+# 백엔드 실행 (서버 준비 완료 시 자동으로 브라우저 열림)
 python3 backend.py
