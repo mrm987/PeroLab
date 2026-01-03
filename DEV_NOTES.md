@@ -165,10 +165,13 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 - novelai-python SDK: https://github.com/LlmKira/novelai-python
 - ComfyUI NAI Generator: https://github.com/bedovyy/ComfyUI_NAIDGenerator
 
-#### Character Reference (V4.5) 파라미터 (NAIS2 참고)
+#### Character Reference (V4.5) 파라미터 (NAI 웹 방식)
 ```javascript
-// cache_secret_key 사용 안함! raw 이미지만 전송
-director_reference_images: [paddedImageBase64],
+// NAI 웹과 동일한 형식: director_reference_images_cached 사용
+director_reference_images_cached: [{
+    cache_secret_key: sha256HashOfImageData,  // 이미지 데이터의 SHA256 해시
+    data: paddedImageBase64  // JPEG 95% 품질, letterbox 패딩된 이미지
+}],
 director_reference_information_extracted: [1.0],
 director_reference_strength_values: [1.0],
 director_reference_secondary_strength_values: [1.0 - fidelity],  // fidelity 반전!
@@ -184,7 +187,8 @@ director_reference_descriptions: [{
 **주의사항:**
 - `fidelity` UI 값이 반전됨: UI 1.0 → API secondary 0.0
 - 이미지는 1472×1472, 1536×1024, 1024×1536 중 하나로 letterbox 패딩
-- NAI 웹은 `director_reference_images_cached` 사용하지만, raw 이미지 전송도 작동함
+- `director_reference_images_cached` 형식 필수: `cache_secret_key`와 `data` 모두 포함
+- 이미지 형식: JPEG 95% 품질 (NAIS2 방식)
 - 인페인트 모드에서는 캐릭터 레퍼런스 미지원
 
 ### V4 모델에서 제거된 옵션

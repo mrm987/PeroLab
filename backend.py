@@ -1189,8 +1189,14 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Character Reference padding failed, using original: {e}")
             padded_image = raw_image
 
-        # NAIS2 방식: cache_secret_key 없이 raw 이미지만 전송
-        params["director_reference_images"] = [padded_image]
+        # NAI 웹 방식: director_reference_images_cached 사용 (cache_secret_key + data)
+        import hashlib
+        cache_key = hashlib.sha256(padded_image.encode()).hexdigest()
+
+        params["director_reference_images_cached"] = [{
+            "cache_secret_key": cache_key,
+            "data": padded_image
+        }]
         params["director_reference_information_extracted"] = [1.0]
         params["director_reference_strength_values"] = [1.0]
         # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
@@ -1203,7 +1209,7 @@ async def call_nai_api(req: GenerateRequest):
             "legacy_uc": False
         }]
 
-        print(f"[NAI] CharRef: fidelity={fidelity}, secondary={round(1.0 - fidelity, 2)}, caption={caption_type}")
+        print(f"[NAI] CharRef: fidelity={fidelity}, secondary={round(1.0 - fidelity, 2)}, caption={caption_type}, cache_key={cache_key[:16]}...")
 
     # Base Image (img2img / inpaint) 처리
     action = "generate"
@@ -1262,7 +1268,7 @@ async def call_nai_api(req: GenerateRequest):
                 "reference_information_extracted_multiple",
                 "reference_strength_multiple",
                 # Character Reference
-                "director_reference_images",
+                "director_reference_images_cached",
                 "director_reference_information_extracted",
                 "director_reference_strength_values",
                 "director_reference_secondary_strength_values",
@@ -1294,8 +1300,8 @@ async def call_nai_api(req: GenerateRequest):
     debug_params = {k: v for k, v in params.items()}
     if "reference_image_multiple" in debug_params:
         debug_params["reference_image_multiple"] = [f"<base64 len={len(img)}>" for img in debug_params["reference_image_multiple"]]
-    if "director_reference_images" in debug_params:
-        debug_params["director_reference_images"] = [f"<base64 len={len(img)}>" for img in debug_params["director_reference_images"]]
+    if "director_reference_images_cached" in debug_params:
+        debug_params["director_reference_images_cached"] = [{"cache_secret_key": item["cache_secret_key"][:16] + "...", "data": f"<base64 len={len(item['data'])}>"} for item in debug_params["director_reference_images_cached"]]
     if "image" in debug_params:
         debug_params["image"] = f"<base64 len={len(debug_params['image'])}>"
     if "mask" in debug_params:
@@ -1307,7 +1313,7 @@ async def call_nai_api(req: GenerateRequest):
     
     # 디버깅 로그
     vibe_count = len(params.get("reference_image_multiple", []))
-    has_char_ref = "director_reference_images" in params
+    has_char_ref = "director_reference_images_cached" in params
     print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={model_to_use}")
     print(f"[NAI] Vibe Transfer: {vibe_count} images, Character Reference: {has_char_ref}")
 
@@ -1330,7 +1336,8 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Vibe {i+1}: base64 length={len(img)}, info={params['reference_information_extracted_multiple'][i]}, strength={params['reference_strength_multiple'][i]}")
     
     if has_char_ref:
-        print(f"[NAI] CharRef: base64 length = {len(params['director_reference_images'][0])}")
+        cached = params['director_reference_images_cached'][0]
+        print(f"[NAI] CharRef: cache_key={cached['cache_secret_key'][:16]}..., data_len={len(cached['data'])}")
     
     headers = {
         "Authorization": f"Bearer {token}",
