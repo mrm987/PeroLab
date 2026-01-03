@@ -6462,15 +6462,15 @@
                     </div>
                     <div class="vibe-sliders">
                         <div class="vibe-slider-row">
-                            <label>Strength</label>
+                            <label>${isNaiVibe ? 'Reference Strength' : 'Strength'}</label>
                             <input type="range" class="vibe-strength" data-idx="${idx}" value="${vibe.strength}" min="0" max="1" step="0.05">
                             <span class="value">${vibe.strength}</span>
                         </div>
-                        <div class="vibe-slider-row">
+                        ${!isNaiVibe ? `<div class="vibe-slider-row">
                             <label>Info Extract</label>
                             <input type="range" class="vibe-info" data-idx="${idx}" value="${vibe.info_extracted}" min="0.01" max="1" step="0.01">
                             <span class="value">${vibe.info_extracted}</span>
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
                 container.appendChild(item);
