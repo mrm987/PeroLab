@@ -36,6 +36,8 @@ PRESETS_DIR = APP_DIR / "presets"
 PROMPTS_DIR = APP_DIR / "prompts"
 CONFIG_FILE = APP_DIR / "config.json"
 PYTHON_ENV_DIR = APP_DIR / "python_env"  # 로컬 생성용 Python 환경
+CENSOR_MODELS_DIR = MODELS_DIR / "censor"  # 검열 모델 (YOLO)
+CENSORED_DIR = APP_DIR / "censored"  # 검열 결과 저장
 
 # 카테고리별 이미지 순번 - 매번 실제 폴더 스캔
 def get_next_image_number(category: str, save_dir: Path = None, ext: str = 'png') -> int:
@@ -62,7 +64,7 @@ def get_next_image_number(category: str, save_dir: Path = None, ext: str = 'png'
     return max_num + 1
 
 # 디렉토리 생성
-for d in [CHECKPOINTS_DIR, LORA_DIR, UPSCALE_DIR, OUTPUT_DIR, PRESETS_DIR]:
+for d in [CHECKPOINTS_DIR, LORA_DIR, UPSCALE_DIR, OUTPUT_DIR, PRESETS_DIR, CENSOR_MODELS_DIR, CENSORED_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # Prompts 하위 폴더 생성
@@ -3446,6 +3448,528 @@ async def uninstall_local():
         shutil.rmtree(PYTHON_ENV_DIR, ignore_errors=True)
     
     return {"status": "uninstalled"}
+
+
+# ============================================================
+# Auto Censor (YOLO-based)
+# ============================================================
+
+# YOLO 모델 lazy loading
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
+
+# 검열 모델 캐시
+censor_model_cache = {
+    "model": None,
+    "model_path": None,
+    "classes": []
+}
+
+
+def get_censor_model(model_name: str = None):
+    """검열 모델 로드 (캐시됨)"""
+    if not YOLO_AVAILABLE:
+        raise RuntimeError("ultralytics 설치 필요: pip install ultralytics")
+    
+    # 모델 이름이 없으면 첫 번째 모델 사용
+    if not model_name:
+        models = list(CENSOR_MODELS_DIR.glob("*.pt"))
+        if not models:
+            raise RuntimeError(f"검열 모델이 없습니다: {CENSOR_MODELS_DIR}")
+        model_name = models[0].name
+    
+    model_path = CENSOR_MODELS_DIR / model_name
+    if not model_path.exists():
+        raise RuntimeError(f"모델 파일 없음: {model_path}")
+    
+    # 캐시된 모델 반환
+    if censor_model_cache["model_path"] == str(model_path):
+        return censor_model_cache["model"], censor_model_cache["classes"]
+    
+    # 새 모델 로드
+    print(f"[Censor] Loading model: {model_name}")
+    model = YOLO(str(model_path))
+    classes = list(model.names.values()) if hasattr(model, 'names') else []
+    
+    censor_model_cache["model"] = model
+    censor_model_cache["model_path"] = str(model_path)
+    censor_model_cache["classes"] = classes
+    
+    print(f"[Censor] Model loaded, classes: {classes}")
+    return model, classes
+
+
+def detect_nsfw_regions(image_path: str, model_name: str = None, 
+                        target_labels: list = None, label_conf: dict = None,
+                        default_conf: float = 0.25):
+    """이미지에서 NSFW 영역 감지 (bbox only)"""
+    import cv2
+    
+    model, classes = get_censor_model(model_name)
+    
+    # 기본값 설정
+    if target_labels is None:
+        target_labels = classes  # 모든 클래스 감지
+    if label_conf is None:
+        label_conf = {}
+    
+    # 최소 confidence로 모델 실행
+    min_conf = min([label_conf.get(label, default_conf) for label in target_labels] + [default_conf])
+    results = model(image_path, conf=min_conf, verbose=False)
+    
+    detections = []
+    for result in results:
+        if result.boxes is not None:
+            for box, cls, conf in zip(result.boxes.xyxy, result.boxes.cls, result.boxes.conf):
+                label = result.names[int(cls)]
+                
+                # 대상 라벨 필터링
+                if label not in target_labels:
+                    continue
+                
+                # 라벨별 confidence 체크
+                required_conf = label_conf.get(label, default_conf)
+                if float(conf) < required_conf:
+                    continue
+                
+                detections.append({
+                    "label": label,
+                    "confidence": round(float(conf), 3),
+                    "box": [int(x) for x in box.tolist()]  # [x1, y1, x2, y2]
+                })
+    
+    return detections
+
+
+def apply_censor_boxes(image_path: str, boxes: list, method: str = "black", 
+                       color: str = None, output_path: str = None):
+    """이미지에 검열 박스 적용"""
+    import cv2
+    
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError(f"이미지 로드 실패: {image_path}")
+    
+    for box_info in boxes:
+        x1, y1, x2, y2 = box_info["box"]
+        box_method = box_info.get("method", method)
+        box_color = box_info.get("color", color)
+        
+        if box_method == "black":
+            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 0), -1)
+        elif box_method == "white":
+            cv2.rectangle(image, (x1, y1), (x2, y2), (255, 255, 255), -1)
+        elif box_method == "blur":
+            roi = image[y1:y2, x1:x2]
+            if roi.size > 0:
+                blurred = cv2.GaussianBlur(roi, (99, 99), 30)
+                image[y1:y2, x1:x2] = blurred
+        elif box_method == "mosaic":
+            roi = image[y1:y2, x1:x2]
+            if roi.size > 0:
+                h, w = roi.shape[:2]
+                if h > 0 and w > 0:
+                    small = cv2.resize(roi, (max(1, w // 10), max(1, h // 10)), interpolation=cv2.INTER_LINEAR)
+                    mosaic = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
+                    image[y1:y2, x1:x2] = mosaic
+        elif box_method == "color" and box_color:
+            # hex color to BGR
+            if box_color.startswith("#"):
+                hex_color = box_color[1:]
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                cv2.rectangle(image, (x1, y1), (x2, y2), (b, g, r), -1)
+    
+    # 저장
+    if output_path:
+        cv2.imwrite(output_path, image)
+    
+    # base64로 반환
+    _, buffer = cv2.imencode('.png', image)
+    return base64.b64encode(buffer).decode('utf-8')
+
+
+# === Censor API Endpoints ===
+
+@app.get("/api/censor/models")
+async def list_censor_models():
+    """사용 가능한 검열 모델 목록"""
+    models = []
+    if CENSOR_MODELS_DIR.exists():
+        for f in sorted(CENSOR_MODELS_DIR.glob("*.pt")):
+            models.append(f.name)
+    return {"success": True, "models": models, "yolo_available": YOLO_AVAILABLE}
+
+
+@app.get("/api/censor/model-info")
+async def get_censor_model_info(model: str = None):
+    """모델의 클래스 정보 조회"""
+    if not YOLO_AVAILABLE:
+        return {"success": False, "error": "ultralytics 미설치"}
+    
+    try:
+        _, classes = get_censor_model(model)
+        return {
+            "success": True,
+            "model": model or censor_model_cache["model_path"],
+            "classes": classes
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+class CensorScanRequest(BaseModel):
+    image_path: str = None  # outputs 폴더 기준 상대 경로
+    image_base64: str = None  # 또는 base64 이미지
+    model: str = None
+    target_labels: List[str] = None
+    label_conf: dict = None
+    default_conf: float = 0.25
+
+
+@app.post("/api/censor/scan")
+async def scan_image_for_censor(req: CensorScanRequest):
+    """이미지 스캔 (감지만, 검열 미적용)"""
+    if not YOLO_AVAILABLE:
+        return {"success": False, "error": "ultralytics 미설치"}
+    
+    import tempfile
+    temp_file = None
+    
+    try:
+        # 이미지 경로 결정
+        if req.image_path:
+            # outputs 폴더 기준 상대 경로
+            image_path = OUTPUT_DIR / req.image_path
+            if not image_path.exists():
+                return {"success": False, "error": f"이미지 없음: {req.image_path}"}
+        elif req.image_base64:
+            # base64를 임시 파일로 저장
+            image_data = base64.b64decode(req.image_base64)
+            temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            temp_file.write(image_data)
+            temp_file.close()
+            image_path = Path(temp_file.name)
+        else:
+            return {"success": False, "error": "image_path 또는 image_base64 필요"}
+        
+        # 감지 실행
+        detections = detect_nsfw_regions(
+            str(image_path),
+            model_name=req.model,
+            target_labels=req.target_labels,
+            label_conf=req.label_conf,
+            default_conf=req.default_conf
+        )
+        
+        return {"success": True, "detections": detections}
+    
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_file and Path(temp_file.name).exists():
+            Path(temp_file.name).unlink()
+
+
+class CensorApplyRequest(BaseModel):
+    image_path: str = None
+    image_base64: str = None
+    boxes: List[dict]  # [{"box": [x1,y1,x2,y2], "method": "black", "color": "#000000"}]
+    method: str = "black"  # 기본 검열 방식
+    color: str = None  # 커스텀 색상
+
+
+@app.post("/api/censor/apply")
+async def apply_censor(req: CensorApplyRequest):
+    """검열 적용 (프리뷰용, 저장 안 함)"""
+    import tempfile
+    temp_file = None
+    
+    try:
+        # 이미지 경로 결정
+        if req.image_path:
+            image_path = OUTPUT_DIR / req.image_path
+            if not image_path.exists():
+                return {"success": False, "error": f"이미지 없음: {req.image_path}"}
+        elif req.image_base64:
+            image_data = base64.b64decode(req.image_base64)
+            temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            temp_file.write(image_data)
+            temp_file.close()
+            image_path = Path(temp_file.name)
+        else:
+            return {"success": False, "error": "image_path 또는 image_base64 필요"}
+        
+        # 검열 적용
+        result_base64 = apply_censor_boxes(
+            str(image_path),
+            req.boxes,
+            method=req.method,
+            color=req.color
+        )
+        
+        return {"success": True, "image": result_base64}
+    
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_file and Path(temp_file.name).exists():
+            Path(temp_file.name).unlink()
+
+
+class CensorSaveRequest(BaseModel):
+    image_path: str = None
+    image_base64: str = None
+    boxes: List[dict]
+    method: str = "black"
+    color: str = None
+    output_folder: str = ""  # censored 하위 폴더
+    filename: str = None  # 저장 파일명 (없으면 원본명 사용)
+
+
+@app.post("/api/censor/save")
+async def save_censored_image(req: CensorSaveRequest):
+    """검열 이미지 저장"""
+    import tempfile
+    temp_file = None
+    
+    try:
+        # 이미지 경로 결정
+        if req.image_path:
+            image_path = OUTPUT_DIR / req.image_path
+            if not image_path.exists():
+                return {"success": False, "error": f"이미지 없음: {req.image_path}"}
+            original_filename = Path(req.image_path).name
+        elif req.image_base64:
+            image_data = base64.b64decode(req.image_base64)
+            temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            temp_file.write(image_data)
+            temp_file.close()
+            image_path = Path(temp_file.name)
+            original_filename = "censored.png"
+        else:
+            return {"success": False, "error": "image_path 또는 image_base64 필요"}
+        
+        # 저장 경로 결정
+        output_folder = CENSORED_DIR / req.output_folder if req.output_folder else CENSORED_DIR
+        output_folder.mkdir(parents=True, exist_ok=True)
+        
+        filename = req.filename or original_filename
+        output_path = output_folder / filename
+        
+        # 중복 파일명 처리
+        if output_path.exists():
+            stem = output_path.stem
+            suffix = output_path.suffix
+            counter = 1
+            while output_path.exists():
+                output_path = output_folder / f"{stem}_{counter}{suffix}"
+                counter += 1
+        
+        # 검열 적용 및 저장
+        apply_censor_boxes(
+            str(image_path),
+            req.boxes,
+            method=req.method,
+            color=req.color,
+            output_path=str(output_path)
+        )
+        
+        return {"success": True, "filename": output_path.name, "path": str(output_path.relative_to(APP_DIR))}
+    
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_file and Path(temp_file.name).exists():
+            Path(temp_file.name).unlink()
+
+
+@app.get("/api/censor/images")
+async def list_images_for_censor(folder: str = ""):
+    """검열할 이미지 목록 (outputs 폴더)"""
+    images = []
+    target_folder = OUTPUT_DIR / folder if folder else OUTPUT_DIR
+    
+    if not target_folder.exists():
+        return {"success": True, "images": [], "folder": folder}
+    
+    # 이미지 파일 검색
+    all_files = []
+    for ext in ['*.png', '*.jpg', '*.jpeg', '*.webp']:
+        all_files.extend(target_folder.glob(ext))
+    
+    # 수정 시간순 정렬
+    all_files = sorted(all_files, key=lambda x: x.stat().st_mtime, reverse=True)
+    
+    for filepath in all_files[:200]:  # 최대 200개
+        try:
+            # 썸네일 생성
+            img = Image.open(filepath)
+            thumb = img.copy()
+            thumb.thumbnail((200, 200), Image.LANCZOS)
+            buffer = io.BytesIO()
+            thumb.save(buffer, format="PNG")
+            thumb_base64 = base64.b64encode(buffer.getvalue()).decode()
+            
+            images.append({
+                "filename": filepath.name,
+                "path": str(filepath.relative_to(OUTPUT_DIR)),
+                "thumbnail": thumb_base64,
+                "width": img.width,
+                "height": img.height
+            })
+        except Exception as e:
+            print(f"[Censor] Error loading {filepath}: {e}")
+            continue
+    
+    return {"success": True, "images": images, "folder": folder}
+
+
+@app.get("/api/censor/censored")
+async def list_censored_images(folder: str = ""):
+    """검열된 이미지 목록"""
+    images = []
+    target_folder = CENSORED_DIR / folder if folder else CENSORED_DIR
+    
+    if not target_folder.exists():
+        return {"success": True, "images": [], "folder": folder}
+    
+    # 이미지 파일 검색
+    all_files = []
+    for ext in ['*.png', '*.jpg', '*.jpeg', '*.webp']:
+        all_files.extend(target_folder.glob(ext))
+    
+    # 수정 시간순 정렬
+    all_files = sorted(all_files, key=lambda x: x.stat().st_mtime, reverse=True)
+    
+    for filepath in all_files[:200]:
+        try:
+            img = Image.open(filepath)
+            thumb = img.copy()
+            thumb.thumbnail((200, 200), Image.LANCZOS)
+            buffer = io.BytesIO()
+            thumb.save(buffer, format="PNG")
+            thumb_base64 = base64.b64encode(buffer.getvalue()).decode()
+            
+            images.append({
+                "filename": filepath.name,
+                "path": str(filepath.relative_to(CENSORED_DIR)),
+                "thumbnail": thumb_base64,
+                "width": img.width,
+                "height": img.height
+            })
+        except Exception as e:
+            continue
+    
+    return {"success": True, "images": images, "folder": folder}
+
+
+@app.get("/api/censor/image")
+async def get_censor_image(path: str, source: str = "outputs"):
+    """검열용 이미지 조회 (전체 크기)"""
+    if source == "outputs":
+        filepath = OUTPUT_DIR / path
+    elif source == "censored":
+        filepath = CENSORED_DIR / path
+    else:
+        return {"success": False, "error": "Invalid source"}
+    
+    if not filepath.exists():
+        return {"success": False, "error": "Image not found"}
+    
+    try:
+        img = Image.open(filepath)
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        image_base64 = base64.b64encode(buffer.getvalue()).decode()
+        
+        return {
+            "success": True,
+            "image": image_base64,
+            "width": img.width,
+            "height": img.height,
+            "filename": filepath.name
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/censor/batch")
+async def batch_censor(request: dict):
+    """폴더 내 모든 이미지 일괄 검열"""
+    if not YOLO_AVAILABLE:
+        return {"success": False, "error": "ultralytics 미설치"}
+    
+    source_folder = request.get("source_folder", "")
+    output_folder = request.get("output_folder", "")
+    model = request.get("model")
+    target_labels = request.get("target_labels")
+    label_conf = request.get("label_conf", {})
+    default_conf = request.get("default_conf", 0.25)
+    method = request.get("method", "black")
+    color = request.get("color")
+    
+    source_path = OUTPUT_DIR / source_folder if source_folder else OUTPUT_DIR
+    output_path = CENSORED_DIR / output_folder if output_folder else CENSORED_DIR
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    if not source_path.exists():
+        return {"success": False, "error": f"폴더 없음: {source_folder}"}
+    
+    # 이미지 파일 목록
+    all_files = []
+    for ext in ['*.png', '*.jpg', '*.jpeg', '*.webp']:
+        all_files.extend(source_path.glob(ext))
+    
+    results = []
+    for filepath in all_files:
+        try:
+            # 감지
+            detections = detect_nsfw_regions(
+                str(filepath),
+                model_name=model,
+                target_labels=target_labels,
+                label_conf=label_conf,
+                default_conf=default_conf
+            )
+            
+            # 박스 형식 변환
+            boxes = [{"box": d["box"], "method": method, "color": color} for d in detections]
+            
+            if boxes:
+                # 검열 적용 및 저장
+                out_filepath = output_path / filepath.name
+                apply_censor_boxes(str(filepath), boxes, method=method, color=color, output_path=str(out_filepath))
+                results.append({
+                    "filename": filepath.name,
+                    "censored": len(boxes),
+                    "saved": True
+                })
+            else:
+                results.append({
+                    "filename": filepath.name,
+                    "censored": 0,
+                    "saved": False
+                })
+        except Exception as e:
+            results.append({
+                "filename": filepath.name,
+                "error": str(e)
+            })
+    
+    total = len(results)
+    censored = sum(1 for r in results if r.get("censored", 0) > 0)
+    
+    return {
+        "success": True,
+        "total": total,
+        "censored": censored,
+        "results": results
+    }
 
 
 if __name__ == "__main__":
