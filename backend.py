@@ -1176,6 +1176,16 @@ async def call_nai_api(req: GenerateRequest):
             params["inpaintImg2ImgStrength"] = 1
             params["legacy"] = False
             params["legacy_v3_extend"] = False
+
+            # 디버그: 마스크와 이미지를 파일로 저장 (비교용)
+            debug_mask_data = base64.b64decode(mask_png)
+            debug_image_data = base64.b64decode(base_png)
+            with open("debug_peropix_mask.png", "wb") as f:
+                f.write(debug_mask_data)
+            with open("debug_peropix_image.png", "wb") as f:
+                f.write(debug_image_data)
+            print(f"[DEBUG] Saved debug_peropix_mask.png ({len(debug_mask_data)} bytes) and debug_peropix_image.png ({len(debug_image_data)} bytes)")
+
             # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
             # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
             if not model_to_use.endswith("-inpainting"):
