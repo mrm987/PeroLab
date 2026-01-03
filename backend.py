@@ -1178,15 +1178,14 @@ async def call_nai_api(req: GenerateRequest):
         params["reference_information_extracted_multiple"] = info_extracted_list
         params["reference_strength_multiple"] = strength_list
 
-    # Character Reference (V4.5 only) - 이미지를 특정 캔버스 크기로 패딩
+    # Character Reference (V4.5 only) - NAIS2 방식 참고
+    # https://github.com/sunanakgo/NAIS2
     if req.character_reference and req.character_reference.get("image"):
-        import hashlib
-
         fidelity = req.character_reference.get("fidelity", 0.5)
         style_aware = req.character_reference.get("style_aware", True)
         caption_type = "character&style" if style_aware else "character"
 
-        # 이미지 크기 확인 후 캔버스 패딩
+        # 이미지 크기 확인 후 캔버스 패딩 (1472×1472, 1536×1024, 1024×1536)
         raw_image = req.character_reference["image"]
         try:
             w_raw, h_raw = get_image_size_from_base64(raw_image)
@@ -1197,12 +1196,12 @@ async def call_nai_api(req: GenerateRequest):
             print(f"[NAI] Character Reference padding failed, using original: {e}")
             padded_image = raw_image
 
-        # NAI 웹 방식: cache_secret_key 사용 (이미지 해시)
-        cache_key = hashlib.sha256(padded_image.encode()).hexdigest()
-
-        # director_reference_images (raw) + director_reference_images_cached (key) 둘 다 전송
+        # NAIS2 방식: cache_secret_key 없이 raw 이미지만 전송
         params["director_reference_images"] = [padded_image]
-        params["director_reference_images_cached"] = [{"cache_secret_key": cache_key}]
+        params["director_reference_information_extracted"] = [1.0]
+        params["director_reference_strength_values"] = [1.0]
+        # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
+        params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
         params["director_reference_descriptions"] = [{
             "caption": {
                 "base_caption": caption_type,
@@ -1210,12 +1209,8 @@ async def call_nai_api(req: GenerateRequest):
             },
             "legacy_uc": False
         }]
-        params["director_reference_strength_values"] = [1.0]
-        # fidelity: 1.0 → secondary=0, fidelity: 0.0 → secondary=1
-        params["director_reference_secondary_strength_values"] = [round(1.0 - fidelity, 2)]
-        params["director_reference_information_extracted"] = [1.0]
 
-        print(f"[NAI] CharRef cache_key: {cache_key[:32]}...")
+        print(f"[NAI] CharRef: fidelity={fidelity}, secondary={round(1.0 - fidelity, 2)}, caption={caption_type}")
 
     # Base Image (img2img / inpaint) 처리
     action = "generate"

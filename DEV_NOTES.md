@@ -161,8 +161,31 @@ nai-diffusion-3                   → nai-diffusion-3-inpainting
 - 바이브/캐릭터레퍼런스는 인페인트에서 **미지원** (UI에만 표시, 실제 적용 안됨)
 
 #### 참고 자료
+- **NAIS2**: https://github.com/sunanakgo/NAIS2 (가장 정확한 참고 자료)
 - novelai-python SDK: https://github.com/LlmKira/novelai-python
 - ComfyUI NAI Generator: https://github.com/bedovyy/ComfyUI_NAIDGenerator
+
+#### Character Reference (V4.5) 파라미터 (NAIS2 참고)
+```javascript
+// cache_secret_key 사용 안함! raw 이미지만 전송
+director_reference_images: [paddedImageBase64],
+director_reference_information_extracted: [1.0],
+director_reference_strength_values: [1.0],
+director_reference_secondary_strength_values: [1.0 - fidelity],  // fidelity 반전!
+director_reference_descriptions: [{
+    caption: {
+        base_caption: "character&style",  // style_aware=true일 때, 아니면 "character"
+        char_captions: []
+    },
+    legacy_uc: false
+}]
+```
+
+**주의사항:**
+- `fidelity` UI 값이 반전됨: UI 1.0 → API secondary 0.0
+- 이미지는 1472×1472, 1536×1024, 1024×1536 중 하나로 letterbox 패딩
+- NAI 웹은 `director_reference_images_cached` 사용하지만, raw 이미지 전송도 작동함
+- 인페인트 모드에서는 캐릭터 레퍼런스 미지원
 
 ### V4 모델에서 제거된 옵션
 - `dynamic_thresholding` (Decrisper) - V4에서 효과 없음, 항상 False
