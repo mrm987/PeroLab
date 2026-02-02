@@ -8305,14 +8305,13 @@
             const empty = imagesContainer.querySelector('.slot-empty');
             if (empty) empty.remove();
 
-            // HiresFix 미리보기 카드의 처리중 효과 제거 (같은 job_id의 최종 이미지가 도착하면)
+            // HiresFix 미리보기 카드를 일반 카드로 업그레이드 (같은 job_id의 최종 이미지가 도착하면)
             if (data.job_id) {
                 const hiresPreviewCard = imagesContainer.querySelector(`.slot-image-card.hires-preview[data-job-id="${data.job_id}"]`);
                 if (hiresPreviewCard) {
-                    hiresPreviewCard.classList.remove('hires-preview');
-                    const hiresLabel = hiresPreviewCard.querySelector('.hires-label');
-                    if (hiresLabel) hiresLabel.remove();
-                    console.log(`[addImageToSlot] Removed hires-preview effect for job: ${data.job_id}`);
+                    // 미리보기 카드의 기존 데이터 활용하여 일반 카드로 업그레이드
+                    upgradeHiresPreviewCard(hiresPreviewCard, targetSlot, slotIndex);
+                    console.log(`[addImageToSlot] Upgraded hires-preview card for job: ${data.job_id}`);
                 }
             }
 
@@ -8866,6 +8865,148 @@
             // 카드를 맨 앞에 추가
             imagesContainer.insertBefore(card, imagesContainer.firstChild);
             console.log(`[addHiresPreviewToSlot] Preview card inserted for slot ${slotIndex}`);
+        }
+
+        function upgradeHiresPreviewCard(card, targetSlot, slotIndex) {
+            // HiresFix 미리보기 카드를 일반 카드로 업그레이드
+            // 기존 이미지와 시드 정보를 유지하면서 버튼들을 추가
+
+            const existingData = card._imageData || {};
+            const imgSrc = card.querySelector('img')?.src || '';
+            const seed = existingData.seed || '';
+
+            // hires-preview 클래스 제거
+            card.classList.remove('hires-preview');
+            delete card.dataset.jobId;
+
+            // 카드 내용 재구성 (일반 카드와 동일한 구조)
+            card.innerHTML = `
+                <img src="${imgSrc}" alt="" draggable="false">
+                <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
+                <div class="info">
+                    <div class="info-row">
+                        <button type="button" class="clear-card-btn" title="미리보기 지우기">🧹</button>
+                        <button type="button" class="save-preview-btn" title="파일로 저장">💾</button>
+                        <button type="button" class="delete-file-btn" title="파일 삭제" style="display:none">🗑️</button>
+                        <div class="filename unsaved" title="저장되지 않음">1pass 미리보기</div>
+                        <button type="button" class="inpaint-btn" title="Inpaint">🎨</button>
+                        <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">✨</button>
+                        <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">✨</button>
+                        <button type="button" class="load-settings-btn" title="전체 설정 불러오기" style="display: none;">📋</button>
+                    </div>
+                    <div class="seed">${seed ? 'Seed: ' + seed : ''}</div>
+                </div>
+            `;
+
+            // 이미지 데이터 업데이트
+            card._imageData = {
+                image_base64: existingData.image_base64 || null,
+                seed: seed,
+                width: existingData.width,
+                height: existingData.height,
+                slotIndex: slotIndex,
+                isHiresPreview: false  // 더 이상 미리보기가 아님
+            };
+
+            // 미리보기 지우기 버튼
+            const clearBtn = card.querySelector('.clear-card-btn');
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                card.remove();
+            };
+
+            // 미리보기 저장 버튼
+            const savePreviewBtn = card.querySelector('.save-preview-btn');
+            savePreviewBtn.onclick = async (e) => {
+                e.stopPropagation();
+                try {
+                    const slotName = targetSlot.querySelector('.slot-name').value.trim();
+                    const currentFolder = typeof getOutputFolder === 'function' ? getOutputFolder() : '';
+
+                    const response = await fetch(`${API_BASE}/api/save-preview`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image_base64: card._imageData.image_base64,
+                            slot_index: card._imageData.slotIndex,
+                            slot_name: slotName,
+                            save_format: document.getElementById('saveFormat').value,
+                            output_folder: currentFolder,
+                            exclude_slot_number: document.getElementById('excludeSlotNumber').checked
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        savePreviewBtn.style.display = 'none';
+                        const deleteBtn = card.querySelector('.delete-file-btn');
+                        if (deleteBtn) deleteBtn.style.display = '';
+
+                        const filenameDiv = card.querySelector('.filename');
+                        if (filenameDiv) {
+                            filenameDiv.classList.remove('unsaved');
+                            filenameDiv.title = result.filename;
+                            filenameDiv.textContent = result.filename;
+                        }
+
+                        card._imageData.image_path = result.image_path;
+                        card._imageData.filename = result.filename;
+                        showToast(`저장됨: ${result.filename}`, 'success');
+                    } else {
+                        showToast('저장 실패: ' + (result.error || 'Unknown error'), 'error');
+                    }
+                } catch (err) {
+                    showToast('저장 오류: ' + err.message, 'error');
+                }
+            };
+
+            // 갤러리 저장 버튼
+            const saveGalleryBtn = card.querySelector('.save-gallery-btn');
+            saveGalleryBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (!card._imageData.image_base64) {
+                    showToast('이미지 데이터가 없습니다', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_BASE}/api/gallery/add`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image_base64: card._imageData.image_base64,
+                            filename: card._imageData.filename || `preview_${Date.now()}.png`
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        saveGalleryBtn.textContent = '★';
+                        saveGalleryBtn.classList.add('saved');
+                        showToast('갤러리에 저장됨', 'success');
+                    }
+                } catch (err) {
+                    showToast('갤러리 저장 실패', 'error');
+                }
+            };
+
+            // 이미지 클릭 시 라이트박스
+            const img = card.querySelector('img');
+            img.addEventListener('click', () => {
+                lightboxImg.src = imgSrc;
+                lightboxCurrentSlot = targetSlot;
+                lightboxCurrentCard = card;
+                lightbox.classList.add('active');
+            });
+
+            // 인페인트 버튼
+            const inpaintBtn = card.querySelector('.inpaint-btn');
+            inpaintBtn.onclick = async (e) => {
+                e.stopPropagation();
+                if (card._imageData.image_base64) {
+                    openInpaintModal('data:image/png;base64,' + card._imageData.image_base64);
+                } else {
+                    showToast('이미지 데이터가 없습니다', 'error');
+                }
+            };
         }
 
         function clearSlotImages() {
@@ -14884,6 +15025,8 @@
                     }
                 });
                 updateCharacterNumbers();
+                // 중복 복원 방지: pending을 null로 설정
+                window._pendingCharacterPromptsLayout = null;
             } else if (isFullRestore) {
                 document.getElementById('charactersList').innerHTML = '';
             }
