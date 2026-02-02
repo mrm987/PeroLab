@@ -8305,11 +8305,15 @@
             const empty = imagesContainer.querySelector('.slot-empty');
             if (empty) empty.remove();
 
-            // HiresFix 미리보기 카드가 있으면 제거 (최종 이미지로 교체)
-            const hiresPreviewCard = imagesContainer.querySelector('.slot-image-card.hires-preview');
-            if (hiresPreviewCard) {
-                console.log(`[addImageToSlot] Replacing hires preview card with final image`);
-                hiresPreviewCard.remove();
+            // HiresFix 미리보기 카드의 처리중 효과 제거 (같은 job_id의 최종 이미지가 도착하면)
+            if (data.job_id) {
+                const hiresPreviewCard = imagesContainer.querySelector(`.slot-image-card.hires-preview[data-job-id="${data.job_id}"]`);
+                if (hiresPreviewCard) {
+                    hiresPreviewCard.classList.remove('hires-preview');
+                    const hiresLabel = hiresPreviewCard.querySelector('.hires-label');
+                    if (hiresLabel) hiresLabel.remove();
+                    console.log(`[addImageToSlot] Removed hires-preview effect for job: ${data.job_id}`);
+                }
             }
 
             const card = document.createElement('div');
@@ -8649,7 +8653,7 @@
                         sampler: metadata.sampler || document.getElementById('sampler').value,
                         scheduler: metadata.noise_schedule || 'normal',
                         model: metadata.peropix?.local_model || document.getElementById('localModel').value,
-                        loras: metadata.peropix?.local_loras || null,
+                        loras: metadata.peropix?.local_loras || [],
                         // HiresFix 옵션 (현재 UI 세팅 사용)
                         enable_upscale: true,
                         upscale_model: upscaleModel,
@@ -8665,6 +8669,7 @@
                         lut_hires_only: false,  // HiresFix 버튼은 항상 2pass 결과이므로 무조건 적용
                         // 저장 옵션
                         save_format: document.getElementById('saveFormat')?.value || 'png',
+                        auto_save: document.getElementById('autoSaveToggle')?.checked ?? true,
                         output_folder: typeof getOutputFolder === 'function' ? getOutputFolder() : '',
                         // HiresFix 전용 플래그: 1st pass 건너뛰고 base_image에 바로 HiresFix 적용
                         hiresfix_only: true,
