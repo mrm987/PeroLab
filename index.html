@@ -3510,7 +3510,7 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0, 0, 0, 0.75);
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(100, 120, 160, 0.9);
             padding: 10px 18px;
             border-radius: 8px;
             font-size: 0.9rem;
@@ -3630,7 +3630,7 @@
             flex-direction: column;
             align-items: center;
             gap: 12px;
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(100, 120, 160, 0.9);
             font-size: 0.9rem;
             pointer-events: none;
             z-index: 15;
@@ -7033,10 +7033,8 @@
                                 <label>방식</label>
                                 <select id="censorMethod">
                                     <option value="steam" selected>☁️ 스팀</option>
-                                    <option value="black">검정</option>
-                                    <option value="white">흰색</option>
-                                    <option value="mosaic">모자이크</option>
-                                    <option value="blur">블러</option>
+                                    <option value="black">박스 (검정)</option>
+                                    <option value="white">박스 (흰색)</option>
                                 </select>
                             </div>
                             <div class="side-setting-row">
@@ -7052,6 +7050,13 @@
                                     <span id="censorFeatherValue" style="font-weight: 500;">0</span>
                                 </label>
                                 <input type="range" id="censorFeather" min="0" max="50" value="0" style="width: 100%;">
+                            </div>
+                            <div class="side-setting-row" id="steamOpacityRow">
+                                <label style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>조작시 투명도</span>
+                                    <span id="steamOpacityValue" style="font-weight: 500;">30%</span>
+                                </label>
+                                <input type="range" id="steamOpacity" min="0" max="100" value="30" style="width: 100%;">
                             </div>
                         </div>
 
@@ -7437,10 +7442,8 @@
                             <label>방식:</label>
                             <select id="editCensorMethod">
                                 <option value="steam" selected>☁️ 스팀</option>
-                                <option value="black">□ 검정</option>
-                                <option value="white">■ 흰색</option>
-                                <option value="mosaic">▦ 모자이크</option>
-                                <option value="blur">◐ 블러</option>
+                                <option value="black">박스 (검정)</option>
+                                <option value="white">박스 (흰색)</option>
                             </select>
                         </div>
                     </div>
@@ -21182,6 +21185,7 @@
             // 확장/그라데이션 옵션
             expandPixels: 0,           // 박스 확장 픽셀
             feather: 0,                // 그라데이션 테두리 픽셀
+            steamOpacity: 30,          // 조작시 투명도 (%)
             // 초기화 플래그
             eventsInitialized: false  // 이벤트 리스너 초기화 여부
         };
@@ -21594,7 +21598,8 @@
                 selectedTargets: Array.from(document.querySelectorAll('#censorTargets input[type="checkbox"]:checked'))
                     .map(cb => cb.dataset.class),
                 expandPixels: censorState.expandPixels,
-                feather: censorState.feather
+                feather: censorState.feather,
+                steamOpacity: censorState.steamOpacity
             };
             localStorage.setItem('censorSettings', JSON.stringify(settings));
         }
@@ -21707,6 +21712,13 @@
                         featherEl.value = savedSettings.feather;
                         document.getElementById('censorFeatherValue').textContent = savedSettings.feather;
                         updateSliderFill(featherEl);
+                    }
+                    if (savedSettings?.steamOpacity !== undefined) {
+                        censorState.steamOpacity = savedSettings.steamOpacity;
+                        const steamOpacityEl = document.getElementById('steamOpacity');
+                        steamOpacityEl.value = savedSettings.steamOpacity;
+                        document.getElementById('steamOpacityValue').textContent = savedSettings.steamOpacity + '%';
+                        updateSliderFill(steamOpacityEl);
                     }
 
                     // 선택된 모델의 클래스 로드
@@ -22429,14 +22441,32 @@
 
         // 검열 효과 적용
         function applyCensorEffect(ctx, x, y, w, h, method, originalImg, origX, origY, origW, origH, scale = 1) {
+            // 핸들러 조작 중이면 반투명하게 (검열 부위 확인용)
+            const isManipulating = censorState.isDragging || censorState.isResizing || censorState.isRotating;
+            const applyOpacity = isManipulating && censorState.steamOpacity > 0;
+            if (applyOpacity) {
+                ctx.globalAlpha = 1 - (censorState.steamOpacity / 100);
+            }
+
+            // 박스 확장 적용 (스팀 제외 - 스팀은 내부에서 처리)
+            const expandPx = (censorState.expandPixels || 0) * scale;
+            const featherPx = (censorState.feather || 0) * scale;
+            const ex = x - expandPx;
+            const ey = y - expandPx;
+            const ew = w + expandPx * 2;
+            const eh = h + expandPx * 2;
+
             switch (method) {
                 case 'black':
-                    ctx.fillStyle = '#000000';
-                    ctx.fillRect(x, y, w, h);
-                    break;
                 case 'white':
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.fillRect(x, y, w, h);
+                    const color = method === 'black' ? '#000000' : '#FFFFFF';
+                    if (featherPx > 0) {
+                        // 부드럽게 (그라데이션) 적용
+                        applyFeatheredBox(ctx, ex, ey, ew, eh, color, featherPx);
+                    } else {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(ex, ey, ew, eh);
+                    }
                     break;
                 case 'mosaic':
                     applyMosaicEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH);
@@ -22451,6 +22481,67 @@
                     ctx.fillStyle = '#000000';
                     ctx.fillRect(x, y, w, h);
             }
+
+            // 알파 복원
+            if (applyOpacity) {
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        // 부드럽게 (그라데이션) 박스 효과 - 거리 기반 알파
+        function applyFeatheredBox(ctx, x, y, w, h, color, featherPx) {
+            const rgb = color === '#000000' ? [0, 0, 0] : [255, 255, 255];
+
+            // feather 영역 포함한 전체 크기
+            const totalW = Math.ceil(w + featherPx * 2);
+            const totalH = Math.ceil(h + featherPx * 2);
+            const startX = Math.floor(x - featherPx);
+            const startY = Math.floor(y - featherPx);
+
+            // 임시 캔버스에서 알파 맵 생성
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = totalW;
+            tempCanvas.height = totalH;
+            const tempCtx = tempCanvas.getContext('2d');
+            const imageData = tempCtx.createImageData(totalW, totalH);
+            const data = imageData.data;
+
+            // 코어 박스 영역 (featherPx 오프셋)
+            const coreLeft = featherPx;
+            const coreTop = featherPx;
+            const coreRight = featherPx + w;
+            const coreBottom = featherPx + h;
+
+            for (let py = 0; py < totalH; py++) {
+                for (let px = 0; px < totalW; px++) {
+                    // 코어 박스까지의 거리 계산
+                    let dist = 0;
+                    if (px < coreLeft || px > coreRight || py < coreTop || py > coreBottom) {
+                        const dx = px < coreLeft ? coreLeft - px : (px > coreRight ? px - coreRight : 0);
+                        const dy = py < coreTop ? coreTop - py : (py > coreBottom ? py - coreBottom : 0);
+                        dist = Math.sqrt(dx * dx + dy * dy);
+                    }
+
+                    // 알파 계산
+                    let alpha;
+                    if (dist <= 0) {
+                        alpha = 255;  // 코어 영역
+                    } else if (dist < featherPx) {
+                        alpha = Math.floor((1 - dist / featherPx) * 255);
+                    } else {
+                        alpha = 0;
+                    }
+
+                    const idx = (py * totalW + px) * 4;
+                    data[idx] = rgb[0];
+                    data[idx + 1] = rgb[1];
+                    data[idx + 2] = rgb[2];
+                    data[idx + 3] = alpha;
+                }
+            }
+
+            tempCtx.putImageData(imageData, 0, 0);
+            ctx.drawImage(tempCanvas, startX, startY);
         }
 
         // 모자이크 효과
@@ -22567,6 +22658,9 @@
         // 스팀 텍스처 캐시 (박스별로 미리 렌더링)
         const steamTextureCache = new Map();
 
+        // 스팀 검열용 가상 박스 확대 비율 (테스트: 2배)
+        const STEAM_BOX_SCALE = 2.0;
+
         // 스팀 텍스처 생성 (캐시 키 기반)
         function generateSteamTexture(w, h, seed) {
             const expandRatio = 0.35;
@@ -22584,7 +22678,9 @@
             const data = imageData.data;
 
             SimplexNoise.seed(seed);
-            const noiseScale = Math.max(tw, th) / 2;
+            // 부드럽게 값에 따라 노이즈 스케일 조정 (0~50 -> 1x~3x)
+            const featherFactor = 1 + (censorState.feather || 0) / 25;
+            const noiseScale = Math.max(tw, th) / 2 * featherFactor;
 
             const rx = w / 2;
             const ry = h / 2;
@@ -22617,12 +22713,14 @@
                     const dy = (py - cy) / ry;
                     const ellipseDist = Math.sqrt(dx * dx + dy * dy);
 
+                    // 부드럽게 값에 따라 edgeNoise 강도 감소 (0~50 -> 100%~20%)
+                    const edgeNoiseStrength = 1 - (censorState.feather || 0) / 62.5;
                     let edgeNoise = 0;
                     edgeNoise += SimplexNoise.noise2D(px / (noiseScale * 0.5) + 50, py / (noiseScale * 0.5) + 50) * 0.5;
                     edgeNoise += SimplexNoise.noise2D(px / (noiseScale * 0.25) + 150, py / (noiseScale * 0.25) + 150) * 0.35;
                     edgeNoise += SimplexNoise.noise2D(px / (noiseScale * 0.12) + 250, py / (noiseScale * 0.12) + 250) * 0.15;
 
-                    const warpedDist = ellipseDist + edgeNoise * 0.25;
+                    const warpedDist = ellipseDist + edgeNoise * 0.25 * edgeNoiseStrength;
 
                     let alpha;
                     if (warpedDist < 0.6) {
@@ -22671,9 +22769,11 @@
                 if ((det.method || 'black') !== 'steam') return;
 
                 const [x1, y1, x2, y2] = det.box;
-                // 확장 적용
-                const w = (x2 - x1) * scale + expandPx * 2;
-                const h = (y2 - y1) * scale + expandPx * 2;
+                // 스팀용 가상 박스 확대 (30%) + 사용자 확장 적용
+                const baseW = (x2 - x1) * scale;
+                const baseH = (y2 - y1) * scale;
+                const w = baseW * STEAM_BOX_SCALE + expandPx * 2;
+                const h = baseH * STEAM_BOX_SCALE + expandPx * 2;
                 const seed = Math.floor(x1 * 1000 + y1);
                 const key = getSteamCacheKey(w, h, seed);
 
@@ -22703,20 +22803,81 @@
         // 스팀/구름 효과 적용 (캐시 사용)
         function applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale) {
             const expandPx = (censorState.expandPixels || 0) * (scale || 1);
-            // 확장 적용된 크기
-            const expandedW = w + expandPx * 2;
-            const expandedH = h + expandPx * 2;
+            // 스팀용 가상 박스 확대 (30%) + 사용자 확장 적용
+            const scaledW = w * STEAM_BOX_SCALE;
+            const scaledH = h * STEAM_BOX_SCALE;
+            const expandedW = scaledW + expandPx * 2;
+            const expandedH = scaledH + expandPx * 2;
             const seed = Math.floor(origX * 1000 + origY);
             const key = getSteamCacheKey(expandedW, expandedH, seed);
 
+            console.log('[STEAM] 원본 w,h:', w, h, '→ 확장 후:', expandedW, expandedH, 'SCALE:', STEAM_BOX_SCALE);
+
             let texture = steamTextureCache.get(key);
             if (!texture) {
+                console.log('[STEAM] 새 텍스처 생성:', expandedW, expandedH);
                 texture = generateSteamTexture(expandedW, expandedH, seed);
                 steamTextureCache.set(key, texture);
             }
 
-            // 확장된 위치에 그리기
-            ctx.drawImage(texture.canvas, x - expandPx - texture.expandX, y - expandPx - texture.expandY, texture.tw, texture.th);
+            // 가상 박스 확대로 인한 오프셋 계산 (중심 기준 확대)
+            const scaleOffsetX = (scaledW - w) / 2;
+            const scaleOffsetY = (scaledH - h) / 2;
+
+            // 확장된 위치에 그리기 (가상 박스 오프셋 포함)
+            // 투명도는 applyCensorEffect에서 이미 적용됨
+            ctx.drawImage(texture.canvas, x - expandPx - scaleOffsetX - texture.expandX, y - expandPx - scaleOffsetY - texture.expandY, texture.tw, texture.th);
+        }
+
+        // 프론트엔드에서 검열 이미지 렌더링 (스팀 포함 - 저장용)
+        async function renderCensoredImageOnCanvas(imgSrc, boxes, method) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    // 원본 이미지 그리기
+                    ctx.drawImage(img, 0, 0);
+
+                    // 스팀 텍스처 미리 생성 (scale=1, 원본 크기)
+                    const steamBoxes = boxes.filter(b => (b.method || method) === 'steam');
+                    if (steamBoxes.length > 0) {
+                        preloadSteamTextures(steamBoxes, 1);
+                    }
+
+                    // 박스별 검열 효과 적용
+                    boxes.forEach(det => {
+                        const [x1, y1, x2, y2] = det.box;
+                        const w = x2 - x1;
+                        const h = y2 - y1;
+                        const boxMethod = det.method || method;
+                        const rotation = det.rotation || 0;
+
+                        if (rotation !== 0) {
+                            const cx = x1 + w / 2;
+                            const cy = y1 + h / 2;
+                            ctx.save();
+                            ctx.translate(cx, cy);
+                            ctx.rotate(rotation);
+                            ctx.translate(-cx, -cy);
+                            applyCensorEffect(ctx, x1, y1, w, h, boxMethod, img, x1, y1, w, h, 1);
+                            ctx.restore();
+                        } else {
+                            applyCensorEffect(ctx, x1, y1, w, h, boxMethod, img, x1, y1, w, h, 1);
+                        }
+                    });
+
+                    // PNG base64로 변환
+                    const base64 = canvas.toDataURL('image/png').split(',')[1];
+                    resolve(base64);
+                };
+                img.onerror = () => reject(new Error('이미지 로드 실패'));
+                img.src = imgSrc;
+            });
         }
 
         // === 하이브리드 프리뷰: 확장/그라데이션 적용 시 백엔드 API로 정확한 프리뷰 ===
@@ -22962,14 +23123,14 @@
                     censorOverlayCtx.fillRect(sx, sy, sw, sh);
                 } else if (showHandles) {
                     // 호버/선택 시 테두리 + 핸들 표시
-                    censorOverlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
+                    censorOverlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(100, 120, 160, 0.9)';
                     censorOverlayCtx.lineWidth = 2;
                     censorOverlayCtx.setLineDash([]);
                     censorOverlayCtx.strokeRect(sx, sy, sw, sh);
                     
                     // 리사이즈 핸들
                     const hs = 7;
-                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.95)';
+                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(80, 100, 140, 0.95)';
                     censorOverlayCtx.fillStyle = handleColor;
                     
                     // 모서리 핸들
@@ -22987,7 +23148,7 @@
                     
                     // 회전 핸들 (선택 또는 호버 시 모두)
                     const rotateY = sy - 25;
-                    const rotHandleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.95)';
+                    const rotHandleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(80, 100, 140, 0.95)';
                     censorOverlayCtx.beginPath();
                     censorOverlayCtx.strokeStyle = rotHandleColor;
                     censorOverlayCtx.lineWidth = 1;
@@ -23101,13 +23262,13 @@
                     censorOverlayCtx.fillStyle = 'rgba(255, 80, 80, 0.3)';
                     censorOverlayCtx.fillRect(sx, sy, sw, sh);
                 } else if (showHandles) {
-                    censorOverlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
+                    censorOverlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(100, 120, 160, 0.9)';
                     censorOverlayCtx.lineWidth = 2;
                     censorOverlayCtx.setLineDash([]);
                     censorOverlayCtx.strokeRect(sx, sy, sw, sh);
                     
                     const hs = 7;
-                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.95)';
+                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(80, 100, 140, 0.95)';
                     censorOverlayCtx.fillStyle = handleColor;
                     
                     censorOverlayCtx.fillRect(sx - hs/2, sy - hs/2, hs, hs);
@@ -23123,7 +23284,7 @@
                     
                     // 회전 핸들 (선택 또는 호버 시 모두)
                     const rotateY = sy - 25;
-                    const rotHandleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.95)';
+                    const rotHandleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(80, 100, 140, 0.95)';
                     censorOverlayCtx.beginPath();
                     censorOverlayCtx.strokeStyle = rotHandleColor;
                     censorOverlayCtx.lineWidth = 1;
@@ -23845,36 +24006,66 @@
                     
                     // 박스 없어도 저장 (원본 이미지가 그대로 복사됨)
                     console.log('Saving:', imgInfo?.filename || imageKey, 'boxes:', boxes.length);
-                    
+
+                    // 스팀 검열이 포함되어 있는지 확인
+                    const hasSteam = boxes.some(b => b.method === 'steam');
+
                     const saveBody = {
-                        boxes: boxes,
-                        method: method,
                         output_folder: outputFolder,  // 검열후 탭에서 선택된 폴더
                         filename: imgInfo?.filename,  // 원본 파일명 유지
-                        expand_pixels: censorState.expandPixels || 0,
-                        feather: censorState.feather || 0
                     };
-                    
-                    // 드롭된 이미지면 image_base64 사용, 아니면 path 사용
-                    if (imgInfo?.isDropped && imgInfo?.base64) {
-                        saveBody.image_base64 = imgInfo.base64;
-                        console.log('Using image_base64 for dropped image');
-                    } else if (imgInfo?.path) {
-                        saveBody.image_path = imgInfo.path;
-                        console.log('Using image_path:', imgInfo.path);
+
+                    if (hasSteam && boxes.length > 0) {
+                        // 스팀이 포함된 경우: 프론트엔드에서 렌더링 후 base64로 전송
+                        console.log('Steam detected - rendering on frontend');
+
+                        // 이미지 소스 URL 결정
+                        let imgSrc;
+                        if (imgInfo?.isDropped && imgInfo?.base64) {
+                            imgSrc = `data:image/png;base64,${imgInfo.base64}`;
+                        } else if (imgInfo?.path) {
+                            imgSrc = `${API_BASE}/api/censor/image?path=${encodeURIComponent(imgInfo.path)}`;
+                        } else {
+                            imgSrc = `${API_BASE}/api/censor/image?path=${encodeURIComponent(imageKey)}`;
+                        }
+
+                        try {
+                            const renderedBase64 = await renderCensoredImageOnCanvas(imgSrc, boxes, method);
+                            saveBody.rendered_base64 = renderedBase64;  // 이미 렌더링된 이미지
+                            console.log('Frontend rendering complete');
+                        } catch (renderErr) {
+                            console.error('Frontend rendering failed:', renderErr);
+                            failedCount++;
+                            continue;
+                        }
                     } else {
-                        // fallback: imageKey가 경로일 수 있음
-                        saveBody.image_path = imageKey;
-                        console.log('Using imageKey as path:', imageKey);
+                        // 스팀 없음: 기존 방식 (백엔드에서 처리)
+                        saveBody.boxes = boxes;
+                        saveBody.method = method;
+                        saveBody.expand_pixels = censorState.expandPixels || 0;
+                        saveBody.feather = censorState.feather || 0;
+
+                        // 드롭된 이미지면 image_base64 사용, 아니면 path 사용
+                        if (imgInfo?.isDropped && imgInfo?.base64) {
+                            saveBody.image_base64 = imgInfo.base64;
+                            console.log('Using image_base64 for dropped image');
+                        } else if (imgInfo?.path) {
+                            saveBody.image_path = imgInfo.path;
+                            console.log('Using image_path:', imgInfo.path);
+                        } else {
+                            // fallback: imageKey가 경로일 수 있음
+                            saveBody.image_path = imageKey;
+                            console.log('Using imageKey as path:', imageKey);
+                        }
+
+                        // 이미지 소스가 없으면 건너뛰기
+                        if (!saveBody.image_base64 && !saveBody.image_path) {
+                            console.error('No image source for:', imageKey);
+                            failedCount++;
+                            continue;
+                        }
                     }
-                    
-                    // 이미지 소스가 없으면 건너뛰기
-                    if (!saveBody.image_base64 && !saveBody.image_path) {
-                        console.error('No image source for:', imageKey);
-                        failedCount++;
-                        continue;
-                    }
-                    
+
                     const response = await fetch(`${API_BASE}/api/censor/save`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -24285,6 +24476,14 @@
                 } else if (censorState.currentTab === 'after') {
                     redrawAfterPreview();
                 }
+                saveCensorSettings();
+            };
+
+            // 스팀 조작시 투명도 슬라이더
+            const steamOpacitySlider = document.getElementById('steamOpacity');
+            steamOpacitySlider.oninput = function() {
+                censorState.steamOpacity = parseInt(this.value);
+                document.getElementById('steamOpacityValue').textContent = this.value + '%';
                 saveCensorSettings();
             };
 
@@ -24907,14 +25106,14 @@
                     overlayCtx.fillRect(sx, sy, sw, sh);
                 } else if (showHandles) {
                     // 호버/선택 시 테두리 + 핸들 표시
-                    overlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.9)';
+                    overlayCtx.strokeStyle = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(100, 120, 160, 0.9)';
                     overlayCtx.lineWidth = 2;
                     overlayCtx.setLineDash([]);
                     overlayCtx.strokeRect(sx, sy, sw, sh);
                     
                     // 리사이즈 핸들
                     const hs = 7;
-                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(255, 255, 255, 0.95)';
+                    const handleColor = isSelected ? 'rgba(0, 200, 255, 1)' : 'rgba(80, 100, 140, 0.95)';
                     overlayCtx.fillStyle = handleColor;
                     
                     // 모서리 핸들

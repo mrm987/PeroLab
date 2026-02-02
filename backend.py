@@ -6388,7 +6388,8 @@ class CensorSaveRequest(BaseModel):
     image_path: str = None
     absolute_path: str = None  # 절대 경로 (드롭된 외부 이미지용)
     image_base64: str = None
-    boxes: List[dict]
+    rendered_base64: str = None  # 프론트엔드에서 렌더링 완료된 이미지 (스팀 검열용)
+    boxes: List[dict] = []
     method: str = "black"
     color: str = None
     output_folder: str = ""  # censored 하위 폴더
@@ -6403,14 +6404,31 @@ async def save_censored_image(req: CensorSaveRequest):
     """검열 이미지 저장"""
     import tempfile
     temp_file = None
-    
+
     # 디버깅: 받은 박스 데이터 로깅
     print(f"[DEBUG] save_censored_image - image_path: {req.image_path}, absolute_path: {req.absolute_path}")
+    print(f"[DEBUG] save_censored_image - rendered_base64: {bool(req.rendered_base64)}")
     print(f"[DEBUG] save_censored_image - boxes count: {len(req.boxes)}")
     for i, box in enumerate(req.boxes):
         print(f"[DEBUG] Box {i}: {box}")
-    
+
     try:
+        # 프론트엔드에서 렌더링된 이미지가 있으면 바로 저장 (스팀 검열)
+        if req.rendered_base64:
+            print("[DEBUG] Using rendered_base64 (frontend rendered)")
+            output_folder = CENSORED_DIR / req.output_folder if req.output_folder else CENSORED_DIR
+            output_folder.mkdir(parents=True, exist_ok=True)
+
+            filename = req.filename or "censored.png"
+            output_path = output_folder / filename
+
+            # base64 디코딩 후 저장
+            image_data = base64.b64decode(req.rendered_base64)
+            with open(output_path, 'wb') as f:
+                f.write(image_data)
+
+            return {"success": True, "filename": output_path.name, "path": str(output_path.relative_to(APP_DIR))}
+
         # 이미지 경로 결정 (우선순위: absolute_path > image_path > image_base64)
         if req.absolute_path:
             # 절대 경로 (외부 이미지)
