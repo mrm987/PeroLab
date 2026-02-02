@@ -22365,20 +22365,12 @@
             
             // 이미지 그리기
             if (censorState.currentTab === 'processing') {
-                // 검열중: 원본 + 검열 효과 적용
+                // 검열중: 원본 + 검열 효과 적용 (프론트엔드에서 직접 렌더링)
                 drawCensoredImage(img, displayW, displayH);
-                // 확장/그라데이션이 있으면 API 프리뷰 요청
-                if ((censorState.expandPixels > 0 || censorState.feather > 0) && censorState.editBoxes.length > 0) {
-                    requestCensorPreviewUpdate();
-                }
             } else if (censorState.currentTab === 'after') {
-                // 검열후: 이미 검열된 이미지 + 추가 편집 오버레이
+                // 검열후: 이미 검열된 이미지 + 추가 편집 오버레이 (프론트엔드에서 직접 렌더링)
                 censorPreviewCtx.drawImage(img, 0, 0, displayW, displayH);
                 drawAfterTabOverlay(img, displayW, displayH);
-                // 확장/그라데이션이 있으면 API 프리뷰 요청
-                if ((censorState.expandPixels > 0 || censorState.feather > 0) && censorState.editBoxes.length > 0) {
-                    requestCensorPreviewUpdate();
-                }
             } else {
                 // 검열전: 원본 + 감지 박스 표시
                 censorPreviewCtx.drawImage(img, 0, 0, displayW, displayH);
@@ -22424,19 +22416,19 @@
                     censorPreviewCtx.translate(cx, cy);
                     censorPreviewCtx.rotate(rotation);
                     censorPreviewCtx.translate(-cx, -cy);
-                    applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, boxMethod, img, x1, y1, x2 - x1, y2 - y1);
+                    applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, boxMethod, img, x1, y1, x2 - x1, y2 - y1, scale);
                     censorPreviewCtx.restore();
                 } else {
-                    applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, boxMethod, img, x1, y1, x2 - x1, y2 - y1);
+                    applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, boxMethod, img, x1, y1, x2 - x1, y2 - y1, scale);
                 }
             });
-            
+
             // 오버레이에 선택된 박스 표시
             drawProcessingOverlay();
         }
-        
+
         // 검열 효과 적용
-        function applyCensorEffect(ctx, x, y, w, h, method, originalImg, origX, origY, origW, origH) {
+        function applyCensorEffect(ctx, x, y, w, h, method, originalImg, origX, origY, origW, origH, scale = 1) {
             switch (method) {
                 case 'black':
                     ctx.fillStyle = '#000000';
@@ -22453,7 +22445,7 @@
                     applyBlurEffect(ctx, x, y, w, h);
                     break;
                 case 'steam':
-                    applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH);
+                    applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale);
                     break;
                 default:
                     ctx.fillStyle = '#000000';
@@ -22673,13 +22665,15 @@
         // 스팀 텍스처 캐시 프리로드 (박스 목록 기반, cleanupOld: 오래된 캐시 정리 여부)
         function preloadSteamTextures(boxes, scale, cleanupOld = false) {
             const currentKeys = new Set();
+            const expandPx = (censorState.expandPixels || 0) * scale;
 
             boxes.forEach(det => {
                 if ((det.method || 'black') !== 'steam') return;
 
                 const [x1, y1, x2, y2] = det.box;
-                const w = (x2 - x1) * scale;
-                const h = (y2 - y1) * scale;
+                // 확장 적용
+                const w = (x2 - x1) * scale + expandPx * 2;
+                const h = (y2 - y1) * scale + expandPx * 2;
                 const seed = Math.floor(x1 * 1000 + y1);
                 const key = getSteamCacheKey(w, h, seed);
 
@@ -22707,17 +22701,22 @@
         }
 
         // 스팀/구름 효과 적용 (캐시 사용)
-        function applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH) {
+        function applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale) {
+            const expandPx = (censorState.expandPixels || 0) * (scale || 1);
+            // 확장 적용된 크기
+            const expandedW = w + expandPx * 2;
+            const expandedH = h + expandPx * 2;
             const seed = Math.floor(origX * 1000 + origY);
-            const key = getSteamCacheKey(w, h, seed);
+            const key = getSteamCacheKey(expandedW, expandedH, seed);
 
             let texture = steamTextureCache.get(key);
             if (!texture) {
-                texture = generateSteamTexture(w, h, seed);
+                texture = generateSteamTexture(expandedW, expandedH, seed);
                 steamTextureCache.set(key, texture);
             }
 
-            ctx.drawImage(texture.canvas, x - texture.expandX, y - texture.expandY, texture.tw, texture.th);
+            // 확장된 위치에 그리기
+            ctx.drawImage(texture.canvas, x - expandPx - texture.expandX, y - expandPx - texture.expandY, texture.tw, texture.th);
         }
 
         // === 하이브리드 프리뷰: 확장/그라데이션 적용 시 백엔드 API로 정확한 프리뷰 ===
@@ -23022,27 +23021,8 @@
             const displayW = censorPreviewCanvas.width;
             const displayH = censorPreviewCanvas.height;
 
-            // 드래그/리사이즈/회전/그리기 중에는 API 호출 안 함 (Canvas만 사용)
-            const isEditing = censorState.isDragging || censorState.isResizing || censorState.isRotating || censorState.isDrawing;
-
-            // 하이브리드 프리뷰: 확장/그라데이션이 있으면 API 결과 사용
-            if ((censorState.expandPixels > 0 || censorState.feather > 0) && censorState.editBoxes.length > 0) {
-                if (overlayOnly && !isEditing) {
-                    // 오버레이만 갱신: 캐시된 이미지가 있으면 그대로 사용, 오버레이만 다시 그리기
-                    if (drawCachedApiPreview()) {
-                        drawProcessingOverlay();
-                        return;
-                    }
-                }
-                // Canvas로 빠르게 그리기
-                drawCensoredImage(img, displayW, displayH);
-                // 편집 중이 아닐 때만 API 호출
-                if (!isEditing) {
-                    requestCensorPreviewUpdate();
-                }
-            } else {
-                drawCensoredImage(img, displayW, displayH);
-            }
+            // 항상 프론트엔드에서 직접 렌더링
+            drawCensoredImage(img, displayW, displayH);
         }
         
         // 검열후 탭 오버레이 그리기 (추가된 편집 박스 + 검열 효과)
@@ -23069,14 +23049,14 @@
                         censorPreviewCtx.translate(cx, cy);
                         censorPreviewCtx.rotate(rotation);
                         censorPreviewCtx.translate(-cx, -cy);
-                        applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1);
+                        applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1, scale);
                         censorPreviewCtx.restore();
                     } else {
-                        applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1);
+                        applyCensorEffect(censorPreviewCtx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1, scale);
                     }
                 });
             }
-            
+
             // 오버레이에 편집 박스 표시 (호버/선택 시 핸들 표시)
             drawAfterTabBoxOverlay();
         }
@@ -23176,29 +23156,9 @@
             const displayW = censorPreviewCanvas.width;
             const displayH = censorPreviewCanvas.height;
 
-            // 드래그/리사이즈/회전/그리기 중에는 API 호출 안 함 (Canvas만 사용)
-            const isEditing = censorState.isDragging || censorState.isResizing || censorState.isRotating || censorState.isDrawing;
-
-            // 하이브리드 프리뷰: 확장/그라데이션이 있으면 API 결과 사용
-            if ((censorState.expandPixels > 0 || censorState.feather > 0) && censorState.editBoxes.length > 0) {
-                if (overlayOnly && !isEditing) {
-                    // 오버레이만 갱신: 캐시된 이미지가 있으면 그대로 사용
-                    if (drawCachedApiPreview()) {
-                        drawProcessingOverlay();
-                        return;
-                    }
-                }
-                // 원본 + Canvas 오버레이 그린 후 API 호출 (편집 중 아닐 때만)
-                censorPreviewCtx.drawImage(img, 0, 0, displayW, displayH);
-                drawAfterTabOverlay(img, displayW, displayH);
-                if (!isEditing) {
-                    requestCensorPreviewUpdate();
-                }
-            } else {
-                // 확장/그라데이션 없음: 기존 방식
-                censorPreviewCtx.drawImage(img, 0, 0, displayW, displayH);
-                drawAfterTabOverlay(img, displayW, displayH);
-            }
+            // 항상 프론트엔드에서 직접 렌더링
+            censorPreviewCtx.drawImage(img, 0, 0, displayW, displayH);
+            drawAfterTabOverlay(img, displayW, displayH);
         }
         
         // 검열후 탭 편집 변경 표시
@@ -24293,13 +24253,17 @@
             expandSlider.oninput = function() {
                 censorState.expandPixels = parseInt(this.value);
                 document.getElementById('censorExpandValue').textContent = this.value;
+                // 스팀 텍스처 캐시 클리어 (확장값이 바뀌면 새로 생성해야 함)
+                steamTextureCache.clear();
                 // 검열전 탭: 박스 시각화 갱신
                 if (censorState.currentTab === 'before') {
                     drawDetectionBoxes();
                 }
-                // 검열중/후 탭: 프리뷰 갱신 요청 (디바운스)
-                else if (censorState.currentTab === 'processing' || censorState.currentTab === 'after') {
-                    requestCensorPreviewUpdate();
+                // 검열중/후 탭: 프론트엔드에서 직접 렌더링
+                else if (censorState.currentTab === 'processing') {
+                    redrawProcessingPreview();
+                } else if (censorState.currentTab === 'after') {
+                    redrawAfterPreview();
                 }
                 saveCensorSettings();
             };
@@ -24309,13 +24273,17 @@
             featherSlider.oninput = function() {
                 censorState.feather = parseInt(this.value);
                 document.getElementById('censorFeatherValue').textContent = this.value;
+                // 스팀 텍스처 캐시 클리어 (feather값이 바뀌면 새로 생성해야 함)
+                steamTextureCache.clear();
                 // 검열전 탭: 박스 시각화 갱신
                 if (censorState.currentTab === 'before') {
                     drawDetectionBoxes();
                 }
-                // 검열중/후 탭: 프리뷰 갱신 요청 (디바운스)
-                else if (censorState.currentTab === 'processing' || censorState.currentTab === 'after') {
-                    requestCensorPreviewUpdate();
+                // 검열중/후 탭: 프론트엔드에서 직접 렌더링
+                else if (censorState.currentTab === 'processing') {
+                    redrawProcessingPreview();
+                } else if (censorState.currentTab === 'after') {
+                    redrawAfterPreview();
                 }
                 saveCensorSettings();
             };
@@ -24898,13 +24866,13 @@
                     ctx.translate(cx, cy);
                     ctx.rotate(rotation);
                     ctx.translate(-cx, -cy);
-                    applyCensorEffect(ctx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1);
+                    applyCensorEffect(ctx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1, scale);
                     ctx.restore();
                 } else {
-                    applyCensorEffect(ctx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1);
+                    applyCensorEffect(ctx, sx, sy, sw, sh, det.method || method, img, x1, y1, x2 - x1, y2 - y1, scale);
                 }
             });
-            
+
             // 오버레이 (호버/선택된 박스에만 핸들 표시)
             overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
             const isDeleteMode = censorState.currentTool === 'delete';
@@ -26083,9 +26051,14 @@
             censorState.rotateCenter = null;
             censorState.resizeAnchor = null;
 
-            // 편집 완료 후 API 프리뷰 업데이트 (확장/그라데이션이 있을 때만)
-            if (wasEditing && (censorState.expandPixels > 0 || censorState.feather > 0) && censorState.editBoxes.length > 0) {
-                requestCensorPreviewUpdate();
+            // 편집 완료 후 프론트엔드에서 직접 렌더링 (스팀 캐시 클리어)
+            if (wasEditing && censorState.editBoxes.length > 0) {
+                steamTextureCache.clear();
+                if (censorState.currentTab === 'processing') {
+                    redrawProcessingPreview();
+                } else if (censorState.currentTab === 'after') {
+                    redrawAfterPreview();
+                }
             }
         }
         
