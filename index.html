@@ -1702,7 +1702,100 @@
             color: var(--text);
         }
 
-        /* Character Reference */
+        /* Precise Reference */
+        .precise-ref-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .precise-ref-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px;
+        }
+
+        .precise-ref-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .precise-ref-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: var(--bg-lighter);
+            flex-shrink: 0;
+        }
+
+        .precise-ref-controls {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .precise-ref-mode-select {
+            width: 100%;
+            padding: 6px 8px;
+            font-size: 0.8rem;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+
+        .precise-ref-mode-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .precise-ref-sliders {
+            display: flex;
+            gap: 10px;
+        }
+
+        .precise-ref-slider-group {
+            flex: 1;
+        }
+
+        .precise-ref-slider-group label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .precise-ref-slider-group input[type="range"] {
+            width: 100%;
+            height: 4px;
+        }
+
+        .precise-ref-remove {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: var(--bg-lighter);
+            color: var(--text-dim);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            flex-shrink: 0;
+            transition: var(--transition-fast);
+        }
+
+        .precise-ref-remove:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        /* Legacy: 기존 char-ref-preview (드롭 모달 등에서 사용) */
         .char-ref-preview {
             position: relative;
             margin-bottom: 8px;
@@ -6353,7 +6446,7 @@
                         </div>
                     </div>
 
-                    <!-- Vibe / Character Reference -->
+                    <!-- Vibe / Precise Reference -->
                     <div class="section">
                         <div class="section-title">
                             <button type="button" class="collapse-toggle" data-target="vibeCharRefContent" title="접기/펼치기">▼</button>
@@ -6391,47 +6484,30 @@
                                 </div>
                             </div>
 
-                            <!-- Character Reference (V4.5 only) -->
-                            <div class="subsection" id="charRefSection">
+                            <!-- Precise Reference (V4.5 only) -->
+                            <div class="subsection" id="preciseRefSection">
                                 <div class="subsection-title">
-                                    <span>Character Reference</span>
+                                    <span>Precise Reference</span>
                                     <label class="section-toggle">
-                                        <input type="checkbox" id="enableCharRef">
+                                        <input type="checkbox" id="enablePreciseRef">
                                         <span>Active</span>
                                     </label>
                                 </div>
 
-                                <div id="charRefSettings" style="display: none;">
+                                <div id="preciseRefSettings" style="display: none;">
                                     <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
-                                        V4.5 전용. Vibe Transfer와 동시 사용 불가.
+                                        V4.5 전용. Vibe Transfer와 동시 사용 불가. 레퍼런스당 5 Anlas.
                                     </small>
 
-                                    <div id="charRefPreview" class="char-ref-preview" style="display: none;">
-                                        <img id="charRefImage" src="" alt="Character Reference">
-                                        <button type="button" class="remove-btn" id="removeCharRefBtn">×</button>
+                                    <!-- 레퍼런스 목록 -->
+                                    <div id="preciseRefList" class="precise-ref-list">
+                                        <!-- 동적으로 추가됨 -->
                                     </div>
 
-                                    <button type="button" class="btn btn-secondary" id="uploadCharRefBtn" style="width: 100%;">
-                                        이미지 선택
+                                    <button type="button" class="btn btn-secondary" id="addPreciseRefBtn" style="width: 100%;">
+                                        + 레퍼런스 추가
                                     </button>
-                                    <input type="file" id="charRefInput" accept="image/*" style="display: none;">
-
-                                    <div class="row" style="margin-top: 12px;">
-                                        <div style="flex: 1;">
-                                            <label>Fidelity</label>
-                                            <input type="range" id="charRefFidelity" value="0.5" min="0" max="1" step="0.05" style="width: 100%;">
-                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
-                                                <span>유연</span>
-                                                <span id="charRefFidelityValue">0.5</span>
-                                                <span>정밀</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="checkbox-row" style="margin-top: 8px;">
-                                        <input type="checkbox" id="charRefStyleAware" checked>
-                                        <label for="charRefStyleAware">Style Aware (스타일도 복사)</label>
-                                    </div>
+                                    <input type="file" id="preciseRefInput" accept="image/*" style="display: none;">
                                 </div>
                             </div>
                         </div>
@@ -7484,7 +7560,7 @@
                 <!-- 이미지 용도 선택 버튼 그룹 -->
                 <div class="btn-row" id="dropModalImageOptions" style="display: none;">
                     <button type="button" class="btn" id="dropModalAsVibe">바이브 추가</button>
-                    <button type="button" class="btn" id="dropModalAsCharRef">캐릭터 레퍼런스</button>
+                    <button type="button" class="btn" id="dropModalAsCharRef">Precise Reference</button>
                     <button type="button" class="btn" id="dropModalAsBaseImage">베이스 이미지</button>
                 </div>
                 <!-- 메타데이터 적용 버튼 그룹 -->
@@ -11156,13 +11232,14 @@
                     }));
                 }
 
-                // Character Reference (V4.5 only)
-                if (document.getElementById('enableCharRef').checked && charRefData) {
-                    request.character_reference = {
-                        image: charRefData.processedImage || charRefData.image,  // Canvas 처리된 이미지 우선
-                        fidelity: parseFloat(document.getElementById('charRefFidelity').value),
-                        style_aware: document.getElementById('charRefStyleAware').checked
-                    };
+                // Precise Reference (V4.5 only) - 여러 레퍼런스 지원
+                if (document.getElementById('enablePreciseRef').checked && preciseRefList.length > 0) {
+                    request.precise_references = preciseRefList.map(ref => ({
+                        image: ref.processedImage || ref.image,  // Canvas 처리된 이미지 우선
+                        mode: ref.mode,
+                        strength: ref.strength,
+                        fidelity: ref.fidelity
+                    }));
                 }
             } else {
                 request.model = document.getElementById('localModel').value;
@@ -12632,8 +12709,9 @@
                     strengths: meta.reference_strength_multiple || [],
                     info_extracted: meta.reference_information_extracted_multiple || []
                 },
-                // NAI 캐릭터 레퍼런스 사용 여부 (이미지 데이터는 제외됨)
-                has_character_reference: !!(meta.director_reference_strength_values?.length > 0)
+                // NAI Precise Reference 사용 여부 (이미지 데이터는 제외됨)
+                has_precise_reference: !!(meta.director_reference_strength_values?.length > 0),
+                precise_ref_count: meta.director_reference_strength_values?.length || 0
             };
         }
 
@@ -12642,7 +12720,7 @@
             const msg = `⚠️ 순수 NAI 이미지입니다.
 
 [적용되지 않는 항목]
-• Character Reference
+• Precise Reference
 • Base Image (img2img/inpaint)
 
 계속하시겠습니까?`;
@@ -12909,9 +12987,9 @@
                 updateAnlasCost();
                 document.getElementById('enableVibeTransfer').checked = true;
                 document.getElementById('vibeTransferSettings').style.display = 'block';
-                // Vibe Transfer와 Character Reference는 동시 사용 불가 - CharRef 비활성화
-                document.getElementById('enableCharRef').checked = false;
-                document.getElementById('charRefSettings').style.display = 'none';
+                // Vibe Transfer와 Precise Reference는 동시 사용 불가 - PreciseRef 비활성화
+                document.getElementById('enablePreciseRef').checked = false;
+                document.getElementById('preciseRefSettings').style.display = 'none';
                 vibesRestored = true;
                 highlight('vibeTransferSettings');
                 // Vibe/CharRef 섹션 펼치기 (스크롤 없이)
@@ -12978,9 +13056,9 @@
                     updateAnlasCost();
                     document.getElementById('enableVibeTransfer').checked = true;
                     document.getElementById('vibeTransferSettings').style.display = 'block';
-                    // Vibe Transfer와 Character Reference는 동시 사용 불가 - CharRef 비활성화
-                    document.getElementById('enableCharRef').checked = false;
-                    document.getElementById('charRefSettings').style.display = 'none';
+                    // Vibe Transfer와 Precise Reference는 동시 사용 불가 - PreciseRef 비활성화
+                    document.getElementById('enablePreciseRef').checked = false;
+                    document.getElementById('preciseRefSettings').style.display = 'none';
                     showToast(`바이브 ${loadedCount}개 복원됨`, 'success');
                 } else {
                     showToast('바이브를 복원할 수 없습니다 (이미지 데이터 없음)', 'warning');
@@ -13186,10 +13264,10 @@
 
         document.getElementById('enableVibeTransfer').onchange = function() {
             document.getElementById('vibeTransferSettings').style.display = this.checked ? 'block' : 'none';
-            // Vibe Transfer와 Character Reference는 동시 사용 불가
-            if (this.checked && document.getElementById('enableCharRef').checked) {
-                document.getElementById('enableCharRef').checked = false;
-                document.getElementById('charRefSettings').style.display = 'none';
+            // Vibe Transfer와 Precise Reference는 동시 사용 불가
+            if (this.checked && document.getElementById('enablePreciseRef').checked) {
+                document.getElementById('enablePreciseRef').checked = false;
+                document.getElementById('preciseRefSettings').style.display = 'none';
             }
             saveAppSettings();
             updateAnlasCost();
@@ -13305,18 +13383,19 @@
         }
 
         // ============================================================
-        // Character Reference (V4.5 only)
+        // Precise Reference (V4.5 only) - 여러 레퍼런스 지원
         // ============================================================
-        let charRefData = null; // {image: base64, processedImage: base64, fidelity: 0.5, style_aware: true}
+        // [{image: base64, processedImage: base64, mode: "character&style", strength: 1.0, fidelity: 1.0}, ...]
+        let preciseRefList = [];
 
         // Canvas 기반 이미지 처리 (NAIS2/NAI 웹과 동일한 방식)
-        async function processCharacterReferenceImage(base64Image) {
+        async function processPreciseReferenceImage(base64Image) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.onload = function() {
                     const width = img.width;
                     const height = img.height;
-                    
+
                     // 캔버스 크기 선택 (1472x1472, 1536x1024, 1024x1536)
                     let targetW = 1472, targetH = 1472;
                     if (width > height) {
@@ -13326,30 +13405,30 @@
                         targetW = 1024;
                         targetH = 1536;
                     }
-                    
+
                     const canvas = document.createElement('canvas');
                     canvas.width = targetW;
                     canvas.height = targetH;
                     const ctx = canvas.getContext('2d');
-                    
+
                     // 검은 배경으로 채우기 (letterbox)
                     ctx.fillStyle = '#000000';
                     ctx.fillRect(0, 0, targetW, targetH);
-                    
+
                     // 비율 유지하면서 리사이즈 계산
                     const scale = Math.min(targetW / width, targetH / height);
                     const w = width * scale;
                     const h = height * scale;
                     const x = (targetW - w) / 2;
                     const y = (targetH - h) / 2;
-                    
+
                     // 이미지 그리기
                     ctx.drawImage(img, x, y, w, h);
-                    
-                    console.log(`[CharRef] Canvas processed: ${width}x${height} -> ${targetW}x${targetH}`);
-                    
-                    // JPEG 95% 품질로 출력 (NAIS2와 동일)
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+                    console.log(`[PreciseRef] Canvas processed: ${width}x${height} -> ${targetW}x${targetH}`);
+
+                    // PNG로 출력 (NAI 웹과 동일)
+                    const dataUrl = canvas.toDataURL('image/png');
                     const base64Only = dataUrl.split(',')[1];
                     resolve(base64Only);
                 };
@@ -13358,9 +13437,84 @@
             });
         }
 
-        document.getElementById('enableCharRef').onchange = function() {
-            document.getElementById('charRefSettings').style.display = this.checked ? 'block' : 'none';
-            // Vibe Transfer와 Character Reference는 동시 사용 불가
+        function renderPreciseRefList() {
+            const container = document.getElementById('preciseRefList');
+            container.innerHTML = '';
+
+            preciseRefList.forEach((ref, idx) => {
+                const item = document.createElement('div');
+                item.className = 'precise-ref-item';
+                item.innerHTML = `
+                    <div class="precise-ref-header">
+                        <img class="precise-ref-preview" src="data:image/png;base64,${ref.image}" alt="Reference ${idx + 1}">
+                        <div class="precise-ref-controls">
+                            <select class="precise-ref-mode-select" data-idx="${idx}">
+                                <option value="character&style" ${ref.mode === 'character&style' ? 'selected' : ''}>Character & Style</option>
+                                <option value="character" ${ref.mode === 'character' ? 'selected' : ''}>Character</option>
+                                <option value="style" ${ref.mode === 'style' ? 'selected' : ''}>Style</option>
+                            </select>
+                            <div class="precise-ref-sliders">
+                                <div class="precise-ref-slider-group">
+                                    <label><span>Strength</span><span class="precise-ref-strength-value">${ref.strength}</span></label>
+                                    <input type="range" class="precise-ref-strength" data-idx="${idx}" value="${ref.strength}" min="0" max="1" step="0.05">
+                                </div>
+                                <div class="precise-ref-slider-group">
+                                    <label><span>Fidelity</span><span class="precise-ref-fidelity-value">${ref.fidelity}</span></label>
+                                    <input type="range" class="precise-ref-fidelity" data-idx="${idx}" value="${ref.fidelity}" min="0" max="1" step="0.05">
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="precise-ref-remove" data-idx="${idx}">×</button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+
+            // Event listeners
+            container.querySelectorAll('.precise-ref-remove').forEach(btn => {
+                btn.onclick = function() {
+                    preciseRefList.splice(parseInt(this.dataset.idx), 1);
+                    renderPreciseRefList();
+                    saveAppSettings();
+                    updateAnlasCost();
+                };
+            });
+
+            container.querySelectorAll('.precise-ref-mode-select').forEach(select => {
+                select.onchange = function() {
+                    const idx = parseInt(this.dataset.idx);
+                    preciseRefList[idx].mode = this.value;
+                    saveAppSettings();
+                };
+            });
+
+            container.querySelectorAll('.precise-ref-strength').forEach(slider => {
+                slider.oninput = function() {
+                    const idx = parseInt(this.dataset.idx);
+                    preciseRefList[idx].strength = parseFloat(this.value);
+                    this.closest('.precise-ref-slider-group').querySelector('.precise-ref-strength-value').textContent = this.value;
+                    saveAppSettings();
+                };
+            });
+
+            container.querySelectorAll('.precise-ref-fidelity').forEach(slider => {
+                slider.oninput = function() {
+                    const idx = parseInt(this.dataset.idx);
+                    preciseRefList[idx].fidelity = parseFloat(this.value);
+                    this.closest('.precise-ref-slider-group').querySelector('.precise-ref-fidelity-value').textContent = this.value;
+                    saveAppSettings();
+                };
+            });
+
+            // 동적 생성된 슬라이더 래핑
+            container.querySelectorAll('input[type="range"]').forEach(slider => {
+                wrapSlider(slider);
+            });
+        }
+
+        document.getElementById('enablePreciseRef').onchange = function() {
+            document.getElementById('preciseRefSettings').style.display = this.checked ? 'block' : 'none';
+            // Vibe Transfer와 Precise Reference는 동시 사용 불가
             if (this.checked && document.getElementById('enableVibeTransfer').checked) {
                 document.getElementById('enableVibeTransfer').checked = false;
                 document.getElementById('vibeTransferSettings').style.display = 'none';
@@ -13369,62 +13523,41 @@
             updateAnlasCost();
         };
 
-        document.getElementById('uploadCharRefBtn').onclick = function() {
-            document.getElementById('charRefInput').click();
+        document.getElementById('addPreciseRefBtn').onclick = function() {
+            document.getElementById('preciseRefInput').click();
         };
 
-        document.getElementById('charRefInput').onchange = async function() {
+        document.getElementById('preciseRefInput').onchange = async function() {
             const file = this.files[0];
             if (!file) return;
             const base64 = await fileToBase64(file);
-            
+
             // Canvas로 이미지 처리 (NAI 웹/NAIS2와 동일한 방식)
             let processedImage;
             try {
-                processedImage = await processCharacterReferenceImage(base64);
-                console.log(`[CharRef] Image processed, length: ${processedImage.length}`);
+                processedImage = await processPreciseReferenceImage(base64);
+                console.log(`[PreciseRef] Image processed, length: ${processedImage.length}`);
             } catch (e) {
-                console.error('[CharRef] Processing failed:', e);
+                console.error('[PreciseRef] Processing failed:', e);
                 processedImage = base64; // 실패시 원본 사용
             }
-            
-            charRefData = {
+
+            preciseRefList.push({
                 image: base64,  // 원본 (프리뷰용)
                 processedImage: processedImage,  // 처리된 이미지 (API용)
-                fidelity: parseFloat(document.getElementById('charRefFidelity').value),
-                style_aware: document.getElementById('charRefStyleAware').checked
-            };
-            document.getElementById('charRefImage').src = 'data:image/png;base64,' + base64;
-            document.getElementById('charRefPreview').style.display = 'block';
-            document.getElementById('uploadCharRefBtn').textContent = '이미지 변경';
+                mode: 'character&style',  // 기본값: Character & Style
+                strength: 1.0,
+                fidelity: 1.0
+            });
+
+            renderPreciseRefList();
+            this.value = ''; // 파일 입력 초기화 (같은 파일 다시 선택 가능)
             saveAppSettings();
             updateAnlasCost();
         };
 
-        document.getElementById('removeCharRefBtn').onclick = function() {
-            charRefData = null;
-            document.getElementById('charRefPreview').style.display = 'none';
-            document.getElementById('uploadCharRefBtn').textContent = '이미지 선택';
-            document.getElementById('charRefInput').value = '';
-            saveAppSettings();
-            updateAnlasCost();
-        };
-
-        document.getElementById('charRefFidelity').oninput = function() {
-            document.getElementById('charRefFidelityValue').textContent = this.value;
-            updateSliderFill(this);
-            if (charRefData) {
-                charRefData.fidelity = parseFloat(this.value);
-                saveAppSettings();
-            }
-        };
-
-        document.getElementById('charRefStyleAware').onchange = function() {
-            if (charRefData) {
-                charRefData.style_aware = this.checked;
-                saveAppSettings();
-            }
-        };
+        // Legacy: charRefData 호환성 유지 (deprecated, 기존 저장된 설정 마이그레이션용)
+        let charRefData = null;
 
         // ============================================================
         // Anlas System
@@ -13464,7 +13597,8 @@
             const steps = parseInt(document.getElementById('steps').value) || 28;
             const vibeEnabled = document.getElementById('enableVibeTransfer').checked;
             const vibeCount = vibeEnabled ? vibeList.length : 0;
-            const hasCharRef = document.getElementById('enableCharRef').checked && charRefData !== null;
+            const preciseRefEnabled = document.getElementById('enablePreciseRef').checked;
+            const preciseRefCount = preciseRefEnabled ? preciseRefList.length : 0;
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
             const slotCount = document.querySelectorAll('.slot:not(.locked)').length;
             const naiModel = document.getElementById('naiModel').value;
@@ -13496,7 +13630,7 @@
                         width, height, steps,
                         is_opus: isOpusTier,
                         vibe_count: vibeCount,
-                        has_char_ref: hasCharRef,
+                        precise_ref_count: preciseRefCount,
                         count: totalCount,
                         vibes: vibes,
                         model: naiModel
@@ -13517,7 +13651,7 @@
                         document.getElementById('anlasCost').textContent =
                             `${data.vibe_encoding_cost} (바이브 ${data.uncached_vibes}개)`;
                     }
-                    // 일반 생성 비용 (CharRef 등)
+                    // 일반 생성 비용 (PreciseRef 등)
                     else {
                         let costText = data.total_cost.toLocaleString();
                         if (slotCount > 1 || repeatCount > 1) {
@@ -13575,9 +13709,9 @@
             }
         });
 
-        // Vibe/CharRef/모델 변경시 비용 재계산
+        // Vibe/PreciseRef/모델 변경시 비용 재계산
         document.getElementById('enableVibeTransfer').addEventListener('change', updateAnlasCost);
-        document.getElementById('enableCharRef').addEventListener('change', updateAnlasCost);
+        document.getElementById('enablePreciseRef').addEventListener('change', updateAnlasCost);
         document.getElementById('naiModel').addEventListener('change', () => {
             updateAnlasCost();
             updateSmeaVisibility();
@@ -14951,10 +15085,8 @@
                 varietyPlus: document.getElementById('varietyPlus').checked,
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
                 vibeList: vibeList,
-                // CharRef: 이미지 데이터는 저장 안 함 (NAI 웹처럼 재실행 시 초기화)
-                // enableCharRef, charRefData는 저장하지 않음
-                charRefFidelity: document.getElementById('charRefFidelity').value,
-                charRefStyleAware: document.getElementById('charRefStyleAware').checked,
+                // PreciseRef: 이미지 데이터는 저장 안 함 (NAI 웹처럼 재실행 시 초기화)
+                // enablePreciseRef, preciseRefList는 저장하지 않음
                 
                 // Local-specific (Local일 때만 의미있음)
                 localModel: document.getElementById('localModel').value,
@@ -15161,17 +15293,7 @@
                     vibeList = settings.vibeList;
                     renderVibeList();
                 }
-                // CharRef: enableCharRef, charRefData는 복원 안 함 (재실행 시 초기화)
-                // fidelity, styleAware 설정값만 복원
-                if (settings.charRefFidelity !== undefined) {
-                    const charRefFidelityEl = document.getElementById('charRefFidelity');
-                    charRefFidelityEl.value = settings.charRefFidelity;
-                    document.getElementById('charRefFidelityValue').textContent = settings.charRefFidelity;
-                    updateSliderFill(charRefFidelityEl);
-                }
-                if (settings.charRefStyleAware !== undefined) {
-                    document.getElementById('charRefStyleAware').checked = settings.charRefStyleAware;
-                }
+                // PreciseRef: 이미지 데이터는 복원 안 함 (재실행 시 초기화)
                 // LUT settings (NAI)
                 if (settings.enableLut !== undefined) {
                     document.getElementById('enableLut').checked = settings.enableLut;
@@ -15565,17 +15687,7 @@
                             vibeList = naiSettings.vibeList;
                             renderVibeList();
                         }
-                        // CharRef: enableCharRef, charRefData는 복원 안 함 (재실행 시 초기화)
-                        // fidelity, styleAware 설정값만 복원
-                        if (naiSettings.charRefFidelity !== undefined) {
-                            const charRefFidelityEl = document.getElementById('charRefFidelity');
-                            charRefFidelityEl.value = naiSettings.charRefFidelity;
-                            document.getElementById('charRefFidelityValue').textContent = naiSettings.charRefFidelity;
-                            updateSliderFill(charRefFidelityEl);
-                        }
-                        if (naiSettings.charRefStyleAware !== undefined) {
-                            document.getElementById('charRefStyleAware').checked = naiSettings.charRefStyleAware;
-                        }
+                        // PreciseRef: 이미지 데이터는 복원 안 함 (재실행 시 초기화)
                     }
                     
                     // Local-specific - 모델은 loadResources 후 적용
@@ -15642,10 +15754,15 @@
                     varietyPlus: settings.varietyPlus || false,
                     enableVibeTransfer: settings.enableVibeTransfer || false,
                     vibeList: settings.vibeList || [],
-                    enableCharRef: settings.enableCharRef || false,
-                    charRefData: settings.charRefData || null,
-                    charRefFidelity: settings.charRefFidelity || 1,
-                    charRefStyleAware: settings.charRefStyleAware !== false,
+                    // Legacy CharRef → PreciseRef 마이그레이션
+                    enablePreciseRef: settings.enablePreciseRef || settings.enableCharRef || false,
+                    preciseRefList: settings.preciseRefList || [],
+                    // Legacy: 기존 charRefData가 있으면 preciseRefList로 변환
+                    _legacyCharRef: settings.charRefData ? {
+                        data: settings.charRefData,
+                        fidelity: settings.charRefFidelity || 1,
+                        styleAware: settings.charRefStyleAware !== false
+                    } : null,
                 };
                 
                 // Local 설정 (레거시에서 가능한 것만)
@@ -15763,17 +15880,27 @@
                     vibeList = naiSettings.vibeList;
                     renderVibeList();
                 }
-                document.getElementById('enableCharRef').checked = naiSettings.enableCharRef;
-                document.getElementById('charRefSettings').style.display = naiSettings.enableCharRef ? 'block' : 'none';
-                if (naiSettings.charRefData) {
-                    charRefData = naiSettings.charRefData;
-                    document.getElementById('charRefImage').src = 'data:image/png;base64,' + charRefData.image;
-                    document.getElementById('charRefPreview').style.display = 'block';
-                    document.getElementById('uploadCharRefBtn').textContent = '이미지 변경';
+                // Precise Reference
+                document.getElementById('enablePreciseRef').checked = naiSettings.enablePreciseRef;
+                document.getElementById('preciseRefSettings').style.display = naiSettings.enablePreciseRef ? 'block' : 'none';
+                if (naiSettings.preciseRefList && naiSettings.preciseRefList.length > 0) {
+                    preciseRefList = naiSettings.preciseRefList;
+                    renderPreciseRefList();
                 }
-                document.getElementById('charRefFidelity').value = naiSettings.charRefFidelity;
-                document.getElementById('charRefFidelityValue').textContent = naiSettings.charRefFidelity;
-                document.getElementById('charRefStyleAware').checked = naiSettings.charRefStyleAware;
+                // Legacy CharRef → PreciseRef 마이그레이션
+                if (naiSettings._legacyCharRef && preciseRefList.length === 0) {
+                    const legacy = naiSettings._legacyCharRef;
+                    preciseRefList.push({
+                        image: legacy.data.image,
+                        processedImage: legacy.data.processedImage || legacy.data.image,
+                        mode: legacy.styleAware ? 'character&style' : 'character',
+                        strength: 1.0,
+                        fidelity: legacy.fidelity
+                    });
+                    renderPreciseRefList();
+                    document.getElementById('enablePreciseRef').checked = true;
+                    document.getElementById('preciseRefSettings').style.display = 'block';
+                }
                 
                 // Local-specific
                 window._pendingLocalModel = localSettings.localModel;
@@ -16682,9 +16809,9 @@
                             // Vibe Transfer 활성화
                             document.getElementById('enableVibeTransfer').checked = true;
                             document.getElementById('vibeTransferSettings').style.display = 'block';
-                            // Vibe Transfer와 Character Reference는 동시 사용 불가 - CharRef 비활성화
-                            document.getElementById('enableCharRef').checked = false;
-                            document.getElementById('charRefSettings').style.display = 'none';
+                            // Vibe Transfer와 Precise Reference는 동시 사용 불가 - PreciseRef 비활성화
+                            document.getElementById('enablePreciseRef').checked = false;
+                            document.getElementById('preciseRefSettings').style.display = 'none';
 
                             showToast('바이브가 추가되었습니다', 'success');
                         } else {
@@ -17126,8 +17253,8 @@
             updateAnlasCost();
             document.getElementById('enableVibeTransfer').checked = true;
             document.getElementById('vibeTransferSettings').style.display = 'block';
-            document.getElementById('enableCharRef').checked = false;
-            document.getElementById('charRefSettings').style.display = 'none';
+            document.getElementById('enablePreciseRef').checked = false;
+            document.getElementById('preciseRefSettings').style.display = 'none';
             let msg;
             if (pendingDropData.type === 'nai-vibe') {
                 msg = pendingDropData.encoded ? 'NAI 바이브 추가됨 (캐시 사용)' : 'NAI 바이브 추가됨';
@@ -17224,9 +17351,9 @@
                     updateAnlasCost();
                     document.getElementById('enableVibeTransfer').checked = true;
                     document.getElementById('vibeTransferSettings').style.display = 'block';
-                    // Vibe Transfer와 Character Reference는 동시 사용 불가 - CharRef 비활성화
-                    document.getElementById('enableCharRef').checked = false;
-                    document.getElementById('charRefSettings').style.display = 'none';
+                    // Vibe Transfer와 Precise Reference는 동시 사용 불가 - PreciseRef 비활성화
+                    document.getElementById('enablePreciseRef').checked = false;
+                    document.getElementById('preciseRefSettings').style.display = 'none';
                     showToast('바이브에 추가됨', 'success');
                     // Vibe / CharRef 섹션 펼치고 스크롤
                     expandAndScrollToSection('vibeCharRefContent');
@@ -17235,38 +17362,43 @@
             }
         };
 
-        // 캐릭터 레퍼런스로 추가 버튼
+        // Precise Reference로 추가 버튼
         document.getElementById('dropModalAsCharRef').onclick = async () => {
             if (pendingDropData && pendingDropData.image) {
                 try {
                     // Canvas로 이미지 처리 (NAI 웹/NAIS2와 동일한 방식)
                     let processedImage;
                     try {
-                        processedImage = await processCharacterReferenceImage(pendingDropData.image);
+                        processedImage = await processPreciseReferenceImage(pendingDropData.image);
                     } catch (e) {
-                        console.error('[CharRef] Processing failed:', e);
+                        console.error('[PreciseRef] Processing failed:', e);
                         processedImage = pendingDropData.image; // 실패시 원본 사용
                     }
-                    
-                    charRefData = { image: processedImage };
-                    document.getElementById('charRefImage').src = 'data:image/png;base64,' + processedImage;
-                    document.getElementById('charRefPreview').style.display = 'block';
-                    document.getElementById('uploadCharRefBtn').textContent = '이미지 변경';
-                    
-                    // 캐릭터 레퍼런스 활성화
-                    document.getElementById('enableCharRef').checked = true;
-                    document.getElementById('charRefSettings').style.display = 'block';
-                    // Vibe Transfer와 Character Reference는 동시 사용 불가 - Vibe 비활성화
+
+                    // 새 레퍼런스 추가
+                    preciseRefList.push({
+                        image: pendingDropData.image,  // 원본 (프리뷰용)
+                        processedImage: processedImage,  // 처리된 이미지 (API용)
+                        mode: 'character&style',  // 기본값
+                        strength: 1.0,
+                        fidelity: 1.0
+                    });
+                    renderPreciseRefList();
+
+                    // Precise Reference 활성화
+                    document.getElementById('enablePreciseRef').checked = true;
+                    document.getElementById('preciseRefSettings').style.display = 'block';
+                    // Vibe Transfer와 Precise Reference는 동시 사용 불가 - Vibe 비활성화
                     document.getElementById('enableVibeTransfer').checked = false;
                     document.getElementById('vibeTransferSettings').style.display = 'none';
-                    
+
                     saveAppSettings();
                     updateAnlasCost();
-                    showToast('캐릭터 레퍼런스에 추가됨', 'success');
-                    // Vibe / CharRef 섹션 펼치고 Character Reference로 스크롤
-                    expandAndScrollToSection('vibeCharRefContent', 'charRefSection');
+                    showToast('Precise Reference에 추가됨', 'success');
+                    // Vibe / PreciseRef 섹션 펼치고 Precise Reference로 스크롤
+                    expandAndScrollToSection('vibeCharRefContent', 'preciseRefSection');
                 } catch (e) {
-                    showToast('캐릭터 레퍼런스 추가 실패: ' + e.message, 'error');
+                    showToast('Precise Reference 추가 실패: ' + e.message, 'error');
                 }
                 closeDropModal();
             }
@@ -18178,13 +18310,14 @@
                 }));
             }
 
-            // Character Reference 추가 (V4.5 전용, 활성화되어 있고 데이터가 있으면)
-            if (document.getElementById('enableCharRef').checked && charRefData) {
-                enhanceParams.character_reference = {
-                    image: charRefData.processedImage || charRefData.image,
-                    fidelity: parseFloat(document.getElementById('charRefFidelity').value),
-                    style_aware: document.getElementById('charRefStyleAware').checked
-                };
+            // Precise Reference 추가 (V4.5 전용, 활성화되어 있고 데이터가 있으면)
+            if (document.getElementById('enablePreciseRef').checked && preciseRefList.length > 0) {
+                enhanceParams.precise_references = preciseRefList.map(ref => ({
+                    image: ref.processedImage || ref.image,
+                    mode: ref.mode,
+                    strength: ref.strength,
+                    fidelity: ref.fidelity
+                }));
             }
 
             closeEnhanceModal();

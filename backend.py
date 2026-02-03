@@ -15,6 +15,7 @@ import math
 import random
 import ctypes
 import logging
+import hashlib
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, List
@@ -807,8 +808,12 @@ class GenerateRequest(BaseModel):
     # NAI Vibe Transfer (최대 16개)
     vibe_transfer: List[dict] = []  # [{"image": base64, "info_extracted": 1.0, "strength": 0.6}, ...]
 
-    # NAI Character Reference (V4.5 only)
-    character_reference: Optional[dict] = None  # {"image": base64, "fidelity": 0.5, "style_aware": True}
+    # NAI Precise Reference (V4.5 only) - 여러 개 지원
+    # [{"image": base64, "mode": "character&style"|"character"|"style", "strength": 1.0, "fidelity": 1.0}, ...]
+    precise_references: List[dict] = []
+
+    # Legacy: 이전 버전 호환용 (deprecated)
+    character_reference: Optional[dict] = None
 
     # Base Image (img2img / inpaint)
     base_image: Optional[str] = None  # base64 encoded image
@@ -879,7 +884,10 @@ class MultiGenerateRequest(BaseModel):
     # NAI Vibe Transfer
     vibe_transfer: List[dict] = []
 
-    # NAI Character Reference (V4.5 only)
+    # NAI Precise Reference (V4.5 only) - 여러 개 지원
+    precise_references: List[dict] = []
+
+    # Legacy: 이전 버전 호환용 (deprecated)
     character_reference: Optional[dict] = None
 
     # Base Image (img2img / inpaint)
@@ -979,7 +987,6 @@ GALLERY_DIR.mkdir(exist_ok=True)
 
 def get_vibe_cache_key(image_base64: str, model: str, info_extracted: float) -> str:
     """이미지 + 모델 + info_extracted로 캐시 키 생성"""
-    import hashlib
     # 이미지의 해시값 생성 (base64 전체를 해싱)
     image_hash = hashlib.sha256(image_base64.encode()).hexdigest()[:16]
     # info_extracted는 소수점 2자리까지만 (0.70 -> "070")
@@ -1384,24 +1391,73 @@ async def call_nai_api(req: GenerateRequest):
         params["reference_information_extracted_multiple"] = info_extracted_list
         params["reference_strength_multiple"] = strength_list
 
-    # Character Reference (V4.5 only) - NAIS2 방식 참고
-    # https://github.com/sunanakgo/NAIS2
-    if req.character_reference and req.character_reference.get("image"):
+    # Precise Reference (V4.5 only) - 여러 개 지원
+    # 새 API: precise_references 배열 사용
+    if req.precise_references and len(req.precise_references) > 0:
+        ref_images_cached = []
+        ref_info_extracted = []
+        ref_strength_values = []
+        ref_secondary_values = []
+        ref_descriptions = []
+
+        for i, ref in enumerate(req.precise_references):
+            if not ref.get("image"):
+                continue
+
+            processed_image = ref["image"]
+            mode = ref.get("mode", "character&style")  # "character&style", "character", "style"
+            strength = ref.get("strength", 1.0)
+            fidelity = ref.get("fidelity", 1.0)
+
+            # 이미지 해시로 cache_secret_key 생성
+            cache_key = hashlib.sha256(processed_image.encode()).hexdigest()
+
+            try:
+                w, h = get_image_size_from_base64(processed_image)
+                print(f"[NAI] PreciseRef {i+1}: {w}x{h}, mode={mode}, strength={strength}, fidelity={fidelity}")
+            except Exception as e:
+                print(f"[NAI] PreciseRef {i+1}: size check failed: {e}")
+
+            ref_images_cached.append({
+                "cache_secret_key": cache_key,
+                "data": processed_image
+            })
+            ref_info_extracted.append(1)  # 항상 1
+            ref_strength_values.append(strength)
+            ref_secondary_values.append(round(1.0 - fidelity, 2))
+            ref_descriptions.append({
+                "caption": {
+                    "base_caption": mode,
+                    "char_captions": []
+                },
+                "legacy_uc": False
+            })
+
+        if len(ref_images_cached) > 0:
+            # 기존 작동하던 형식 사용 (director_reference_images)
+            params["director_reference_images"] = [r["data"] for r in ref_images_cached]
+            params["director_reference_information_extracted"] = ref_info_extracted
+            params["director_reference_strength_values"] = ref_strength_values
+            params["director_reference_secondary_strength_values"] = ref_secondary_values
+            params["director_reference_descriptions"] = ref_descriptions
+            print(f"[NAI] PreciseRef: {len(ref_images_cached)} references added, modes={[d['caption']['base_caption'] for d in ref_descriptions]}")
+
+    # Legacy: 이전 character_reference 호환 (deprecated)
+    elif req.character_reference and req.character_reference.get("image"):
         fidelity = req.character_reference.get("fidelity", 0.5)
         style_aware = req.character_reference.get("style_aware", True)
         caption_type = "character&style" if style_aware else "character"
 
-        # 프론트엔드에서 이미 Canvas로 처리된 이미지 (JPEG, 패딩 완료)
-        # 추가 처리 없이 그대로 사용
         processed_image = req.character_reference["image"]
-        
+        cache_key = hashlib.sha256(processed_image.encode()).hexdigest()
+
         try:
             w, h = get_image_size_from_base64(processed_image)
-            print(f"[NAI] Character Reference: {w}x{h} (pre-processed by frontend)")
+            print(f"[NAI] CharRef (legacy): {w}x{h}")
         except Exception as e:
-            print(f"[NAI] Character Reference: size check failed: {e}")
+            print(f"[NAI] CharRef (legacy): size check failed: {e}")
 
-        # NAIS2 방식: director_reference_images 사용 (JPEG, 패딩된 이미지)
+        # 기존 작동하던 형식 사용 (director_reference_images)
         params["director_reference_images"] = [processed_image]
         params["director_reference_information_extracted"] = [1.0]
         params["director_reference_strength_values"] = [1.0]
@@ -1413,8 +1469,7 @@ async def call_nai_api(req: GenerateRequest):
             },
             "legacy_uc": False
         }]
-
-        print(f"[NAI] CharRef: fidelity={fidelity}, secondary={round(1.0 - fidelity, 2)}, caption={caption_type}, data_len={len(processed_image)}")
+        print(f"[NAI] CharRef (legacy): fidelity={fidelity}, caption={caption_type}")
 
     # Base Image (img2img / inpaint) 처리
     action = "generate"
@@ -1461,7 +1516,7 @@ async def call_nai_api(req: GenerateRequest):
                 "reference_image_multiple",
                 "reference_information_extracted_multiple",
                 "reference_strength_multiple",
-                # Character Reference
+                # Precise Reference / Character Reference
                 "director_reference_images",
                 "director_reference_information_extracted",
                 "director_reference_strength_values",
@@ -1494,8 +1549,9 @@ async def call_nai_api(req: GenerateRequest):
 
     # 로그
     vibe_count = len(params.get("reference_image_multiple", []))
-    has_char_ref = "director_reference_images" in params
-    print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={model_to_use}, vibes={vibe_count}, charref={has_char_ref}")
+    precise_ref_count = len(params.get("director_reference_images", []))
+    has_char_ref = precise_ref_count > 0
+    print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={model_to_use}, vibes={vibe_count}, precise_refs={precise_ref_count}")
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -2273,8 +2329,9 @@ async def process_job(job):
             variety_plus=req.variety_plus,
             model=req.model,
             loras=req.loras,
-            # NAI Vibe Transfer & Character Reference
+            # NAI Vibe Transfer & Precise Reference
             vibe_transfer=req.vibe_transfer,
+            precise_references=req.precise_references,
             character_reference=req.character_reference,
             # Base Image (img2img / inpaint)
             base_image=req.base_image,
@@ -3891,13 +3948,20 @@ async def get_nai_subscription():
 
 def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = False,
                          vibe_count: int = 0, has_char_ref: bool = False,
-                         strength: float = 1.0) -> int:
-    """NAI 이미지 생성 Anlas 소모량 계산"""
+                         strength: float = 1.0, precise_ref_count: int = 0) -> int:
+    """NAI 이미지 생성 Anlas 소모량 계산
+
+    precise_ref_count: Precise Reference 개수 (새 API)
+    has_char_ref: Legacy Character Reference 사용 여부 (deprecated, precise_ref_count > 0이면 무시)
+    """
     pixels = width * height
     base_pixels = 1024 * 1024
 
+    # 실제 레퍼런스 개수 (새 API 우선)
+    ref_count = precise_ref_count if precise_ref_count > 0 else (1 if has_char_ref else 0)
+
     # Opus 무료 조건: 1MP 이하, 28 steps 이하, vibe/char_ref 없음
-    if is_opus and pixels <= base_pixels and steps <= 28 and vibe_count <= 0 and not has_char_ref:
+    if is_opus and pixels <= base_pixels and steps <= 28 and vibe_count <= 0 and ref_count <= 0:
         return 0
 
     # 기본 비용 계산: ceil(MP * 20)
@@ -3920,9 +3984,10 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
     if vibe_count >= 1:
         base_cost += 2
 
-    # Character Reference (Opus: 5 Anlas, 일반: 15 Anlas)
-    if has_char_ref:
-        base_cost += 5 if is_opus else 15
+    # Precise Reference: 개당 5 Anlas (Opus), 15 Anlas (일반)
+    if ref_count > 0:
+        cost_per_ref = 5 if is_opus else 15
+        base_cost += cost_per_ref * ref_count
 
     return base_cost
 
@@ -3935,7 +4000,8 @@ async def calculate_cost(request: dict):
     steps = request.get("steps", 28)
     is_opus = request.get("is_opus", False)
     vibe_count = request.get("vibe_count", 0)
-    has_char_ref = request.get("has_char_ref", False)
+    has_char_ref = request.get("has_char_ref", False)  # Legacy
+    precise_ref_count = request.get("precise_ref_count", 0)  # 새 API
     count = request.get("count", 1)  # 생성 횟수
 
     # Vibe 캐시 체크 (vibes 배열이 제공된 경우)
@@ -3975,7 +4041,7 @@ async def calculate_cost(request: dict):
         uncached_vibe_count = vibe_count
 
     strength = request.get("strength", 1.0)
-    cost_per_image = calculate_anlas_cost(width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength)
+    cost_per_image = calculate_anlas_cost(width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength, precise_ref_count)
     total_cost = cost_per_image * count
 
     # Vibe 인코딩 비용 (캐시되지 않은 것만, 첫 이미지에서만 발생)
