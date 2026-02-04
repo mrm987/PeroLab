@@ -7348,6 +7348,8 @@
                                         <option value="640x1536">640 × 1536</option>
                                     </optgroup>
                                     <option value="custom">Custom</option>
+                                    <optgroup id="recentCustomSizes" label="Recent Custom" style="display:none">
+                                    </optgroup>
                                 </select>
                             </div>
                             <div>
@@ -8689,6 +8691,79 @@
                 });
             }
         })();
+
+        // 최근 사용한 커스텀 해상도 (최대 4개)
+        let recentCustomSizes = [];
+        const MAX_RECENT_CUSTOM_SIZES = 4;
+
+        function loadRecentCustomSizes() {
+            const saved = localStorage.getItem('recentCustomSizes');
+            if (saved) {
+                try {
+                    recentCustomSizes = JSON.parse(saved);
+                } catch (e) {
+                    console.warn('Failed to load recent custom sizes:', e);
+                    recentCustomSizes = [];
+                }
+            }
+            updateRecentCustomSizesUI();
+        }
+
+        function saveRecentCustomSizes() {
+            localStorage.setItem('recentCustomSizes', JSON.stringify(recentCustomSizes));
+        }
+
+        function addRecentCustomSize(width, height) {
+            const sizeStr = `${width}x${height}`;
+
+            // 이미 프리셋에 있는 해상도인지 확인
+            const sizePreset = document.getElementById('sizePreset');
+            const isPreset = [...sizePreset.options].some(opt =>
+                opt.value === sizeStr && !opt.parentElement.id?.includes('recentCustom')
+            );
+            if (isPreset) return; // 프리셋에 있는 해상도는 추가하지 않음
+
+            // 이미 기록에 있으면 맨 앞으로 이동
+            const existingIndex = recentCustomSizes.indexOf(sizeStr);
+            if (existingIndex !== -1) {
+                recentCustomSizes.splice(existingIndex, 1);
+            }
+
+            // 맨 앞에 추가
+            recentCustomSizes.unshift(sizeStr);
+
+            // 최대 개수 유지
+            if (recentCustomSizes.length > MAX_RECENT_CUSTOM_SIZES) {
+                recentCustomSizes = recentCustomSizes.slice(0, MAX_RECENT_CUSTOM_SIZES);
+            }
+
+            saveRecentCustomSizes();
+            updateRecentCustomSizesUI();
+        }
+
+        function updateRecentCustomSizesUI() {
+            const optgroup = document.getElementById('recentCustomSizes');
+            if (!optgroup) return;
+
+            // 기존 옵션 제거
+            optgroup.innerHTML = '';
+
+            if (recentCustomSizes.length === 0) {
+                optgroup.style.display = 'none';
+                return;
+            }
+
+            optgroup.style.display = '';
+
+            // 최근 커스텀 해상도 옵션 추가
+            recentCustomSizes.forEach(size => {
+                const [w, h] = size.split('x');
+                const option = document.createElement('option');
+                option.value = size;
+                option.textContent = `${w} × ${h}`;
+                optgroup.appendChild(option);
+            });
+        }
 
         // 슬롯 사이즈 슬라이더 설정
         (function setupSlotSizeSlider() {
@@ -11966,6 +12041,14 @@
 
             console.log(`[Queue] Adding job: slots=${slotList.length}, promptData=`, promptData);
             
+            // 커스텀 해상도인 경우 기록
+            const sizePresetValue = document.getElementById('sizePreset').value;
+            const currentWidth = parseInt(document.getElementById('width').value);
+            const currentHeight = parseInt(document.getElementById('height').value);
+            if (sizePresetValue === 'custom' || sizePresetValue.startsWith('recent_')) {
+                addRecentCustomSize(currentWidth, currentHeight);
+            }
+
             const request = {
                 provider: currentProvider,
                 base_prompt: document.getElementById('basePrompt').value,
@@ -11973,8 +12056,8 @@
                 character_prompts: getCharacterPrompts(),
                 character_prompts_with_coords: getCharacterPromptsWithCoords(),
                 prompt_list: promptData,
-                width: parseInt(document.getElementById('width').value),
-                height: parseInt(document.getElementById('height').value),
+                width: currentWidth,
+                height: currentHeight,
                 steps: parseInt(document.getElementById('steps').value),
                 cfg: parseFloat(document.getElementById('cfg').value),
                 seed: parseInt(document.getElementById('seed').value),
@@ -16888,6 +16971,7 @@
 
         initAllSliders();   // 모든 range 슬라이더 채움 초기화
         loadSlotSizePresets();  // 슬롯 사이즈 프리셋 로드
+        loadRecentCustomSizes();  // 최근 커스텀 해상도 로드
 
         // Setup tag autocomplete for base prompts
         setupTagAutocomplete(document.getElementById('basePrompt'));
