@@ -6701,17 +6701,21 @@
         }
 
         .pm-item-delete-btn {
-            background: transparent;
+            background: none;
             border: none;
             color: var(--text-dim);
             cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.9rem;
+            padding: var(--space-xs) var(--space-sm);
+            font-size: 1rem;
+            opacity: 0.4;
+            transition: var(--transition-fast);
+            border-radius: var(--radius-sm);
+            margin-left: auto;
         }
         .pm-item-delete-btn:hover {
+            opacity: 1;
             color: var(--error);
-            background: rgba(239, 68, 68, 0.1);
+            background: rgba(229, 115, 115, 0.1);
         }
 
         /* 프롬프트 프리셋 상세 스타일 */
@@ -6741,24 +6745,29 @@
         }
 
         .pm-char-item, .pm-slot-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-md);
+            padding: var(--space-sm) var(--space-md) var(--space-md);
             margin-bottom: 8px;
             position: relative;
+            transition: var(--transition-fast);
+        }
+        .pm-char-item:hover, .pm-slot-item:hover {
+            border-color: var(--accent-dim);
         }
         .pm-char-item-header, .pm-slot-item-header {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 8px;
-            background: var(--bg-lighter);
-            border-bottom: 1px solid var(--border);
-            font-size: 0.8rem;
-            border-radius: 6px 6px 0 0;
+            gap: var(--space-sm);
+            padding: var(--space-xs) 0;
+            user-select: none;
         }
         .pm-char-item-content, .pm-slot-item-content {
-            padding: 6px 8px;
+            /* padding 제거 - 부모에서 처리 */
         }
         /* 슬롯/캐릭터 아이템 드래그 핸들 */
         .pm-item-drag-handle {
@@ -6787,7 +6796,7 @@
         }
         .pm-char-item-content textarea, .pm-slot-item-content textarea {
             width: 100%;
-            min-height: 60px;
+            min-height: 50px;
             padding: 8px;
             border: 1px solid var(--border);
             border-radius: 4px;
@@ -6796,6 +6805,7 @@
             font-size: 0.85rem;
             resize: vertical;
             font-family: inherit;
+            margin-bottom: 0;
         }
         .pm-char-item-content textarea:focus, .pm-slot-item-content textarea:focus {
             outline: none;
@@ -6804,33 +6814,33 @@
 
         /* 프리셋 매니저 - 항목 헤더 스타일 (기존 슬롯 UI와 동일) */
         .pm-item-num {
-            font-family: 'SF Mono', 'Consolas', monospace;
+            color: var(--accent-gold);
             font-size: 0.75rem;
-            color: var(--text-dim);
-            background: var(--bg);
-            padding: 2px 6px;
-            border-radius: 4px;
-            min-width: 32px;
+            font-weight: 700;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            background: rgba(245, 185, 66, 0.1);
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            min-width: 28px;
             text-align: center;
         }
         .pm-item-name {
-            flex: 1;
-            min-width: 80px;
-            padding: 4px 8px;
-            border: 1px solid transparent;
-            border-radius: 4px;
+            width: 80px;
+            flex: none;
             background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 4px 6px;
+            margin: 0;
+            font-size: 0.8rem;
             color: var(--text);
-            font-size: 0.85rem;
         }
-        .pm-item-name:hover {
-            border-color: var(--border);
-            background: var(--bg);
+        .pm-item-name::placeholder {
+            color: var(--text-dim);
         }
         .pm-item-name:focus {
             outline: none;
-            border-color: var(--primary);
-            background: var(--bg);
+            border-color: rgba(255, 255, 255, 0.25);
         }
 
         /* 좌표 선택 버튼 및 팝업 */
