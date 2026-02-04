@@ -14123,23 +14123,43 @@
             updateAnlasCost();
         };
         
-        // Width/Height 직접 수정 시 Custom으로 변경
+        // 64 배수로 조정 (낮은 쪽으로 - 높은 쪽은 유료 재화 추가 소모 가능)
+        function alignTo64(value) {
+            return Math.floor(value / 64) * 64;
+        }
+
+        // Width/Height 직접 수정 시 Custom으로 변경 + 64 배수 조정
         function checkCustomSize() {
-            const w = widthInput.value;
-            const h = heightInput.value;
+            let w = parseInt(widthInput.value);
+            let h = parseInt(heightInput.value);
+
+            // NAI 모드일 때 64 배수가 아니면 자동 조정
+            if (currentProvider === 'nai') {
+                const alignedW = alignTo64(w);
+                const alignedH = alignTo64(h);
+
+                if (w !== alignedW || h !== alignedH) {
+                    widthInput.value = alignedW;
+                    heightInput.value = alignedH;
+                    w = alignedW;
+                    h = alignedH;
+                    showToast(`해상도를 64 배수로 조정: ${alignedW}×${alignedH}`, 'info');
+                }
+            }
+
             const currentValue = `${w}x${h}`;
-            
+
             // 프리셋에 있는 값인지 확인
             const options = [...sizePreset.options];
             const match = options.find(opt => opt.value === currentValue);
-            
+
             if (match) {
                 sizePreset.value = currentValue;
             } else {
                 sizePreset.value = 'custom';
             }
         }
-        
+
         widthInput.onchange = checkCustomSize;
         heightInput.onchange = checkCustomSize;
         
