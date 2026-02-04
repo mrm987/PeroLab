@@ -909,6 +909,57 @@
             min-height: 50px;
         }
 
+        /* 캐릭터 프롬프트/UC 탭 */
+        .char-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .char-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .char-tab-btn:hover {
+            color: var(--text);
+        }
+        .char-tab-btn.active {
+            color: var(--text);
+            border-bottom-color: var(--primary);
+        }
+        .char-tab-btn.uc-tab {
+            color: var(--text-dim);
+        }
+        .char-tab-btn.uc-tab.has-content {
+            color: var(--error-light, #e57373);
+            opacity: 0.7;
+        }
+        .char-tab-btn.uc-tab.active {
+            color: var(--error-light, #e57373);
+            border-bottom-color: var(--error-light, #e57373);
+            opacity: 1;
+        }
+        .char-tab-btn .char-tab-delete {
+            margin-left: 4px;
+            opacity: 0.5;
+            font-size: 0.7rem;
+        }
+        .char-tab-btn:hover .char-tab-delete {
+            opacity: 1;
+        }
+        .char-tab-content {
+            display: none;
+        }
+        .char-tab-content.active {
+            display: block;
+        }
+
         .character-item .delete-char-btn {
             background: none;
             border: none;
@@ -6306,6 +6357,531 @@
         .toast.success { border-color: var(--success); }
         .toast.error { border-color: var(--error); }
         .toast.warning { border-color: var(--warning); }
+
+        /* Preset Manager Modal */
+        #presetManagerModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        #presetManagerModal.active { display: flex; }
+
+        .preset-manager-modal {
+            background: var(--bg);
+            border-radius: 16px;
+            width: 95%;
+            max-width: 1200px;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .pm-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .pm-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        .pm-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .pm-close-btn:hover {
+            background: var(--bg-light);
+            color: var(--text);
+        }
+
+        .pm-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .pm-tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .pm-tab-btn:hover {
+            background: var(--bg-light);
+            color: var(--text);
+        }
+        .pm-tab-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .pm-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .pm-toolbar-btn {
+            padding: 6px 12px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .pm-toolbar-btn:hover {
+            background: var(--bg-lighter);
+            border-color: var(--primary);
+        }
+        .pm-toolbar-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pm-toolbar-btn.danger:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        .pm-toolbar-btn.highlight {
+            border-color: #f0b429;
+            box-shadow: 0 0 0 2px rgba(240, 180, 41, 0.3);
+            background: linear-gradient(135deg, var(--bg-light) 0%, rgba(240, 180, 41, 0.1) 100%);
+        }
+        .pm-toolbar-btn.highlight:hover {
+            border-color: #d9a21b;
+            box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.4);
+        }
+
+        .pm-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            flex: 1;
+            overflow: hidden;
+            padding: 16px 20px;
+        }
+
+        .pm-list-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-light);
+        }
+
+        .pm-list-header {
+            display: grid;
+            grid-template-columns: 32px 32px 1fr 60px 80px;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-weight: 600;
+        }
+
+        .pm-list-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .pm-list-item {
+            display: grid;
+            grid-template-columns: 32px 32px 1fr 60px 80px;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .pm-list-item:hover {
+            background: var(--bg);
+        }
+        .pm-list-item.selected {
+            background: rgba(108, 92, 231, 0.15);
+            border-left: 3px solid var(--primary);
+        }
+        .pm-list-item.modified .pm-preset-name {
+            color: var(--warning, #f59e0b);
+        }
+
+        .pm-list-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .pm-drag-handle {
+            cursor: grab;
+            color: var(--text-dim);
+            font-size: 1rem;
+            user-select: none;
+        }
+        .pm-drag-handle:active { cursor: grabbing; }
+
+        .pm-preset-name {
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pm-preset-summary {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pm-detail-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-light);
+        }
+
+        .pm-detail-header {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+        }
+        .pm-detail-header input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+        .pm-detail-header input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .pm-detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .pm-detail-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .pm-detail-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* 리스트 항목 액션 버튼 */
+        .pm-item-actions {
+            display: flex;
+            gap: 4px;
+            justify-content: flex-end;
+        }
+        .pm-item-action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: all 0.15s;
+        }
+        .pm-item-action-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text);
+        }
+        .pm-item-action-btn.danger:hover {
+            color: var(--error);
+        }
+
+        /* 상세 패널 헤더 십자 버튼 (캐릭터/슬롯 추가) */
+        .pm-add-item-btn {
+            background: var(--accent);
+            border: none;
+            color: white;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        .pm-add-item-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .pm-item-delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .pm-item-delete-btn:hover {
+            color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* 프롬프트 프리셋 상세 스타일 */
+        .pm-prompt-preset-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+        }
+        .pm-prompt-textarea {
+            flex: 1;
+            min-height: 200px;
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.9rem;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+        .pm-prompt-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .pm-char-item, .pm-slot-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .pm-char-item-header, .pm-slot-item-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: var(--bg-lighter);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+            border-radius: 6px 6px 0 0;
+        }
+        .pm-char-item-content, .pm-slot-item-content {
+            padding: 6px 8px;
+        }
+        /* 슬롯/캐릭터 아이템 드래그 핸들 */
+        .pm-item-drag-handle {
+            cursor: grab;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            padding: 2px 4px;
+            user-select: none;
+            border-radius: 4px;
+        }
+        .pm-item-drag-handle:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .pm-item-drag-handle:active { cursor: grabbing; }
+        .pm-char-item.dragging, .pm-slot-item.dragging {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            opacity: 0.95;
+            z-index: 1000;
+        }
+        .pm-item-placeholder {
+            background: var(--bg-lighter);
+            border: 2px dashed var(--primary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .pm-char-item-content textarea, .pm-slot-item-content textarea {
+            width: 100%;
+            min-height: 60px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-light);
+            color: var(--text);
+            font-size: 0.85rem;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .pm-char-item-content textarea:focus, .pm-slot-item-content textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* 프리셋 매니저 - 항목 헤더 스타일 (기존 슬롯 UI와 동일) */
+        .pm-item-num {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            background: var(--bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            min-width: 32px;
+            text-align: center;
+        }
+        .pm-item-name {
+            flex: 1;
+            min-width: 80px;
+            padding: 4px 8px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text);
+            font-size: 0.85rem;
+        }
+        .pm-item-name:hover {
+            border-color: var(--border);
+            background: var(--bg);
+        }
+        .pm-item-name:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg);
+        }
+
+        /* 좌표 선택 버튼 및 팝업 */
+        .pm-coord-wrapper {
+            position: relative;
+        }
+        .pm-coord-btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            text-transform: uppercase;
+            min-width: 36px;
+        }
+        .pm-coord-btn:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+        .pm-coord-btn.active {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(108, 92, 231, 0.1);
+        }
+        .pm-coord-popup {
+            background: var(--bg-darker, #1a1a2e);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            z-index: 100000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        .pm-coord-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+        .pm-coord-cell {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: 'SF Mono', 'Consolas', monospace;
+            transition: all 0.15s;
+            text-transform: uppercase;
+        }
+        .pm-coord-cell:hover {
+            background: var(--bg-lighter);
+            border-color: var(--primary);
+            color: var(--text);
+        }
+        .pm-coord-cell.selected {
+            background: rgba(108, 92, 231, 0.2);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        button.pm-coord-clear {
+            display: block;
+            width: 100%;
+            margin-top: 6px;
+            padding: 4px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            cursor: pointer;
+        }
+        button.pm-coord-clear:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .pm-list-item.dragging {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            opacity: 0.95;
+            z-index: 1000;
+        }
+
+        .pm-list-placeholder {
+            background: var(--bg-lighter);
+            border: 2px dashed var(--primary);
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -6917,15 +7493,18 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="header-btn" id="syncScrollBtn" title="전체 슬롯 스크롤 동기화">
-                        <span>🔗</span>
-                        <span>Sync</span>
+                    <button type="button" class="header-btn" id="presetManagerBtn" title="프리셋 관리 (캐릭터/슬롯)">
+                        <span>🔖</span>
+                        <span>프리셋 관리</span>
                     </button>
                     <button type="button" class="header-btn" id="saveImageSetBtn" title="현재 슬롯 이미지들을 폴더에 저장">
                         <span>💾</span>
                         <span>일괄 저장</span>
                     </button>
                     <button type="button" class="translate-mode-btn" onclick="toggleTranslateMode()" title="번역 모드 (태그에 호버하면 번역 표시)">🌐</button>
+                    <button type="button" class="header-btn" id="syncScrollBtn" title="전체 슬롯 스크롤 동기화">
+                        <span>🔗</span>
+                    </button>
                 </div>
                 <div class="toolbar-right">
                     <span class="toolbar-label">Save to:</span>
@@ -9213,7 +9792,23 @@
                 presetList.innerHTML = '<div class="preset-empty">No presets saved</div>';
                 return;
             }
-            
+
+            // 프리셋 관리에서 저장한 순서 적용
+            const slotOrder = localStorage.getItem('slotPresetOrder');
+            if (slotOrder) {
+                try {
+                    const order = JSON.parse(slotOrder);
+                    presets.sort((a, b) => {
+                        const aIdx = order.indexOf(a.filename);
+                        const bIdx = order.indexOf(b.filename);
+                        if (aIdx === -1 && bIdx === -1) return 0;
+                        if (aIdx === -1) return 1;
+                        if (bIdx === -1) return -1;
+                        return aIdx - bIdx;
+                    });
+                } catch (e) {}
+            }
+
             presetList.innerHTML = presets.map(p => `
                 <div class="preset-item ${currentPreset?.filename === p.filename ? 'selected' : ''}" data-filename="${p.filename}">
                     <span class="check">${currentPreset?.filename === p.filename ? '✓' : ''}</span>
@@ -10363,7 +10958,7 @@
         const charactersList = document.getElementById('charactersList');
         const addCharBtn = document.getElementById('addCharBtn');
         
-        function createCharacterItem(content = '', collapsed = false, enabled = true, name = '', coord = null) {
+        function createCharacterItem(content = '', collapsed = false, enabled = true, name = '', coord = null, uc = '') {
             const item = document.createElement('div');
             item.className = 'character-item' + (enabled ? '' : ' disabled');
             item.dataset.coord = coord || '';  // 좌표 저장 (예: 'c3', 'a1' 등)
@@ -10544,10 +11139,79 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'collapsible-content' + (collapsed ? ' collapsed' : '');
 
+            // 탭 버튼
+            const tabsDiv = document.createElement('div');
+            tabsDiv.className = 'char-tabs';
+
+            const promptTabBtn = document.createElement('button');
+            promptTabBtn.type = 'button';
+            promptTabBtn.className = 'char-tab-btn active';
+            promptTabBtn.textContent = 'Prompt';
+
+            const ucTabBtn = document.createElement('button');
+            ucTabBtn.type = 'button';
+            ucTabBtn.className = 'char-tab-btn uc-tab';
+            ucTabBtn.innerHTML = 'Undesired Content';
+
+            tabsDiv.appendChild(promptTabBtn);
+            tabsDiv.appendChild(ucTabBtn);
+
+            // Prompt 탭 콘텐츠
+            const promptContent = document.createElement('div');
+            promptContent.className = 'char-tab-content active';
+            promptContent.dataset.tab = 'prompt';
+
             const textarea = document.createElement('textarea');
+            textarea.className = 'char-prompt-textarea';
             textarea.value = content;
             textarea.placeholder = 'Character prompt...';
             textarea.rows = 2;
+
+            promptContent.appendChild(textarea);
+
+            // UC 탭 콘텐츠
+            const ucContent = document.createElement('div');
+            ucContent.className = 'char-tab-content';
+            ucContent.dataset.tab = 'uc';
+
+            const ucTextarea = document.createElement('textarea');
+            ucTextarea.className = 'char-uc-textarea';
+            ucTextarea.value = uc;
+            ucTextarea.placeholder = 'Undesired content for this character...';
+            ucTextarea.rows = 2;
+
+            // UC 내용 유무에 따라 탭 버튼 상태 업데이트
+            const updateUcTabState = () => {
+                if (ucTextarea.value.trim()) {
+                    ucTabBtn.classList.add('has-content');
+                } else {
+                    ucTabBtn.classList.remove('has-content');
+                }
+            };
+            updateUcTabState(); // 초기 상태 설정
+            ucTextarea.addEventListener('input', updateUcTabState);
+
+            ucContent.appendChild(ucTextarea);
+
+            // 탭 전환 이벤트
+            promptTabBtn.onclick = (e) => {
+                e.stopPropagation();
+                promptTabBtn.classList.add('active');
+                ucTabBtn.classList.remove('active');
+                promptContent.classList.add('active');
+                ucContent.classList.remove('active');
+            };
+            ucTabBtn.onclick = (e) => {
+                e.stopPropagation();
+                ucTabBtn.classList.add('active');
+                promptTabBtn.classList.remove('active');
+                ucContent.classList.add('active');
+                promptContent.classList.remove('active');
+            };
+
+            contentDiv.appendChild(tabsDiv);
+            contentDiv.appendChild(promptContent);
+            contentDiv.appendChild(ucContent);
 
             // content가 있으면 나중에 input 이벤트 트리거
             if (content) {
@@ -10555,8 +11219,11 @@
                     textarea.dispatchEvent(new Event('input', { bubbles: true }));
                 }, 50);
             }
-
-            contentDiv.appendChild(textarea);
+            if (uc) {
+                setTimeout(() => {
+                    ucTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }, 50);
+            }
 
             // 드래그 핸들 이벤트
             dragHandle.addEventListener('mousedown', (e) => {
@@ -10581,9 +11248,14 @@
 
             // 태그 자동완성 설정
             setupTagAutocomplete(textarea);
+            setupTagAutocomplete(ucTextarea);
 
             // 프롬프트 가중치 하이라이팅 설정
             setupPromptHighlighting(textarea);
+            setupPromptHighlighting(ucTextarea);
+
+            // UC 변경 시 자동저장
+            ucTextarea.oninput = () => autoSaveSettings();
 
             return item;
         }
@@ -10617,7 +11289,7 @@
             const item = createCharacterItem(content, false, shouldBeEnabled);
             charactersList.appendChild(item);
             updateCharacterNumbers();
-            item.querySelector('textarea').focus();
+            item.querySelector('.char-prompt-textarea').focus();
             if (!shouldBeEnabled) {
                 showToast('활성화된 캐릭터가 6명이므로 비활성화 상태로 추가됨', 'info');
             }
@@ -10627,7 +11299,7 @@
             const items = charactersList.querySelectorAll('.character-item');
             return Array.from(items)
                 .filter(item => item.querySelector('.char-enable-toggle').checked)  // enabled만
-                .map(item => item.querySelector('textarea').value)
+                .map(item => item.querySelector('.char-prompt-textarea').value)
                 .filter(v => v.trim());
         }
 
@@ -10636,9 +11308,10 @@
             const items = charactersList.querySelectorAll('.character-item');
             return Array.from(items)
                 .filter(item => item.querySelector('.char-enable-toggle').checked)  // enabled만
-                .filter(item => item.querySelector('textarea').value.trim())  // 내용 있는 것만
+                .filter(item => item.querySelector('.char-prompt-textarea').value.trim())  // 내용 있는 것만
                 .map(item => ({
-                    prompt: item.querySelector('textarea').value,
+                    prompt: item.querySelector('.char-prompt-textarea').value,
+                    uc: item.querySelector('.char-uc-textarea').value || '',
                     coord: item.dataset.coord || null
                 }));
         }
@@ -10646,9 +11319,10 @@
         function getCharacterPromptsWithLayout() {
             const items = charactersList.querySelectorAll('.character-item');
             return Array.from(items).map(item => ({
-                content: item.querySelector('textarea').value,
+                content: item.querySelector('.char-prompt-textarea').value,
+                uc: item.querySelector('.char-uc-textarea').value || '',
                 collapsed: item.querySelector('.collapsible-content').classList.contains('collapsed'),
-                height: item.querySelector('textarea').style.height || null,
+                height: item.querySelector('.char-prompt-textarea').style.height || null,
                 enabled: item.querySelector('.char-enable-toggle').checked,
                 name: item.querySelector('.char-name').value || '',
                 coord: item.dataset.coord || null
@@ -10713,14 +11387,16 @@
                     const name = charData.name || '';
                     const collapsed = charData.collapsed || false;
                     const coord = charData.coord || null;
-                    const item = createCharacterItem(content, collapsed, enabled, name, coord);
+                    const uc = charData.uc || '';
+                    const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
                     if (height) {
-                        item.querySelector('textarea').style.height = height;
+                        item.querySelector('.char-prompt-textarea').style.height = height;
                     }
                     charactersList.appendChild(item);
                 });
                 updateCharacterNumbers();
             }
+
             // 원본 데이터 저장 (변경 감지용)
             savedCharPresetData = JSON.stringify(data.characters || []);
             document.getElementById('charPresetName').classList.remove('modified');
@@ -10754,10 +11430,25 @@
             const presetNameSpan = document.getElementById('charPresetName');
 
             async function renderCharPresetList() {
-                const presets = await loadCharPresets();
+                let presets = await loadCharPresets();
                 if (presets.length === 0) {
                     list.innerHTML = '<div class="char-preset-empty">저장된 캐릭터 프리셋 없음</div>';
                 } else {
+                    // 프리셋 관리에서 저장한 순서 적용
+                    const charOrder = localStorage.getItem('charPresetOrder');
+                    if (charOrder) {
+                        try {
+                            const order = JSON.parse(charOrder);
+                            presets.sort((a, b) => {
+                                const aIdx = order.indexOf(a.filename);
+                                const bIdx = order.indexOf(b.filename);
+                                if (aIdx === -1 && bIdx === -1) return 0;
+                                if (aIdx === -1) return 1;
+                                if (bIdx === -1) return -1;
+                                return aIdx - bIdx;
+                            });
+                        } catch (e) {}
+                    }
                     list.innerHTML = presets.map(p => {
                         const charCount = (p.data.characters || []).length;
                         const names = (p.data.characters || []).map(c => c.name || '').filter(n => n).slice(0, 3).join(', ');
@@ -15168,10 +15859,11 @@
                     if (enabled) enabledCount++;
                     const name = charData.name || '';
                     const coord = charData.coord || null;
+                    const uc = charData.uc || '';
                     if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord);
+                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
                         if (height) {
-                            item.querySelector('textarea').style.height = height;
+                            item.querySelector('.char-prompt-textarea').style.height = height;
                         }
                         charactersList.appendChild(item);
                     }
@@ -16116,10 +16808,11 @@
                     if (enabled) enabledCount++;
                     const name = charData.name || '';
                     const coord = charData.coord || null;
+                    const uc = charData.uc || '';
                     if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord);
+                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
                         if (height) {
-                            item.querySelector('textarea').style.height = height;
+                            item.querySelector('.char-prompt-textarea').style.height = height;
                         }
                         charactersList.appendChild(item);
                     }
@@ -26711,7 +27404,1763 @@
                 }
             });
         }
-        
+
+        // ========================================
+        // Preset Manager Modal
+        // ========================================
+        const presetManager = {
+            currentTab: 'character',
+            characterPresets: [],
+            slotPresets: [],
+            basePromptPresets: [],
+            negativePromptPresets: [],
+            selectedPreset: null,
+            selectedPresetData: null,
+            originalPresetData: null,  // 원본 데이터 (수정 여부 비교용)
+            checkedItems: new Set(),
+            editCache: new Map(),      // 편집 중인 내용 캐시 (filename -> data)
+
+            async init() {
+                const modal = document.getElementById('presetManagerModal');
+                const closeBtn = modal.querySelector('.pm-close-btn');
+                const tabBtns = modal.querySelectorAll('.pm-tab-btn');
+
+                // 닫기 버튼
+                closeBtn.addEventListener('click', () => this.close());
+
+                // 모달 외부 클릭 시 닫기
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) this.close();
+                });
+
+                // ESC 키로 닫기
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && modal.classList.contains('active')) {
+                        this.close();
+                    }
+                });
+
+                // 탭 전환
+                tabBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        // 이전 탭의 편집 내용을 캐시에 저장
+                        if (this.selectedPreset && this.selectedPresetData) {
+                            this.editCache.set(this.selectedPreset, JSON.parse(JSON.stringify(this.selectedPresetData)));
+                        }
+
+                        tabBtns.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.currentTab = btn.dataset.tab;
+                        this.selectedPreset = null;
+                        this.selectedPresetData = null;
+                        this.originalPresetData = null;
+                        this.checkedItems.clear();
+                        this.renderList();
+                        this.renderDetail();
+                        this.updateToolbarState();
+                    });
+                });
+
+                // 툴바 버튼들
+                document.getElementById('pmNewBtn').addEventListener('click', () => this.createNew());
+                document.getElementById('pmImportBtn').addEventListener('click', () => this.importPresets());
+                document.getElementById('pmExportBtn').addEventListener('click', () => this.exportPresets());
+                document.getElementById('pmMergeBtn').addEventListener('click', () => this.mergePresets());
+                document.getElementById('pmDeleteBtn').addEventListener('click', () => this.deleteSelected());
+
+                // 헤더 버튼
+                document.getElementById('presetManagerBtn').addEventListener('click', () => this.open());
+            },
+
+            async open() {
+                await this.loadAllPresets();
+                this.selectedPreset = null;
+                this.selectedPresetData = null;
+                this.originalPresetData = null;
+                this.checkedItems.clear();
+                this.editCache.clear(); // 모달을 새로 열 때만 캐시 초기화
+                this.renderList();
+                this.renderDetail();
+                this.updateToolbarState();
+                document.getElementById('presetManagerModal').classList.add('active');
+            },
+
+            close() {
+                // 저장되지 않은 변경사항 확인
+                if (this.hasUnsavedChanges()) {
+                    if (!confirm('저장되지 않은 변경사항이 있습니다. 정말 닫으시겠습니까?')) {
+                        return;
+                    }
+                }
+                // 캐시 정리
+                this.editCache.clear();
+                this.originalPresetData = null;
+                document.getElementById('presetManagerModal').classList.remove('active');
+            },
+
+            // 저장되지 않은 변경사항이 있는지 확인
+            hasUnsavedChanges() {
+                // 현재 선택된 프리셋이 수정되었는지 확인
+                if (this.selectedPreset && this.selectedPresetData && this.originalPresetData) {
+                    const currentData = JSON.stringify(this.selectedPresetData);
+                    const originalData = JSON.stringify(this.originalPresetData);
+                    if (currentData !== originalData) return true;
+                }
+                // 캐시에 수정된 내용이 있는지 확인
+                for (const [filename, cachedData] of this.editCache.entries()) {
+                    const preset = this.currentTab === 'character'
+                        ? this.characterPresets.find(p => p.filename === filename)
+                        : this.slotPresets.find(p => p.filename === filename);
+                    if (preset && preset._fullData) {
+                        if (JSON.stringify(cachedData) !== JSON.stringify(preset._fullData)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            },
+
+            // 현재 선택된 프리셋이 수정되었는지 확인
+            isCurrentPresetModified() {
+                if (!this.selectedPreset || !this.selectedPresetData || !this.originalPresetData) {
+                    return false;
+                }
+                return JSON.stringify(this.selectedPresetData) !== JSON.stringify(this.originalPresetData);
+            },
+
+            // 특정 프리셋이 수정되었는지 확인
+            isPresetModified(filename) {
+                // 현재 선택된 프리셋이면 현재 데이터와 원본 비교
+                if (this.selectedPreset === filename && this.selectedPresetData && this.originalPresetData) {
+                    return JSON.stringify(this.selectedPresetData) !== JSON.stringify(this.originalPresetData);
+                }
+                // 캐시에 있으면 캐시된 데이터와 원본 비교
+                if (this.editCache.has(filename)) {
+                    const cachedData = this.editCache.get(filename);
+                    const preset = this.currentTab === 'character'
+                        ? this.characterPresets.find(p => p.filename === filename)
+                        : this.slotPresets.find(p => p.filename === filename);
+                    if (preset && preset._fullData) {
+                        return JSON.stringify(cachedData) !== JSON.stringify(preset._fullData);
+                    }
+                }
+                return false;
+            },
+
+            async loadAllPresets() {
+                // 캐릭터 프리셋 로드 (API가 배열 직접 반환, data 필드에 전체 내용 포함)
+                try {
+                    const charRes = await fetch('/api/prompts/character-list');
+                    if (charRes.ok) {
+                        const data = await charRes.json();
+                        // API 응답: [{name, filename, data: {characters: [...]}}, ...]
+                        this.characterPresets = (Array.isArray(data) ? data : []).map(p => ({
+                            name: p.data?.name || p.name || p.filename,
+                            filename: p.filename,
+                            characterCount: p.data?.characters?.length || 0,
+                            _fullData: p.data  // 전체 데이터 캐시
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Failed to load character presets:', e);
+                    this.characterPresets = [];
+                }
+
+                // 슬롯 프리셋 로드 (API가 {presets: [...]} 반환)
+                try {
+                    const slotRes = await fetch('/api/presets');
+                    if (slotRes.ok) {
+                        const data = await slotRes.json();
+                        // 슬롯 수를 알려면 각 프리셋 내용을 로드해야 함
+                        // 일단 목록만 저장하고, 상세 내용은 선택 시 로드
+                        this.slotPresets = (data.presets || []).map(p => ({
+                            name: p.name || p.filename,
+                            filename: p.filename,
+                            slotCount: null // 나중에 로드
+                        }));
+
+                        // 슬롯 수 정보를 비동기로 로드
+                        this.loadSlotCounts();
+                    }
+                } catch (e) {
+                    console.error('Failed to load slot presets:', e);
+                    this.slotPresets = [];
+                }
+
+                // 베이스 프롬프트 프리셋 로드
+                try {
+                    const baseRes = await fetch('/api/prompts/base');
+                    if (baseRes.ok) {
+                        const data = await baseRes.json();
+                        this.basePromptPresets = (data.presets || []).map(p => ({
+                            name: p.name || p.filename,
+                            filename: p.filename,
+                            _fullData: null
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Failed to load base prompt presets:', e);
+                    this.basePromptPresets = [];
+                }
+
+                // 네거티브 프롬프트 프리셋 로드
+                try {
+                    const negRes = await fetch('/api/prompts/negative');
+                    if (negRes.ok) {
+                        const data = await negRes.json();
+                        this.negativePromptPresets = (data.presets || []).map(p => ({
+                            name: p.name || p.filename,
+                            filename: p.filename,
+                            _fullData: null
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Failed to load negative prompt presets:', e);
+                    this.negativePromptPresets = [];
+                }
+
+                // 저장된 순서 적용
+                this.applyStoredOrder();
+            },
+
+            async loadSlotCounts() {
+                for (const preset of this.slotPresets) {
+                    try {
+                        const res = await fetch(`/api/presets/${preset.filename}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            preset.slotCount = data.slots?.length || 0;
+                            preset._fullData = data; // 전체 데이터 캐시 (수정 여부 비교용)
+                        }
+                    } catch (e) {
+                        // 무시
+                    }
+                }
+                // 슬롯 탭이 활성화되어 있으면 리렌더
+                if (this.currentTab === 'slot') {
+                    this.renderList();
+                }
+            },
+
+            applyStoredOrder() {
+                // 캐릭터 프리셋 순서
+                const charOrder = localStorage.getItem('charPresetOrder');
+                if (charOrder) {
+                    try {
+                        const order = JSON.parse(charOrder);
+                        this.characterPresets.sort((a, b) => {
+                            const aIdx = order.indexOf(a.filename);
+                            const bIdx = order.indexOf(b.filename);
+                            if (aIdx === -1 && bIdx === -1) return 0;
+                            if (aIdx === -1) return 1;
+                            if (bIdx === -1) return -1;
+                            return aIdx - bIdx;
+                        });
+                    } catch (e) {}
+                }
+
+                // 슬롯 프리셋 순서
+                const slotOrder = localStorage.getItem('slotPresetOrder');
+                if (slotOrder) {
+                    try {
+                        const order = JSON.parse(slotOrder);
+                        this.slotPresets.sort((a, b) => {
+                            const aIdx = order.indexOf(a.filename);
+                            const bIdx = order.indexOf(b.filename);
+                            if (aIdx === -1 && bIdx === -1) return 0;
+                            if (aIdx === -1) return 1;
+                            if (bIdx === -1) return -1;
+                            return aIdx - bIdx;
+                        });
+                    } catch (e) {}
+                }
+            },
+
+            getPresets() {
+                switch (this.currentTab) {
+                    case 'character': return this.characterPresets;
+                    case 'slot': return this.slotPresets;
+                    case 'basePrompt': return this.basePromptPresets;
+                    case 'negativePrompt': return this.negativePromptPresets;
+                    default: return [];
+                }
+            },
+
+            isPromptPresetTab() {
+                return this.currentTab === 'basePrompt' || this.currentTab === 'negativePrompt';
+            },
+
+            renderList() {
+                const listBody = document.getElementById('pmListBody');
+                const presets = this.getPresets();
+
+                if (presets.length === 0) {
+                    listBody.innerHTML = '<div class="pm-detail-empty">프리셋이 없습니다</div>';
+                    return;
+                }
+
+                listBody.innerHTML = presets.map((p, idx) => {
+                    const name = p.name || p.filename || '이름 없음';
+                    let summary;
+                    switch (this.currentTab) {
+                        case 'character': summary = `${p.characterCount || '?'}명`; break;
+                        case 'slot': summary = `${p.slotCount || '?'}슬롯`; break;
+                        case 'basePrompt':
+                        case 'negativePrompt': summary = ''; break;
+                        default: summary = '';
+                    }
+                    const filename = p.filename;
+                    const isSelected = this.selectedPreset === filename;
+                    const isChecked = this.checkedItems.has(filename);
+
+                    // 수정 표시 확인 (프롬프트 프리셋은 수정 표시 없음)
+                    const isModified = this.isPromptPresetTab() ? false : this.isPresetModified(filename);
+
+                    return `
+                        <div class="pm-list-item ${isSelected ? 'selected' : ''} ${isModified ? 'modified' : ''}" data-filename="${filename}" data-index="${idx}">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); presetManager.toggleCheck('${filename}')">
+                            <span class="pm-drag-handle" title="드래그로 순서 변경">☰</span>
+                            <span class="pm-preset-name" title="${name}">${isModified ? '● ' : ''}${name}</span>
+                            <span class="pm-preset-summary">${summary}</span>
+                            <div class="pm-item-actions">
+                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.renamePresetInline('${filename}')" title="이름 변경">✏️</button>
+                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.duplicatePresetFromList('${filename}')" title="복제">📋</button>
+                                <button class="pm-item-action-btn danger" onclick="event.stopPropagation(); presetManager.deletePreset('${filename}')" title="삭제">🗑</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // 항목 클릭 이벤트
+                listBody.querySelectorAll('.pm-list-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        if (e.target.type === 'checkbox' || e.target.closest('.pm-item-actions')) return;
+                        const filename = item.dataset.filename;
+                        this.selectPreset(filename);
+                    });
+                });
+
+                // 드래그 정렬 초기화
+                this.initDragSort();
+            },
+
+            toggleCheck(filename) {
+                if (this.checkedItems.has(filename)) {
+                    this.checkedItems.delete(filename);
+                } else {
+                    this.checkedItems.add(filename);
+                }
+                this.updateToolbarState();
+                // 체크 시 해당 프리셋 선택
+                this.selectPreset(filename);
+            },
+
+            updateToolbarState() {
+                const checkedCount = this.checkedItems.size;
+                document.getElementById('pmMergeBtn').disabled = checkedCount < 2;
+                document.getElementById('pmDeleteBtn').disabled = checkedCount === 0;
+                document.getElementById('pmExportBtn').disabled = checkedCount === 0;
+            },
+
+            async selectPreset(filename) {
+                // 이전 선택된 프리셋의 편집 내용 캐시에 저장
+                if (this.selectedPreset && this.selectedPresetData) {
+                    this.editCache.set(this.selectedPreset, JSON.parse(JSON.stringify(this.selectedPresetData)));
+                }
+
+                this.selectedPreset = filename;
+
+                // 기존 선택 상태 제거
+                document.querySelectorAll('.pm-list-item').forEach(item => {
+                    item.classList.toggle('selected', item.dataset.filename === filename);
+                });
+
+                // 캐시에서 먼저 확인
+                if (this.editCache.has(filename)) {
+                    this.selectedPresetData = this.editCache.get(filename);
+                    // 원본 데이터는 서버에서 가져온 데이터로 유지
+                    await this.loadOriginalPresetData(filename);
+                } else {
+                    // 프리셋 데이터 로드
+                    try {
+                        if (this.currentTab === 'character') {
+                            // 캐릭터 프리셋은 리스트 로드 시 캐시된 데이터 사용
+                            const preset = this.characterPresets.find(p => p.filename === filename);
+                            if (preset && preset._fullData) {
+                                this.selectedPresetData = JSON.parse(JSON.stringify(preset._fullData));
+                                this.originalPresetData = JSON.parse(JSON.stringify(preset._fullData));
+                            } else {
+                                this.selectedPresetData = null;
+                                this.originalPresetData = null;
+                            }
+                        } else if (this.currentTab === 'slot') {
+                            const res = await fetch(`/api/presets/${filename}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                this.selectedPresetData = data;
+                                this.originalPresetData = JSON.parse(JSON.stringify(data));
+                            }
+                        } else if (this.isPromptPresetTab()) {
+                            // 베이스/네거티브 프롬프트 프리셋
+                            const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                            const res = await fetch(`/api/prompts/${category}/${filename}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                this.selectedPresetData = { name: data.name, content: data.content };
+                                this.originalPresetData = JSON.parse(JSON.stringify(this.selectedPresetData));
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to load preset data:', e);
+                        this.selectedPresetData = null;
+                        this.originalPresetData = null;
+                    }
+                }
+
+                this.renderDetail();
+                this.renderList();
+            },
+
+            async loadOriginalPresetData(filename) {
+                try {
+                    if (this.currentTab === 'character') {
+                        const preset = this.characterPresets.find(p => p.filename === filename);
+                        if (preset && preset._fullData) {
+                            this.originalPresetData = JSON.parse(JSON.stringify(preset._fullData));
+                        }
+                    } else if (this.currentTab === 'slot') {
+                        const res = await fetch(`/api/presets/${filename}`);
+                        if (res.ok) {
+                            this.originalPresetData = await res.json();
+                        }
+                    } else if (this.isPromptPresetTab()) {
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        const res = await fetch(`/api/prompts/${category}/${filename}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            this.originalPresetData = { name: data.name, content: data.content };
+                        }
+                    }
+                } catch (e) {
+                    this.originalPresetData = null;
+                }
+            },
+
+            renderDetail() {
+                const detailBody = document.getElementById('pmDetailBody');
+                const detailHeader = document.getElementById('pmDetailHeader');
+                const detailActions = document.getElementById('pmDetailActions');
+
+                if (!this.selectedPreset || !this.selectedPresetData) {
+                    detailHeader.innerHTML = '';
+                    detailBody.innerHTML = '<div class="pm-detail-empty">프리셋을 선택하면 여기에 상세 내용이 표시됩니다</div>';
+                    detailActions.innerHTML = '';
+                    return;
+                }
+
+                const data = this.selectedPresetData;
+                const name = data.name || this.selectedPreset.replace(/\.(json|txt)$/, '');
+                const isModified = this.isCurrentPresetModified();
+
+                // 헤더 (추가 버튼 + 저장 버튼) - 프롬프트 프리셋은 추가 버튼 없음
+                if (this.isPromptPresetTab()) {
+                    detailHeader.innerHTML = `
+                        <span style="flex: 1; font-weight: 600; font-size: 1rem;">${this.escapeHtml(name)}</span>
+                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">💾 저장</button>
+                    `;
+                } else {
+                    const addBtnIcon = this.currentTab === 'character' ? '+' : '+🎰';
+                    const addBtnTitle = this.currentTab === 'character' ? '캐릭터 추가' : '슬롯 추가';
+                    detailHeader.innerHTML = `
+                        <span style="flex: 1; font-weight: 600; font-size: 1rem;">${this.escapeHtml(name)}</span>
+                        <button class="pm-add-item-btn" onclick="presetManager.addItemToPreset()" title="${addBtnTitle}">${addBtnIcon}</button>
+                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">💾 저장</button>
+                    `;
+                }
+
+                // 본문
+                if (this.isPromptPresetTab()) {
+                    // 베이스/네거티브 프롬프트 프리셋
+                    const placeholder = this.currentTab === 'basePrompt' ? '베이스 프롬프트 내용' : '네거티브 프롬프트 내용';
+                    detailBody.innerHTML = `
+                        <div class="pm-prompt-preset-content">
+                            <textarea class="pm-prompt-textarea" data-field="content" placeholder="${placeholder}">${this.escapeHtml(data.content || '')}</textarea>
+                        </div>
+                    `;
+                    // textarea 변경 이벤트
+                    detailBody.querySelector('textarea[data-field="content"]').addEventListener('input', (e) => {
+                        this.selectedPresetData.content = e.target.value;
+                        this.updateModifiedState();
+                    });
+                } else if (this.currentTab === 'character') {
+                    const characters = data.characters || [];
+                    const itemsHtml = characters.length === 0
+                        ? ''
+                        : characters.map((char, idx) => `
+                            <div class="pm-char-item" data-index="${idx}">
+                                <div class="pm-char-item-header">
+                                    <span class="pm-item-drag-handle" title="드래그로 순서 변경">☰</span>
+                                    <span class="pm-item-num">${idx + 1}</span>
+                                    <input type="text" class="pm-item-name" value="${this.escapeHtml(char.name || '')}" placeholder="이름" data-index="${idx}" data-field="name">
+                                    <div class="pm-coord-wrapper">
+                                        <button type="button" class="pm-coord-btn ${char.coord ? 'active' : ''}" data-index="${idx}" title="${char.coord ? `위치: ${char.coord.toUpperCase()} (클릭하여 변경)` : '캐릭터 위치 지정'}">${char.coord ? char.coord.toUpperCase() : '📍'}</button>
+                                    </div>
+                                    <button class="pm-item-delete-btn" onclick="presetManager.removeItemFromPreset(${idx})" title="삭제">×</button>
+                                </div>
+                                <div class="pm-char-item-content">
+                                    <div class="char-tabs">
+                                        <button type="button" class="char-tab-btn active" data-tab="prompt" data-index="${idx}">Prompt</button>
+                                        <button type="button" class="char-tab-btn uc-tab${char.uc?.trim() ? ' has-content' : ''}" data-tab="uc" data-index="${idx}">Undesired Content</button>
+                                    </div>
+                                    <div class="char-tab-content active" data-tab="prompt">
+                                        <textarea data-field="content" data-index="${idx}" placeholder="이 캐릭터에 적용할 태그">${this.escapeHtml(char.content || '')}</textarea>
+                                    </div>
+                                    <div class="char-tab-content" data-tab="uc">
+                                        <textarea data-field="uc" data-index="${idx}" placeholder="이 캐릭터의 네거티브 프롬프트">${this.escapeHtml(char.uc || '')}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                    detailBody.innerHTML = itemsHtml || '<div class="pm-detail-empty">캐릭터가 없습니다. + 버튼을 눌러 추가하세요.</div>';
+                    // 좌표 버튼 이벤트 설정
+                    this.setupCoordButtons();
+                    // 탭 이벤트 설정
+                    this.setupCharTabs();
+                } else if (this.currentTab === 'slot') {
+                    const slots = data.slots || [];
+                    const itemsHtml = slots.length === 0
+                        ? ''
+                        : slots.map((slot, idx) => `
+                            <div class="pm-slot-item" data-index="${idx}">
+                                <div class="pm-slot-item-header">
+                                    <span class="pm-item-drag-handle" title="드래그로 순서 변경">☰</span>
+                                    <span class="pm-item-num">${String(idx + 1).padStart(3, '0')}</span>
+                                    <input type="text" class="pm-item-name" value="${this.escapeHtml(slot.name || '')}" placeholder="이름" data-index="${idx}" data-field="name">
+                                    <button class="pm-item-delete-btn" onclick="presetManager.removeItemFromPreset(${idx})" title="삭제">×</button>
+                                </div>
+                                <div class="pm-slot-item-content">
+                                    <textarea data-field="content" data-index="${idx}" placeholder="이 슬롯에만 적용할 태그">${this.escapeHtml(slot.content || '')}</textarea>
+                                </div>
+                            </div>
+                        `).join('');
+                    detailBody.innerHTML = itemsHtml || '<div class="pm-detail-empty">슬롯이 없습니다. +🎰 버튼을 눌러 추가하세요.</div>';
+                }
+
+                // 아이템 드래그 정렬 초기화
+                this.initItemDragSort();
+
+                // 이름 입력 시 엔터키로 바로 반영
+                detailBody.querySelectorAll('.pm-item-name').forEach(input => {
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            input.blur();
+                        }
+                    });
+                    input.addEventListener('change', () => {
+                        const idx = parseInt(input.dataset.index);
+                        if (this.currentTab === 'character') {
+                            if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                                this.selectedPresetData.characters[idx].name = input.value;
+                            }
+                        } else {
+                            if (this.selectedPresetData.slots && this.selectedPresetData.slots[idx]) {
+                                this.selectedPresetData.slots[idx].name = input.value;
+                            }
+                        }
+                        this.updateModifiedState();
+                    });
+                });
+
+                // textarea 변경 시 실시간으로 수정 상태 업데이트
+                detailBody.querySelectorAll('textarea[data-field="content"]').forEach(textarea => {
+                    textarea.addEventListener('input', () => {
+                        const idx = parseInt(textarea.dataset.index);
+                        if (this.currentTab === 'character') {
+                            if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                                this.selectedPresetData.characters[idx].content = textarea.value;
+                            }
+                        } else {
+                            if (this.selectedPresetData.slots && this.selectedPresetData.slots[idx]) {
+                                this.selectedPresetData.slots[idx].content = textarea.value;
+                            }
+                        }
+                        // 실시간으로 저장 버튼 하이라이트 업데이트
+                        this.updateModifiedState();
+                    });
+                });
+
+                // UC textarea 변경 시 (캐릭터 프리셋만)
+                detailBody.querySelectorAll('textarea[data-field="uc"]').forEach(textarea => {
+                    textarea.addEventListener('input', () => {
+                        const idx = parseInt(textarea.dataset.index);
+                        if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                            this.selectedPresetData.characters[idx].uc = textarea.value;
+                        }
+                        this.updateModifiedState();
+                    });
+                });
+
+                // 액션 버튼 (저장만 유지 - 복제/삭제/Export는 리스트에서)
+                detailActions.innerHTML = '';
+            },
+
+            // 캐릭터 프리셋 탭 이벤트 설정
+            setupCharTabs() {
+                const detailBody = document.getElementById('pmDetailBody');
+                detailBody.querySelectorAll('.pm-char-item').forEach(item => {
+                    const tabs = item.querySelectorAll('.char-tab-btn');
+                    const contents = item.querySelectorAll('.char-tab-content');
+                    const ucTab = item.querySelector('.char-tab-btn.uc-tab');
+                    const ucTextarea = item.querySelector('[data-field="uc"]');
+
+                    tabs.forEach(tab => {
+                        tab.onclick = (e) => {
+                            e.stopPropagation();
+                            const tabName = tab.dataset.tab;
+
+                            // 탭 버튼 활성화
+                            tabs.forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+
+                            // 콘텐츠 표시
+                            contents.forEach(c => {
+                                c.classList.toggle('active', c.dataset.tab === tabName);
+                            });
+                        };
+                    });
+
+                    // UC textarea 입력 시 탭 상태 업데이트
+                    if (ucTab && ucTextarea) {
+                        ucTextarea.addEventListener('input', () => {
+                            ucTab.classList.toggle('has-content', ucTextarea.value.trim().length > 0);
+                        });
+                    }
+                });
+            },
+
+            // 좌표 버튼 이벤트 설정 (캐릭터 프리셋용)
+            setupCoordButtons() {
+                const detailBody = document.getElementById('pmDetailBody');
+                detailBody.querySelectorAll('.pm-coord-btn').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        const idx = parseInt(btn.dataset.index);
+                        const wrapper = btn.parentElement;
+
+                        // 이미 팝업이 열려있으면 닫기
+                        const existingPopup = wrapper.querySelector('.pm-coord-popup');
+                        if (existingPopup) {
+                            existingPopup.remove();
+                            return;
+                        }
+
+                        // 다른 팝업 닫기
+                        document.querySelectorAll('.pm-coord-popup').forEach(p => p.remove());
+
+                        // 5x5 그리드 팝업 생성 (body에 붙여서 overflow 문제 해결)
+                        const popup = document.createElement('div');
+                        popup.className = 'pm-coord-popup';
+
+                        // 버튼 위치 기준으로 팝업 위치 계산
+                        const btnRect = btn.getBoundingClientRect();
+                        popup.style.position = 'fixed';
+                        popup.style.top = (btnRect.bottom + 4) + 'px';
+                        popup.style.left = (btnRect.right - 180) + 'px'; // 팝업 너비 약 180px
+
+                        const grid = document.createElement('div');
+                        grid.className = 'pm-coord-grid';
+
+                        const cols = ['a', 'b', 'c', 'd', 'e'];
+                        const rows = ['1', '2', '3', '4', '5'];
+
+                        // 해제 버튼
+                        const clearBtn = document.createElement('button');
+                        clearBtn.type = 'button';
+                        clearBtn.className = 'pm-coord-clear';
+                        clearBtn.textContent = '해제';
+                        clearBtn.onclick = (evt) => {
+                            evt.stopPropagation();
+                            if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                                this.selectedPresetData.characters[idx].coord = '';
+                            }
+                            btn.textContent = '📍';
+                            btn.classList.remove('active');
+                            btn.title = '캐릭터 위치 지정';
+                            popup.remove();
+                        };
+
+                        rows.forEach(row => {
+                            cols.forEach(col => {
+                                const cell = document.createElement('button');
+                                cell.type = 'button';
+                                cell.className = 'pm-coord-cell';
+                                cell.textContent = col + row;
+                                cell.onclick = (evt) => {
+                                    evt.stopPropagation();
+                                    const coordValue = col + row;
+                                    if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                                        this.selectedPresetData.characters[idx].coord = coordValue;
+                                    }
+                                    btn.textContent = coordValue.toUpperCase();
+                                    btn.classList.add('active');
+                                    btn.title = `위치: ${coordValue.toUpperCase()} (클릭하여 변경)`;
+                                    popup.remove();
+                                };
+                                grid.appendChild(cell);
+                            });
+                        });
+
+                        popup.appendChild(grid);
+                        popup.appendChild(clearBtn);
+                        document.body.appendChild(popup);
+
+                        // 외부 클릭 시 닫기
+                        const closePopup = (evt) => {
+                            if (!popup.contains(evt.target) && evt.target !== btn) {
+                                popup.remove();
+                                document.removeEventListener('click', closePopup);
+                            }
+                        };
+                        setTimeout(() => document.addEventListener('click', closePopup), 0);
+                    };
+                });
+            },
+
+            escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            },
+
+            async saveCurrentPreset() {
+                if (!this.selectedPreset || !this.selectedPresetData) return;
+
+                // textarea에서 변경된 내용 수집
+                const textareas = document.querySelectorAll('#pmDetailBody textarea[data-field="content"]');
+                textareas.forEach(ta => {
+                    const idx = parseInt(ta.dataset.index);
+                    if (this.currentTab === 'character') {
+                        if (this.selectedPresetData.characters && this.selectedPresetData.characters[idx]) {
+                            this.selectedPresetData.characters[idx].content = ta.value;
+                        }
+                    } else {
+                        if (this.selectedPresetData.slots && this.selectedPresetData.slots[idx]) {
+                            this.selectedPresetData.slots[idx].content = ta.value;
+                        }
+                    }
+                });
+
+                try {
+                    if (this.currentTab === 'character') {
+                        const res = await fetch(`/api/prompts/character-list/${this.selectedPreset}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.selectedPresetData)
+                        });
+                        if (!res.ok) throw new Error('Save failed');
+                    } else if (this.currentTab === 'slot') {
+                        const res = await fetch(`/api/presets/${this.selectedPreset}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.selectedPresetData)
+                        });
+                        if (!res.ok) throw new Error('Save failed');
+                    } else if (this.isPromptPresetTab()) {
+                        // 베이스/네거티브 프롬프트 프리셋은 파일 기반이라 새로 저장 (덮어쓰기)
+                        // 기존 파일 삭제 후 새로 생성
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        await fetch(`/api/prompts/${category}/${this.selectedPreset}`, { method: 'DELETE' });
+                        const res = await fetch(`/api/prompts/${category}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: this.selectedPresetData.name,
+                                content: this.selectedPresetData.content
+                            })
+                        });
+                        if (!res.ok) throw new Error('Save failed');
+                    }
+                    showToast('저장되었습니다', 'success');
+
+                    // 저장 후 원본 데이터 업데이트 (수정 표시 제거)
+                    this.originalPresetData = JSON.parse(JSON.stringify(this.selectedPresetData));
+                    // 캐시에서 제거 (저장되었으므로)
+                    this.editCache.delete(this.selectedPreset);
+
+                    const currentSelection = this.selectedPreset;
+                    await this.loadAllPresets();
+                    this.renderList();
+                    // 선택 상태 복원
+                    if (currentSelection) {
+                        // selectPreset 대신 직접 상태 유지 (캐시 문제 방지)
+                        this.selectedPreset = currentSelection;
+                        this.renderDetail();
+                    }
+                } catch (e) {
+                    console.error('Failed to save preset:', e);
+                    showToast('저장 실패', 'error');
+                }
+            },
+
+            async createNew() {
+                const name = prompt('새 프리셋 이름을 입력하세요:');
+                if (!name || !name.trim()) return;
+
+                // 현재 편집 중인 내용을 캐시에 저장
+                if (this.selectedPreset && this.selectedPresetData) {
+                    this.editCache.set(this.selectedPreset, JSON.parse(JSON.stringify(this.selectedPresetData)));
+                }
+
+                try {
+                    if (this.currentTab === 'character') {
+                        const newData = {
+                            name: name.trim(),
+                            characters: []
+                        };
+                        const safeName = name.trim().replace(/[^a-zA-Z0-9가-힣_\- ]/g, '');
+                        const filename = safeName + '.json';
+                        const res = await fetch(`/api/prompts/character-list/${filename}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Create failed');
+                    } else if (this.currentTab === 'slot') {
+                        const newData = {
+                            name: name.trim(),
+                            prefix: '',
+                            slots: []
+                        };
+                        const res = await fetch('/api/presets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Create failed');
+                    } else if (this.isPromptPresetTab()) {
+                        // 베이스/네거티브 프롬프트 프리셋
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        const res = await fetch(`/api/prompts/${category}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: name.trim(), content: '' })
+                        });
+                        if (!res.ok) throw new Error('Create failed');
+                    }
+                    showToast('새 프리셋이 생성되었습니다', 'success');
+                    // 현재 선택 상태 저장
+                    const currentSelection = this.selectedPreset;
+                    await this.loadAllPresets();
+                    this.renderList();
+                    // 선택 상태 복원 (캐시된 데이터 유지)
+                    if (currentSelection && this.editCache.has(currentSelection)) {
+                        this.selectedPreset = currentSelection;
+                        this.selectedPresetData = this.editCache.get(currentSelection);
+                        this.renderDetail();
+                    }
+                } catch (e) {
+                    console.error('Failed to create preset:', e);
+                    showToast('생성 실패', 'error');
+                }
+            },
+
+            async duplicatePreset() {
+                if (!this.selectedPreset || !this.selectedPresetData) return;
+
+                const newName = prompt('복제할 프리셋 이름을 입력하세요:', this.selectedPresetData.name + ' (복사본)');
+                if (!newName || !newName.trim()) return;
+
+                const newData = JSON.parse(JSON.stringify(this.selectedPresetData));
+                newData.name = newName.trim();
+
+                try {
+                    if (this.currentTab === 'character') {
+                        const safeName = newName.trim().replace(/[^a-zA-Z0-9가-힣_\- ]/g, '');
+                        const filename = safeName + '.json';
+                        const res = await fetch(`/api/prompts/character-list/${filename}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Duplicate failed');
+                    } else {
+                        const res = await fetch('/api/presets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Duplicate failed');
+                    }
+                    showToast('복제되었습니다', 'success');
+                    await this.loadAllPresets();
+                    this.renderList();
+                } catch (e) {
+                    console.error('Failed to duplicate preset:', e);
+                    showToast('복제 실패', 'error');
+                }
+            },
+
+            // 리스트에서 직접 복제 (캐시된 데이터 사용)
+            async duplicatePresetFromList(filename) {
+                let presetData;
+
+                // 1. 현재 선택/편집 중인 프리셋이면 해당 데이터 사용
+                if (this.selectedPreset === filename && this.selectedPresetData) {
+                    presetData = this.selectedPresetData;
+                }
+                // 2. 캐시에 있으면 캐시 데이터 사용
+                else if (this.editCache.has(filename)) {
+                    presetData = this.editCache.get(filename);
+                }
+                // 3. 캐릭터 프리셋의 _fullData
+                else if (this.currentTab === 'character') {
+                    const preset = this.characterPresets.find(p => p.filename === filename);
+                    if (preset && preset._fullData) {
+                        presetData = preset._fullData;
+                    }
+                }
+                // 4. 슬롯 프리셋은 API에서 로드
+                else if (this.currentTab === 'slot') {
+                    try {
+                        const res = await fetch(`/api/presets/${filename}`);
+                        if (res.ok) {
+                            presetData = await res.json();
+                        }
+                    } catch (e) {}
+                }
+                // 5. 베이스/네거티브 프롬프트 프리셋
+                else if (this.isPromptPresetTab()) {
+                    try {
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        const res = await fetch(`/api/prompts/${category}/${filename}`);
+                        if (res.ok) {
+                            presetData = await res.json();
+                        }
+                    } catch (e) {}
+                }
+
+                if (!presetData) {
+                    showToast('프리셋 데이터를 불러올 수 없습니다', 'error');
+                    return;
+                }
+
+                const ext = this.isPromptPresetTab() ? '.txt' : '.json';
+                const newName = prompt('복제할 프리셋 이름을 입력하세요:', (presetData.name || filename.replace(ext, '')) + ' (복사본)');
+                if (!newName || !newName.trim()) return;
+
+                const newData = JSON.parse(JSON.stringify(presetData));
+                newData.name = newName.trim();
+
+                try {
+                    if (this.currentTab === 'character') {
+                        const safeName = newName.trim().replace(/[^a-zA-Z0-9가-힣_\- ]/g, '');
+                        const newFilename = safeName + '.json';
+                        const res = await fetch(`/api/prompts/character-list/${newFilename}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Duplicate failed');
+                    } else if (this.currentTab === 'slot') {
+                        const res = await fetch('/api/presets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newData)
+                        });
+                        if (!res.ok) throw new Error('Duplicate failed');
+                    } else if (this.isPromptPresetTab()) {
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        const res = await fetch(`/api/prompts/${category}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: newData.name, content: newData.content })
+                        });
+                        if (!res.ok) throw new Error('Duplicate failed');
+                    }
+                    showToast('복제되었습니다', 'success');
+                    await this.loadAllPresets();
+                    this.renderList();
+                } catch (e) {
+                    console.error('Failed to duplicate preset:', e);
+                    showToast('복제 실패', 'error');
+                }
+            },
+
+            // 이름 변경 (리스트에서)
+            async renamePresetInline(filename) {
+                let currentName;
+                const ext = this.isPromptPresetTab() ? '.txt' : '.json';
+
+                if (this.currentTab === 'character') {
+                    const preset = this.characterPresets.find(p => p.filename === filename);
+                    currentName = preset?._fullData?.name || preset?.name || filename.replace('.json', '');
+                } else if (this.currentTab === 'slot') {
+                    const preset = this.slotPresets.find(p => p.filename === filename);
+                    currentName = preset?.name || filename.replace('.json', '');
+                } else if (this.currentTab === 'basePrompt') {
+                    const preset = this.basePromptPresets.find(p => p.filename === filename);
+                    currentName = preset?.name || filename.replace('.txt', '');
+                } else if (this.currentTab === 'negativePrompt') {
+                    const preset = this.negativePromptPresets.find(p => p.filename === filename);
+                    currentName = preset?.name || filename.replace('.txt', '');
+                }
+
+                const newName = prompt('새 이름을 입력하세요:', currentName);
+                if (!newName || !newName.trim() || newName.trim() === currentName) return;
+
+                try {
+                    if (this.currentTab === 'character') {
+                        const preset = this.characterPresets.find(p => p.filename === filename);
+                        if (preset && preset._fullData) {
+                            preset._fullData.name = newName.trim();
+                            const res = await fetch(`/api/prompts/character-list/${filename}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(preset._fullData)
+                            });
+                            if (!res.ok) throw new Error('Rename failed');
+                        }
+                    } else if (this.currentTab === 'slot') {
+                        const res = await fetch(`/api/presets/${filename}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            data.name = newName.trim();
+                            const saveRes = await fetch(`/api/presets/${filename}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(data)
+                            });
+                            if (!saveRes.ok) throw new Error('Rename failed');
+                        }
+                    } else if (this.isPromptPresetTab()) {
+                        // 프롬프트 프리셋은 파일명 기반이므로 삭제 후 새로 생성
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        // 먼저 기존 내용 로드
+                        const getRes = await fetch(`/api/prompts/${category}/${filename}`);
+                        if (getRes.ok) {
+                            const data = await getRes.json();
+                            // 기존 파일 삭제
+                            await fetch(`/api/prompts/${category}/${filename}`, { method: 'DELETE' });
+                            // 새 이름으로 생성
+                            const createRes = await fetch(`/api/prompts/${category}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: newName.trim(), content: data.content })
+                            });
+                            if (!createRes.ok) throw new Error('Rename failed');
+                        }
+                    }
+                    showToast('이름이 변경되었습니다', 'success');
+                    await this.loadAllPresets();
+                    this.renderList();
+                    // 선택 상태는 파일명이 바뀌므로 해제
+                    if (this.isPromptPresetTab() && this.selectedPreset === filename) {
+                        this.selectedPreset = null;
+                        this.selectedPresetData = null;
+                        this.renderDetail();
+                    } else if (this.selectedPreset === filename) {
+                        await this.selectPreset(filename);
+                    }
+                } catch (e) {
+                    console.error('Failed to rename preset:', e);
+                    showToast('이름 변경 실패', 'error');
+                }
+            },
+
+            // 항목 추가 (캐릭터 또는 슬롯)
+            addItemToPreset() {
+                if (!this.selectedPresetData) return;
+
+                if (this.currentTab === 'character') {
+                    if (!this.selectedPresetData.characters) {
+                        this.selectedPresetData.characters = [];
+                    }
+                    this.selectedPresetData.characters.push({
+                        name: '',
+                        coord: '',
+                        content: '',
+                        uc: ''
+                    });
+                } else {
+                    if (!this.selectedPresetData.slots) {
+                        this.selectedPresetData.slots = [];
+                    }
+                    this.selectedPresetData.slots.push({
+                        name: '',
+                        content: ''
+                    });
+                }
+
+                this.renderDetail();
+                this.updateModifiedState();
+
+                // 새로 추가된 항목의 이름 입력창에 포커스
+                setTimeout(() => {
+                    const detailBody = document.querySelector('.pm-detail-body');
+                    if (detailBody) {
+                        const inputs = detailBody.querySelectorAll('.pm-item-name');
+                        if (inputs.length > 0) {
+                            inputs[inputs.length - 1].focus();
+                        }
+                    }
+                }, 50);
+            },
+
+            // 항목 삭제 (확인 없이 즉시 삭제)
+            removeItemFromPreset(index) {
+                if (!this.selectedPresetData) return;
+
+                if (this.currentTab === 'character') {
+                    if (this.selectedPresetData.characters && this.selectedPresetData.characters[index] !== undefined) {
+                        this.selectedPresetData.characters.splice(index, 1);
+                    }
+                } else {
+                    if (this.selectedPresetData.slots && this.selectedPresetData.slots[index] !== undefined) {
+                        this.selectedPresetData.slots.splice(index, 1);
+                    }
+                }
+
+                this.renderDetail();
+                this.updateModifiedState();
+                showToast('항목이 삭제되었습니다', 'success');
+            },
+
+            async deletePreset(filename) {
+                if (!confirm('정말 삭제하시겠습니까?')) return;
+
+                try {
+                    let endpoint;
+                    if (this.currentTab === 'character') {
+                        endpoint = `/api/prompts/character-list/${filename}`;
+                    } else if (this.currentTab === 'slot') {
+                        endpoint = `/api/presets/${filename}`;
+                    } else if (this.isPromptPresetTab()) {
+                        const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                        endpoint = `/api/prompts/${category}/${filename}`;
+                    }
+                    const res = await fetch(endpoint, { method: 'DELETE' });
+                    if (!res.ok) throw new Error('Delete failed');
+
+                    showToast('삭제되었습니다', 'success');
+
+                    // 선택 상태 및 캐시 정리
+                    if (this.selectedPreset === filename) {
+                        this.selectedPreset = null;
+                        this.selectedPresetData = null;
+                        this.originalPresetData = null;
+                    }
+                    this.editCache.delete(filename);
+                    this.checkedItems.delete(filename);
+
+                    await this.loadAllPresets();
+                    this.renderList();
+                    this.renderDetail();
+                    this.updateToolbarState();
+                } catch (e) {
+                    console.error('Failed to delete preset:', e);
+                    showToast('삭제 실패', 'error');
+                }
+            },
+
+            async deleteSelected() {
+                if (this.checkedItems.size === 0) return;
+                if (!confirm(`선택한 ${this.checkedItems.size}개의 프리셋을 삭제하시겠습니까?`)) return;
+
+                const toDelete = Array.from(this.checkedItems);
+                let successCount = 0;
+
+                for (const filename of toDelete) {
+                    try {
+                        let endpoint;
+                        if (this.currentTab === 'character') {
+                            endpoint = `/api/prompts/character-list/${filename}`;
+                        } else if (this.currentTab === 'slot') {
+                            endpoint = `/api/presets/${filename}`;
+                        } else if (this.isPromptPresetTab()) {
+                            const category = this.currentTab === 'basePrompt' ? 'base' : 'negative';
+                            endpoint = `/api/prompts/${category}/${filename}`;
+                        }
+                        const res = await fetch(endpoint, { method: 'DELETE' });
+                        if (res.ok) {
+                            successCount++;
+                            // 캐시 정리
+                            this.editCache.delete(filename);
+                        }
+                    } catch (e) {
+                        console.error(`Failed to delete ${filename}:`, e);
+                    }
+                }
+
+                showToast(`${successCount}개 삭제됨`, 'success');
+                this.selectedPreset = null;
+                this.selectedPresetData = null;
+                this.originalPresetData = null;
+                this.checkedItems.clear();
+                await this.loadAllPresets();
+                this.renderList();
+                this.renderDetail();
+                this.updateToolbarState();
+            },
+
+            async mergePresets() {
+                if (this.checkedItems.size < 2) {
+                    showToast('합칠 프리셋을 2개 이상 선택하세요', 'warning');
+                    return;
+                }
+
+                const newName = prompt('합쳐진 프리셋의 이름을 입력하세요:');
+                if (!newName || !newName.trim()) return;
+
+                const toMerge = Array.from(this.checkedItems);
+                let mergedData;
+
+                try {
+                    if (this.currentTab === 'character') {
+                        mergedData = { name: newName.trim(), characters: [] };
+                        for (const filename of toMerge) {
+                            // 캐시된 데이터 사용
+                            const preset = this.characterPresets.find(p => p.filename === filename);
+                            if (preset && preset._fullData && preset._fullData.characters) {
+                                mergedData.characters.push(...preset._fullData.characters);
+                            }
+                        }
+                        const safeName = newName.trim().replace(/[^a-zA-Z0-9가-힣_\- ]/g, '');
+                        const filename = safeName + '.json';
+                        const saveRes = await fetch(`/api/prompts/character-list/${filename}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(mergedData)
+                        });
+                        if (!saveRes.ok) throw new Error('Merge save failed');
+                    } else {
+                        mergedData = { name: newName.trim(), prefix: '', slots: [] };
+                        for (const filename of toMerge) {
+                            const res = await fetch(`/api/presets/${filename}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.slots) {
+                                    mergedData.slots.push(...data.slots);
+                                }
+                            }
+                        }
+                        const saveRes = await fetch('/api/presets', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(mergedData)
+                        });
+                        if (!saveRes.ok) throw new Error('Merge save failed');
+                    }
+
+                    showToast('프리셋이 합쳐졌습니다', 'success');
+                    this.checkedItems.clear();
+                    await this.loadAllPresets();
+                    this.renderList();
+                    this.updateToolbarState();
+                } catch (e) {
+                    console.error('Failed to merge presets:', e);
+                    showToast('합치기 실패', 'error');
+                }
+            },
+
+            // 중복되지 않는 파일명 생성
+            getUniqueFilename(baseName, existingFilenames) {
+                const safeName = baseName.replace(/[^a-zA-Z0-9가-힣_\- ]/g, '');
+                let filename = safeName + '.json';
+                let counter = 1;
+
+                while (existingFilenames.includes(filename)) {
+                    filename = `${safeName}_${counter}.json`;
+                    counter++;
+                }
+
+                return filename;
+            },
+
+            importPresets() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.multiple = true;
+
+                input.onchange = async (e) => {
+                    const files = e.target.files;
+                    if (!files || files.length === 0) return;
+
+                    // 현재 존재하는 파일명 목록 가져오기
+                    const existingFilenames = this.currentTab === 'character'
+                        ? this.characterPresets.map(p => p.filename)
+                        : this.slotPresets.map(p => p.filename);
+
+                    let successCount = 0;
+                    for (const file of files) {
+                        try {
+                            const text = await file.text();
+                            const data = JSON.parse(text);
+
+                            // 이름이 없으면 파일명에서 추출
+                            if (!data.name) {
+                                data.name = file.name.replace(/\.json$/, '');
+                            }
+
+                            if (this.currentTab === 'character') {
+                                // 캐릭터 프리셋 형식 확인
+                                if (!data.characters) {
+                                    data.characters = [];
+                                }
+                                // 중복 이름 처리
+                                const filename = this.getUniqueFilename(data.name, existingFilenames);
+                                // 파일명이 변경되었으면 이름도 업데이트
+                                if (filename !== data.name + '.json') {
+                                    data.name = filename.replace(/\.json$/, '');
+                                }
+                                const res = await fetch(`/api/prompts/character-list/${filename}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(data)
+                                });
+                                if (res.ok) {
+                                    successCount++;
+                                    existingFilenames.push(filename); // 다음 파일 중복 체크용
+                                }
+                            } else {
+                                // 슬롯 프리셋 형식 확인
+                                if (!data.slots) {
+                                    data.slots = [];
+                                }
+                                // 중복 이름 처리
+                                const filename = this.getUniqueFilename(data.name, existingFilenames);
+                                if (filename !== data.name + '.json') {
+                                    data.name = filename.replace(/\.json$/, '');
+                                }
+                                const res = await fetch('/api/presets', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(data)
+                                });
+                                if (res.ok) {
+                                    successCount++;
+                                    existingFilenames.push(filename);
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Failed to import ${file.name}:`, e);
+                        }
+                    }
+
+                    showToast(`${successCount}개 가져오기 완료`, 'success');
+                    await this.loadAllPresets();
+                    this.renderList();
+                };
+
+                input.click();
+            },
+
+            async exportPresets() {
+                if (this.checkedItems.size === 0) {
+                    showToast('내보낼 프리셋을 선택하세요', 'warning');
+                    return;
+                }
+
+                const toExport = Array.from(this.checkedItems);
+
+                for (const filename of toExport) {
+                    try {
+                        if (this.currentTab === 'character') {
+                            // 캐시된 데이터 사용
+                            const preset = this.characterPresets.find(p => p.filename === filename);
+                            if (preset && preset._fullData) {
+                                this.downloadJSON(preset._fullData, filename);
+                            }
+                        } else {
+                            const res = await fetch(`/api/presets/${filename}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                this.downloadJSON(data, filename);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Failed to export ${filename}:`, e);
+                    }
+                }
+            },
+
+            async exportSingle(filename) {
+                try {
+                    if (this.currentTab === 'character') {
+                        // 캐시된 데이터 사용
+                        const preset = this.characterPresets.find(p => p.filename === filename);
+                        if (preset && preset._fullData) {
+                            this.downloadJSON(preset._fullData, filename);
+                            return;
+                        }
+                    }
+                    const res = await fetch(`/api/presets/${filename}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.downloadJSON(data, filename);
+                    }
+                } catch (e) {
+                    console.error(`Failed to export ${filename}:`, e);
+                    showToast('내보내기 실패', 'error');
+                }
+            },
+
+            downloadJSON(data, filename) {
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename.endsWith('.json') ? filename : filename + '.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            },
+
+            initDragSort() {
+                const listBody = document.getElementById('pmListBody');
+                let draggedItem = null;
+                let placeholder = null;
+                let dragStartY = 0;
+                let itemStartY = 0;
+
+                listBody.querySelectorAll('.pm-drag-handle').forEach(handle => {
+                    handle.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        const item = handle.closest('.pm-list-item');
+                        draggedItem = item;
+
+                        const rect = item.getBoundingClientRect();
+                        dragStartY = e.clientY;
+                        itemStartY = rect.top;
+
+                        // 플레이스홀더 생성 (원래 위치에)
+                        placeholder = document.createElement('div');
+                        placeholder.className = 'pm-list-item pm-list-placeholder';
+                        placeholder.style.height = rect.height + 'px';
+                        item.parentNode.insertBefore(placeholder, item);
+
+                        // 드래그 중 스타일 - fixed로 마우스 따라다니게
+                        item.classList.add('dragging');
+                        item.style.position = 'fixed';
+                        item.style.left = rect.left + 'px';
+                        item.style.top = rect.top + 'px';
+                        item.style.width = rect.width + 'px';
+                        item.style.zIndex = '1000';
+                        item.style.pointerEvents = 'none';
+
+                        const onMouseMove = (moveE) => {
+                            if (!draggedItem) return;
+
+                            // 드래그 중인 아이템 위치 업데이트
+                            const dy = moveE.clientY - dragStartY;
+                            draggedItem.style.top = (itemStartY + dy) + 'px';
+
+                            // 플레이스홀더 위치 계산
+                            const items = Array.from(listBody.querySelectorAll('.pm-list-item:not(.dragging):not(.pm-list-placeholder)'));
+                            const draggedRect = draggedItem.getBoundingClientRect();
+                            const draggedCenter = draggedRect.top + draggedRect.height / 2;
+
+                            let insertBefore = null;
+                            for (const otherItem of items) {
+                                const otherRect = otherItem.getBoundingClientRect();
+                                const otherCenter = otherRect.top + otherRect.height / 2;
+                                if (draggedCenter < otherCenter) {
+                                    insertBefore = otherItem;
+                                    break;
+                                }
+                            }
+
+                            // 플레이스홀더 이동
+                            if (insertBefore) {
+                                if (placeholder.nextSibling !== insertBefore) {
+                                    listBody.insertBefore(placeholder, insertBefore);
+                                }
+                            } else {
+                                const lastItem = items[items.length - 1];
+                                if (lastItem && placeholder.previousSibling !== lastItem) {
+                                    listBody.appendChild(placeholder);
+                                }
+                            }
+                        };
+
+                        const onMouseUp = async () => {
+                            document.removeEventListener('mousemove', onMouseMove);
+                            document.removeEventListener('mouseup', onMouseUp);
+
+                            if (!draggedItem) return;
+
+                            // 스타일 초기화
+                            draggedItem.classList.remove('dragging');
+                            draggedItem.style.position = '';
+                            draggedItem.style.left = '';
+                            draggedItem.style.top = '';
+                            draggedItem.style.width = '';
+                            draggedItem.style.zIndex = '';
+                            draggedItem.style.pointerEvents = '';
+
+                            // 플레이스홀더 위치에 아이템 삽입
+                            if (placeholder && placeholder.parentNode) {
+                                listBody.insertBefore(draggedItem, placeholder);
+                                placeholder.remove();
+                            }
+
+                            // 새 순서 저장
+                            await this.saveNewOrder();
+
+                            draggedItem = null;
+                            placeholder = null;
+                        };
+
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                    });
+                });
+            },
+
+            async saveNewOrder() {
+                // 현재 UI 순서에서 파일명 추출
+                const items = document.querySelectorAll('#pmListBody .pm-list-item:not(.pm-list-placeholder)');
+                const newOrder = Array.from(items).map(item => item.dataset.filename);
+
+                // 순서 정보를 localStorage에 저장
+                const key = this.currentTab === 'character' ? 'charPresetOrder' : 'slotPresetOrder';
+                localStorage.setItem(key, JSON.stringify(newOrder));
+
+                // 메모리 내 배열도 순서 변경
+                const presets = this.getPresets();
+                const reordered = [];
+                for (const filename of newOrder) {
+                    const found = presets.find(p => p.filename === filename);
+                    if (found) reordered.push(found);
+                }
+
+                if (this.currentTab === 'character') {
+                    this.characterPresets = reordered;
+                } else {
+                    this.slotPresets = reordered;
+                }
+
+                // 슬롯 모드의 프리셋 드롭다운 동기화
+                this.syncDropdownOrder();
+            },
+
+            // 프리셋 드롭다운 순서 동기화
+            syncDropdownOrder() {
+                // 슬롯 프리셋 드롭다운 (renderPresetList 함수가 localStorage 순서를 읽어서 정렬하도록)
+                // presets 전역 변수를 새 순서로 정렬
+                if (this.currentTab === 'slot' && typeof presets !== 'undefined') {
+                    const slotOrder = localStorage.getItem('slotPresetOrder');
+                    if (slotOrder) {
+                        try {
+                            const order = JSON.parse(slotOrder);
+                            presets.sort((a, b) => {
+                                const aIdx = order.indexOf(a.filename);
+                                const bIdx = order.indexOf(b.filename);
+                                if (aIdx === -1 && bIdx === -1) return 0;
+                                if (aIdx === -1) return 1;
+                                if (bIdx === -1) return -1;
+                                return aIdx - bIdx;
+                            });
+                        } catch (e) {}
+                    }
+                }
+                // 캐릭터 프리셋 드롭다운은 loadCharPresets()에서 새로 로드할 때 순서 적용
+            },
+
+            // 아이템(슬롯/캐릭터) 드래그 정렬 - 슬롯 모드 UX 참고
+            initItemDragSort() {
+                const detailBody = document.getElementById('pmDetailBody');
+                const itemClass = this.currentTab === 'character' ? '.pm-char-item' : '.pm-slot-item';
+                let draggedItem = null;
+                let placeholder = null;
+                let dragStartY = 0;
+                let itemStartY = 0;
+
+                detailBody.querySelectorAll('.pm-item-drag-handle').forEach(handle => {
+                    handle.onmousedown = (e) => {
+                        e.preventDefault();
+                        draggedItem = handle.closest(itemClass);
+                        if (!draggedItem) return;
+
+                        const rect = draggedItem.getBoundingClientRect();
+                        dragStartY = e.clientY;
+                        itemStartY = rect.top;
+
+                        // 플레이스홀더 생성 (원래 위치에)
+                        placeholder = document.createElement('div');
+                        placeholder.className = 'pm-item-placeholder';
+                        placeholder.style.height = rect.height + 'px';
+                        draggedItem.parentNode.insertBefore(placeholder, draggedItem);
+
+                        // 드래그 중 스타일 - fixed로 마우스 따라다니게
+                        draggedItem.classList.add('dragging');
+                        draggedItem.style.position = 'fixed';
+                        draggedItem.style.left = rect.left + 'px';
+                        draggedItem.style.top = rect.top + 'px';
+                        draggedItem.style.width = rect.width + 'px';
+                        draggedItem.style.zIndex = '1000';
+                        draggedItem.style.pointerEvents = 'none';
+
+                        const onMouseMove = (e) => {
+                            if (!draggedItem) return;
+
+                            // 드래그 중인 아이템 위치 업데이트
+                            const dy = e.clientY - dragStartY;
+                            draggedItem.style.top = (itemStartY + dy) + 'px';
+
+                            // 플레이스홀더 위치 계산
+                            const items = Array.from(detailBody.querySelectorAll(`${itemClass}:not(.dragging)`));
+                            const draggedRect = draggedItem.getBoundingClientRect();
+                            const draggedCenter = draggedRect.top + draggedRect.height / 2;
+
+                            let insertBefore = null;
+                            for (const item of items) {
+                                const itemRect = item.getBoundingClientRect();
+                                const itemCenter = itemRect.top + itemRect.height / 2;
+                                if (draggedCenter < itemCenter) {
+                                    insertBefore = item;
+                                    break;
+                                }
+                            }
+
+                            // 플레이스홀더 이동
+                            if (insertBefore) {
+                                if (placeholder.nextSibling !== insertBefore) {
+                                    detailBody.insertBefore(placeholder, insertBefore);
+                                }
+                            } else {
+                                // 맨 뒤로
+                                const lastItem = items[items.length - 1];
+                                if (lastItem && placeholder.previousSibling !== lastItem) {
+                                    detailBody.appendChild(placeholder);
+                                }
+                            }
+                        };
+
+                        const onMouseUp = () => {
+                            document.removeEventListener('mousemove', onMouseMove);
+                            document.removeEventListener('mouseup', onMouseUp);
+
+                            if (!draggedItem) return;
+
+                            // 스타일 초기화
+                            draggedItem.classList.remove('dragging');
+                            draggedItem.style.position = '';
+                            draggedItem.style.left = '';
+                            draggedItem.style.top = '';
+                            draggedItem.style.width = '';
+                            draggedItem.style.zIndex = '';
+                            draggedItem.style.pointerEvents = '';
+
+                            // 플레이스홀더 위치에 아이템 삽입
+                            if (placeholder && placeholder.parentNode) {
+                                detailBody.insertBefore(draggedItem, placeholder);
+                                placeholder.remove();
+                            }
+
+                            // 새 순서를 데이터에 반영
+                            this.applyItemOrder();
+                            draggedItem = null;
+                            placeholder = null;
+                        };
+
+                        document.addEventListener('mousemove', onMouseMove);
+                        document.addEventListener('mouseup', onMouseUp);
+                    };
+                });
+            },
+
+            // 아이템 순서를 데이터에 반영
+            applyItemOrder() {
+                const detailBody = document.getElementById('pmDetailBody');
+                const itemClass = this.currentTab === 'character' ? '.pm-char-item' : '.pm-slot-item';
+                const items = detailBody.querySelectorAll(itemClass);
+                const dataKey = this.currentTab === 'character' ? 'characters' : 'slots';
+
+                if (!this.selectedPresetData || !this.selectedPresetData[dataKey]) return;
+
+                const oldData = [...this.selectedPresetData[dataKey]];
+                const newData = [];
+
+                items.forEach(item => {
+                    const idx = parseInt(item.dataset.index);
+                    if (oldData[idx]) newData.push(oldData[idx]);
+                });
+
+                this.selectedPresetData[dataKey] = newData;
+                this.renderDetail();
+                this.updateModifiedState();
+            },
+
+            // 수정 상태 업데이트 (단일 함수로 통합)
+            updateModifiedState() {
+                this.renderList();
+                // 저장 버튼 하이라이트 업데이트
+                const saveBtn = document.querySelector('#pmDetailHeader .pm-toolbar-btn');
+                if (saveBtn) {
+                    const isModified = this.isCurrentPresetModified();
+                    saveBtn.classList.toggle('highlight', isModified);
+                }
+            }
+        };
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            presetManager.init();
+        });
+
     </script>
+
+    <!-- Preset Manager Modal -->
+    <div id="presetManagerModal">
+        <div class="preset-manager-modal">
+            <div class="pm-header">
+                <h2>📁 프리셋 관리</h2>
+                <button type="button" class="pm-close-btn" title="닫기">×</button>
+            </div>
+            <div class="pm-tabs">
+                <button type="button" class="pm-tab-btn active" data-tab="character">🎭 캐릭터 프리셋</button>
+                <button type="button" class="pm-tab-btn" data-tab="slot">🎰 슬롯 프리셋</button>
+                <button type="button" class="pm-tab-btn" data-tab="basePrompt">📝 베이스 프롬프트</button>
+                <button type="button" class="pm-tab-btn" data-tab="negativePrompt">🚫 네거티브 프롬프트</button>
+            </div>
+            <div class="pm-toolbar">
+                <button type="button" class="pm-toolbar-btn" id="pmNewBtn">+ 새로 만들기</button>
+                <button type="button" class="pm-toolbar-btn" id="pmImportBtn">📥 Import</button>
+                <button type="button" class="pm-toolbar-btn" id="pmExportBtn" disabled>📤 Export</button>
+                <button type="button" class="pm-toolbar-btn" id="pmMergeBtn" disabled>🔗 합치기</button>
+                <button type="button" class="pm-toolbar-btn danger" id="pmDeleteBtn" disabled>🗑 삭제</button>
+            </div>
+            <div class="pm-content">
+                <div class="pm-list-panel">
+                    <div class="pm-list-header">
+                        <span></span>
+                        <span></span>
+                        <span>이름</span>
+                        <span>요약</span>
+                        <span>액션</span>
+                    </div>
+                    <div class="pm-list-body" id="pmListBody">
+                        <!-- 프리셋 목록 -->
+                    </div>
+                </div>
+                <div class="pm-detail-panel">
+                    <div class="pm-detail-header" id="pmDetailHeader">
+                        <!-- 이름 편집 -->
+                    </div>
+                    <div class="pm-detail-body" id="pmDetailBody">
+                        <div class="pm-detail-empty">프리셋을 선택하면 여기에 상세 내용이 표시됩니다</div>
+                    </div>
+                    <div class="pm-detail-actions" id="pmDetailActions">
+                        <!-- 액션 버튼 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
