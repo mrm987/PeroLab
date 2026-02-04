@@ -6309,6 +6309,12 @@
     </style>
 </head>
 <body>
+    <!-- 초기화 완료 전 로딩 오버레이 -->
+    <div id="appLoadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-primary, #1a1a2e); z-index: 99999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
+        <div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary, #6c5ce7); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div style="color: #888; font-size: 14px;">Loading...</div>
+    </div>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -13317,11 +13323,17 @@
             vibeList.forEach((vibe, idx) => {
                 const item = document.createElement('div');
                 item.className = 'vibe-item';
-                // NAI 바이브 (원본 이미지 없음)는 특별 표시
+                // NAI 바이브 또는 이미지 없는 경우 플레이스홀더 표시
                 const isNaiVibe = vibe._isNaiVibe;
-                const imgContent = isNaiVibe
-                    ? `<div class="nai-vibe-placeholder" title="NAI에서 복원된 바이브 (원본 이미지 없음)">🎨</div>`
-                    : `<img src="data:image/png;base64,${vibe.image}" alt="vibe">`;
+                const hasImage = vibe.image && vibe.image.length > 100;  // 유효한 이미지인지 확인
+                let imgContent;
+                if (isNaiVibe) {
+                    imgContent = `<div class="nai-vibe-placeholder" title="NAI에서 복원된 바이브 (원본 이미지 없음)">🎨</div>`;
+                } else if (!hasImage) {
+                    imgContent = `<div class="nai-vibe-placeholder" title="이미지 없음 (재시작으로 초기화됨)">🖼️</div>`;
+                } else {
+                    imgContent = `<img src="data:image/png;base64,${vibe.image}" alt="vibe">`;
+                }
                 const cachedBadge = vibe.encoded ? '<span class="vibe-cached-badge" title="인코딩 캐시됨">✓</span>' : '';
                 item.innerHTML = `
                     <div class="vibe-item-header">
@@ -15084,7 +15096,15 @@
                 cfgRescale: document.getElementById('cfgRescale').value,
                 varietyPlus: document.getElementById('varietyPlus').checked,
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
-                vibeList: vibeList,
+                // vibeList: 이미지 base64 제외하고 저장 (용량 문제 방지)
+                vibeList: vibeList.map(v => ({
+                    strength: v.strength,
+                    info_extracted: v.info_extracted,
+                    encoded: v.encoded,
+                    encoded_model: v.encoded_model,
+                    encoded_info_extracted: v.encoded_info_extracted
+                    // image는 저장하지 않음 (재시작 시 초기화됨)
+                })),
                 // PreciseRef: 이미지 데이터는 저장 안 함 (NAI 웹처럼 재실행 시 초기화)
                 // enablePreciseRef, preciseRefList는 저장하지 않음
                 
@@ -15451,9 +15471,6 @@
         }
         
         function loadAppSettings() {
-            console.log('[PeroPix] loadAppSettings() called');
-            console.log('[PeroPix] tagAutocompleteEnabled before loading:', tagAutocompleteEnabled);
-
             // 새 설정 키로 로드 시도
             let saved = localStorage.getItem(SETTINGS_KEY);
             let isLegacy = false;
@@ -15479,7 +15496,7 @@
                     // Provider별 설정을 전역 변수에 저장
                     naiSettings = settings.nai || {};
                     localSettings = settings.local || {};
-                    
+
                     // Provider 결정 (local은 설치 확인 후 최종 적용, UI는 먼저 보여줌)
                     if (settings.provider === 'local') {
                         window._pendingProvider = 'local';
@@ -15584,7 +15601,7 @@
                         window._pendingFileManagerPipMode = settings.fileManagerPipMode;
                     }
 
-                    // 현재 provider 설정 적용 (NAI로 시작)
+                    // 현재 provider 설정 적용
                     const currentSettings = currentProvider === 'nai' ? naiSettings : localSettings;
                     
                     // Prompts
@@ -16026,7 +16043,8 @@
             const autoSaveToggle = document.getElementById('autoSaveToggle');
             if (autoSaveToggle) {
                 autoSaveToggle.addEventListener('change', () => {
-                    // 이미지 자동 저장 설정 저장
+                    // 변수 동기화 후 저장
+                    autoSaveEnabled = autoSaveToggle.checked;
                     saveAppSettings();
                     if (autoSaveToggle.checked) {
                         showToast('자동 저장이 활성화되었습니다', 'success');
@@ -16040,16 +16058,13 @@
         // Init
         loadAppSettings();  // 저장된 설정 먼저 로드
         initAllSliders();   // 모든 range 슬라이더 채움 초기화
-        console.log('[PeroPix] After loadAppSettings, tagAutocompleteEnabled:', tagAutocompleteEnabled);
         loadSlotSizePresets();  // 슬롯 사이즈 프리셋 로드
 
         // Setup tag autocomplete for base prompts
-        console.log('[PeroPix] Setting up tag autocomplete for base prompts...');
         setupTagAutocomplete(document.getElementById('basePrompt'));
         setupTagAutocomplete(document.getElementById('negativePrompt'));
 
         // Setup prompt weight highlighting for base prompts
-        console.log('[PeroPix] Setting up prompt weight highlighting...');
         setupPromptHighlighting(document.getElementById('basePrompt'));
         setupPromptHighlighting(document.getElementById('negativePrompt'));
 
@@ -16117,23 +16132,33 @@
             setupAutoSave();
         });
         connectWebSocket();
-        checkLocalEnvStatus();
-        
-        // 슬롯이 없으면 하나 추가
-        if (slotsContainer.children.length === 0) {
-            addSlot();
-        }
 
-        // 전체 락 버튼 상태 초기화
-        updateLockAllBtnState();
+        // Local 환경 상태 확인 후 초기화 완료
+        checkLocalEnvStatus().then(() => {
+            // 슬롯이 없으면 하나 추가
+            if (slotsContainer.children.length === 0) {
+                addSlot();
+            }
 
-        // 시드가 비어있으면 랜덤 생성
-        if (!document.getElementById('seed').value) {
-            document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
-        }
-        
-        // 초기 그라데이션 업데이트
-        setTimeout(updateScrollGradients, 100);
+            // 전체 락 버튼 상태 초기화
+            updateLockAllBtnState();
+
+            // 시드가 비어있으면 랜덤 생성
+            if (!document.getElementById('seed').value) {
+                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+            }
+
+            // 초기 그라데이션 업데이트
+            setTimeout(updateScrollGradients, 100);
+
+            // 로딩 오버레이 제거
+            const overlay = document.getElementById('appLoadingOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.2s';
+                setTimeout(() => overlay.remove(), 200);
+            }
+        });
         
         // 페이지 떠날 때 저장 및 경고
         window.isIntentionalClose = false;  // 재시작 등 의도적 종료 플래그 (전역)
