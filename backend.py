@@ -780,6 +780,7 @@ from pydantic import BaseModel
 
 class CharacterPromptWithCoordSimple(BaseModel):
     prompt: str
+    uc: str = ""  # 캐릭터별 네거티브 프롬프트
     coord: Optional[str] = None  # 'a1' ~ 'e5' 형식
 
 class GenerateRequest(BaseModel):
@@ -846,6 +847,8 @@ class GenerateRequest(BaseModel):
     save_format: str = "png"  # png, jpg, webp
     jpg_quality: int = 95
     strip_metadata: bool = False
+    auto_save: bool = True  # False면 파일 저장 안하고 미리보기만
+    exclude_slot_number: bool = False  # True면 파일명에서 슬롯 번호 제외
     output_folder: str = ""
 
 
@@ -1278,11 +1281,16 @@ async def call_nai_api(req: GenerateRequest):
     char_data = []
     use_coords = False
 
+    # 디버그: 받은 character_prompts_with_coords 확인
+    if req.character_prompts_with_coords:
+        print(f"[NAI] Received character_prompts_with_coords: {[(cp.prompt[:20] + '...', 'uc=' + (cp.uc[:20] + '...' if cp.uc else 'empty')) for cp in req.character_prompts_with_coords]}")
+
     if req.character_prompts_with_coords:
         for cp in req.character_prompts_with_coords:
             coord_xy = coord_to_xy(cp.coord) if cp.coord else {"x": 0.5, "y": 0.5}
             char_data.append({
                 "prompt": cp.prompt,
+                "uc": cp.uc or "",  # 캐릭터별 네거티브 프롬프트
                 "coord": cp.coord,
                 "center": coord_xy
             })
@@ -1292,6 +1300,7 @@ async def call_nai_api(req: GenerateRequest):
         for cp in req.character_prompts:
             char_data.append({
                 "prompt": cp,
+                "uc": "",
                 "coord": None,
                 "center": {"x": 0.5, "y": 0.5}
             })
@@ -1300,7 +1309,7 @@ async def call_nai_api(req: GenerateRequest):
         print(f"[NAI] Character coords enabled: {[(c['prompt'][:20] + '...', c['coord']) for c in char_data]}")
 
     params["use_coords"] = use_coords
-    params["characterPrompts"] = [{"prompt": c["prompt"], "uc": "", "center": c["center"], "enabled": True} for c in char_data] if char_data else []
+    params["characterPrompts"] = [{"prompt": c["prompt"], "uc": c["uc"], "center": c["center"], "enabled": True} for c in char_data] if char_data else []
     params["v4_prompt"] = {
         "use_coords": use_coords,
         "use_order": True,
@@ -1313,9 +1322,14 @@ async def call_nai_api(req: GenerateRequest):
         "legacy_uc": False,
         "caption": {
             "base_caption": negative_for_nai,
-            "char_captions": [{"char_caption": "", "centers": [c["center"]]} for c in char_data] if char_data else []
+            "char_captions": [{"char_caption": c["uc"], "centers": [c["center"]]} for c in char_data] if char_data else []
         }
     }
+
+    # 디버그: 캐릭터 UC 확인
+    if char_data:
+        print(f"[NAI] Character data: {[(c['prompt'][:20] + '...', 'uc=' + c['uc'][:20] + '...' if c['uc'] else 'uc=empty') for c in char_data]}")
+        print(f"[NAI] v4_negative_prompt char_captions: {params['v4_negative_prompt']['caption']['char_captions']}")
 
     # Variety+ 옵션 (값이 있을 때만 추가)
     if req.variety_plus:
@@ -1581,6 +1595,42 @@ async def call_nai_api(req: GenerateRequest):
                 image_name = zf.namelist()[0]
                 image_data = zf.read(image_name)
                 image = Image.open(io.BytesIO(image_data))
+
+                # 인페인트인 경우 원본 이미지와 마스크를 사용해서 합성
+                # NAI 결과는 마스크 영역만 재생성하지만 전체 이미지가 미세하게 변할 수 있음
+                # 마스크의 흰색 영역만 NAI 결과 사용, 검은색 영역은 원본 유지
+                if action == "infill" and req.base_image and req.base_mask:
+                    try:
+                        # 원본 이미지 로드
+                        original_data = base64.b64decode(ensure_png_base64(req.base_image))
+                        original_img = Image.open(io.BytesIO(original_data)).convert('RGB')
+
+                        # 마스크 로드 (이진화된 마스크 사용)
+                        mask_data = base64.b64decode(binarize_mask(req.base_mask))
+                        mask_img = Image.open(io.BytesIO(mask_data)).convert('L')
+
+                        # 크기 맞추기
+                        if original_img.size != image.size:
+                            original_img = original_img.resize(image.size, Image.LANCZOS)
+                        if mask_img.size != image.size:
+                            mask_img = mask_img.resize(image.size, Image.NEAREST)
+
+                        # NAI 결과를 RGB로 변환
+                        result_rgb = image.convert('RGB')
+
+                        # 마스크를 사용해 합성: 흰색(255) = NAI 결과, 검은색(0) = 원본
+                        # PIL.Image.composite(image1, image2, mask) - mask가 흰색인 곳은 image1, 검은색인 곳은 image2
+                        composited = Image.composite(result_rgb, original_img, mask_img)
+
+                        # 원본이 RGBA였으면 알파 채널 복원
+                        if image.mode == 'RGBA':
+                            composited = composited.convert('RGBA')
+
+                        image = composited
+                        print(f"[NAI] Inpaint result composited with original image")
+                    except Exception as e:
+                        print(f"[NAI] Warning: Failed to composite inpaint result: {e}")
+                        # 합성 실패 시 NAI 결과 그대로 사용
 
                 # LUT 적용 (NAI에서도 동작하도록)
                 print(f"[NAI] LUT check: enable_lut={req.enable_lut}, lut_file='{req.lut_file}'")
@@ -2300,9 +2350,20 @@ async def process_job(job):
         full_prompt = f"{req.base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else req.base_prompt
         
         # 로컬인 경우 캐릭터 프롬프트를 메인 프롬프트에 합침
-        if req.provider != "nai" and req.character_prompts:
-            char_prompts_str = ", ".join(req.character_prompts)
-            full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
+        # 캐릭터 UC(네거티브)도 메인 네거티브에 합침
+        full_negative = req.negative_prompt
+        if req.provider != "nai":
+            # character_prompts_with_coords 우선, 없으면 character_prompts 사용
+            if req.character_prompts_with_coords:
+                char_prompts_str = ", ".join(cp.prompt for cp in req.character_prompts_with_coords if cp.prompt)
+                char_uc_str = ", ".join(cp.uc for cp in req.character_prompts_with_coords if cp.uc)
+                if char_prompts_str:
+                    full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
+                if char_uc_str:
+                    full_negative = f"{full_negative}, {char_uc_str}".strip(", ")
+            elif req.character_prompts:
+                char_prompts_str = ", ".join(req.character_prompts)
+                full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
         
         if req.random_seed_per_image and prompt_idx > 0:
             current_seed = random.randint(0, 2**31 - 1)
@@ -2310,7 +2371,7 @@ async def process_job(job):
         single_req = GenerateRequest(
             provider=req.provider,
             prompt=full_prompt,
-            negative_prompt=req.negative_prompt,
+            negative_prompt=full_negative,
             character_prompts=req.character_prompts,
             character_prompts_with_coords=req.character_prompts_with_coords,
             width=req.width,
@@ -2357,6 +2418,8 @@ async def process_job(job):
             save_format=req.save_format,
             jpg_quality=req.jpg_quality,
             strip_metadata=req.strip_metadata,
+            auto_save=req.auto_save,
+            exclude_slot_number=req.exclude_slot_number,
             output_folder=req.output_folder,
         )
         
@@ -4107,6 +4170,17 @@ async def generate(req: GenerateRequest):
             image, seed = await call_nai_api(req)
         else:
             # ComfyUI 포팅 로컬 엔진 사용
+            # 로컬인 경우 캐릭터 프롬프트/UC를 메인 프롬프트/네거티브에 합침
+            if req.character_prompts_with_coords:
+                char_prompts = ", ".join(cp.prompt for cp in req.character_prompts_with_coords if cp.prompt)
+                char_uc = ", ".join(cp.uc for cp in req.character_prompts_with_coords if cp.uc)
+                if char_prompts:
+                    req.prompt = f"{req.prompt}, {char_prompts}".strip(", ")
+                if char_uc:
+                    req.negative_prompt = f"{req.negative_prompt}, {char_uc}".strip(", ")
+            elif req.character_prompts:
+                char_prompts = ", ".join(req.character_prompts)
+                req.prompt = f"{req.prompt}, {char_prompts}".strip(", ")
             image, seed = call_local_engine(req)
 
         return {
