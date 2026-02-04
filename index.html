@@ -960,6 +960,49 @@
             display: block;
         }
 
+        /* Base Prompt Tabs */
+        .base-prompt-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .base-tab-btn {
+            background: transparent;
+            border: none;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .base-tab-btn:hover {
+            color: var(--text);
+        }
+        .base-tab-btn.active {
+            color: var(--text);
+            border-bottom-color: var(--primary);
+        }
+        .base-tab-btn.negative-tab {
+            color: var(--text-dim);
+        }
+        .base-tab-btn.negative-tab.has-content {
+            color: var(--error-light, #e57373);
+            opacity: 0.7;
+        }
+        .base-tab-btn.negative-tab.active {
+            color: var(--error-light, #e57373);
+            border-bottom-color: var(--error-light, #e57373);
+            opacity: 1;
+        }
+        .base-tab-content {
+            display: none;
+        }
+        .base-tab-content.active {
+            display: block;
+        }
+
         .character-item .delete-char-btn {
             background: none;
             border: none;
@@ -6919,7 +6962,7 @@
                         <div class="prompt-label-left">
                             <button type="button" class="collapse-toggle" data-target="basePromptContent" title="접기/펼치기">▼</button>
                             <button type="button" id="modeToggle" class="mode-toggle" title="아니메 모드">🌸</button>
-                            <label for="basePrompt" class="prompt-label">Base Prompt</label>
+                            <label for="basePrompt" class="prompt-label">Base</label>
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
                             <div class="prompt-preset-dropdown" data-category="base">
@@ -6931,10 +6974,28 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="prompt-preset-dropdown" data-category="negative" id="baseNegativePresetDropdown" style="display: none;">
+                                <button type="button" class="prompt-preset-btn" title="네거티브 프리셋">🔖 ▼</button>
+                                <div class="prompt-preset-menu">
+                                    <div class="prompt-preset-list"></div>
+                                    <div class="prompt-preset-actions">
+                                        <button type="button" class="prompt-preset-save-btn">+ Save Current</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div id="basePromptContent" class="collapsible-content">
-                        <textarea id="basePrompt" placeholder="1girl, solo, masterpiece..."></textarea>
+                        <div class="base-prompt-tabs">
+                            <button type="button" class="base-tab-btn active" data-tab="prompt" id="basePositiveTab">Prompt</button>
+                            <button type="button" class="base-tab-btn negative-tab" data-tab="negative" id="baseNegativeTab">Undesired Content</button>
+                        </div>
+                        <div class="base-tab-content active" data-tab="prompt">
+                            <textarea id="basePrompt" placeholder="1girl, solo, masterpiece..."></textarea>
+                        </div>
+                        <div class="base-tab-content" data-tab="negative">
+                            <textarea id="negativePrompt" rows="2" placeholder="lowres, bad quality..."></textarea>
+                        </div>
                     </div>
 
                     <!-- Characters -->
@@ -6964,27 +7025,8 @@
                             </div>
                         </div>
                     </div>
-
-                    <div class="prompt-label-row">
-                        <div class="prompt-label-left">
-                            <button type="button" class="collapse-toggle" data-target="negativePromptContent" title="접기/펼치기">▼</button>
-                            <label for="negativePrompt" class="prompt-label">Negative Prompt</label>
-                        </div>
-                        <div class="prompt-preset-dropdown" data-category="negative">
-                            <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">🔖 ▼</button>
-                            <div class="prompt-preset-menu">
-                                <div class="prompt-preset-list"></div>
-                                <div class="prompt-preset-actions">
-                                    <button type="button" class="prompt-preset-save-btn">+ Save Current</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="negativePromptContent" class="collapsible-content">
-                        <textarea id="negativePrompt" rows="2" placeholder="lowres, bad quality..."></textarea>
-                    </div>
                 </div>
-                
+
                 <!-- NAI Settings -->
                 <div class="provider-section active" data-provider="nai">
                     <div class="section">
@@ -10742,6 +10784,10 @@
             const stepsInput = document.getElementById('steps');
             const cfgInput = document.getElementById('cfg');
 
+            // 베이스 프롬프트 탭 이름 업데이트
+            const positiveTab = document.getElementById('basePositiveTab');
+            const negativeTab = document.getElementById('baseNegativeTab');
+
             if (currentProvider === 'nai') {
                 if (cfgLabel) cfgLabel.textContent = 'Prompt Guidance';
                 // NAI 제한: steps 최대 50, cfg 최대 10
@@ -10753,11 +10799,31 @@
                     cfgInput.max = 10;
                     if (parseFloat(cfgInput.value) > 10) cfgInput.value = 10;
                 }
+                // NAI 용어
+                if (positiveTab) positiveTab.textContent = 'Prompt';
+                if (negativeTab) negativeTab.textContent = 'Undesired Content';
+                // 캐릭터 탭 업데이트
+                document.querySelectorAll('.character-item .char-tabs').forEach(tabs => {
+                    const promptTab = tabs.querySelector('.char-tab-btn:not(.uc-tab)');
+                    const ucTab = tabs.querySelector('.char-tab-btn.uc-tab');
+                    if (promptTab) promptTab.textContent = 'Prompt';
+                    if (ucTab) ucTab.textContent = 'Undesired Content';
+                });
             } else {
                 if (cfgLabel) cfgLabel.textContent = 'CFG';
                 // Local: 제한 해제
                 if (stepsInput) stepsInput.removeAttribute('max');
                 if (cfgInput) cfgInput.removeAttribute('max');
+                // Local 용어
+                if (positiveTab) positiveTab.textContent = 'Positive Prompt';
+                if (negativeTab) negativeTab.textContent = 'Negative Prompt';
+                // 캐릭터 탭 업데이트
+                document.querySelectorAll('.character-item .char-tabs').forEach(tabs => {
+                    const promptTab = tabs.querySelector('.char-tab-btn:not(.uc-tab)');
+                    const ucTab = tabs.querySelector('.char-tab-btn.uc-tab');
+                    if (promptTab) promptTab.textContent = 'Positive Prompt';
+                    if (ucTab) ucTab.textContent = 'Negative Prompt';
+                });
             }
         }
 
@@ -11146,12 +11212,12 @@
             const promptTabBtn = document.createElement('button');
             promptTabBtn.type = 'button';
             promptTabBtn.className = 'char-tab-btn active';
-            promptTabBtn.textContent = 'Prompt';
+            promptTabBtn.textContent = currentProvider === 'local' ? 'Positive Prompt' : 'Prompt';
 
             const ucTabBtn = document.createElement('button');
             ucTabBtn.type = 'button';
             ucTabBtn.className = 'char-tab-btn uc-tab';
-            ucTabBtn.innerHTML = 'Undesired Content';
+            ucTabBtn.innerHTML = currentProvider === 'local' ? 'Negative Prompt' : 'Undesired Content';
 
             tabsDiv.appendChild(promptTabBtn);
             tabsDiv.appendChild(ucTabBtn);
@@ -13507,7 +13573,11 @@
                 negativePrompt.value = metadata.negative_prompt;
                 // 하이라이팅 업데이트를 위해 input 이벤트 트리거
                 negativePrompt.dispatchEvent(new Event('input', { bubbles: true }));
-                highlight('negativePromptContent');
+                // 네거티브 탭 상태 업데이트
+                const negativeTab = document.getElementById('baseNegativeTab');
+                if (negativeTab && negativePrompt.value.trim()) {
+                    negativeTab.classList.add('has-content');
+                }
             }
 
             // 캐릭터 프롬프트 적용 (기존 height 유지)
@@ -13844,6 +13914,64 @@
                 btn.onclick = toggleCollapse;
             }
         });
+
+        // Base prompt tabs (Prompt / Undesired Content)
+        function initBasePromptTabs() {
+            const tabsContainer = document.querySelector('.base-prompt-tabs');
+            if (!tabsContainer) return;
+
+            const tabs = tabsContainer.querySelectorAll('.base-tab-btn');
+            const contents = document.querySelectorAll('#basePromptContent .base-tab-content');
+            const negativeTab = document.getElementById('baseNegativeTab');
+            const negativeTextarea = document.getElementById('negativePrompt');
+            const basePresetDropdown = document.querySelector('.prompt-preset-dropdown[data-category="base"]');
+            const negativePresetDropdown = document.getElementById('baseNegativePresetDropdown');
+
+            // 네거티브 탭 상태 업데이트 함수
+            const updateNegativeTabState = () => {
+                if (negativeTextarea.value.trim()) {
+                    negativeTab.classList.add('has-content');
+                } else {
+                    negativeTab.classList.remove('has-content');
+                }
+            };
+
+            // 초기 상태 설정
+            updateNegativeTabState();
+
+            // 탭 클릭 이벤트
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const targetTab = tab.dataset.tab;
+
+                    // 모든 탭 비활성화
+                    tabs.forEach(t => t.classList.remove('active'));
+                    contents.forEach(c => c.classList.remove('active'));
+
+                    // 클릭한 탭 활성화
+                    tab.classList.add('active');
+                    const targetContent = document.querySelector(`#basePromptContent .base-tab-content[data-tab="${targetTab}"]`);
+                    if (targetContent) {
+                        targetContent.classList.add('active');
+                    }
+
+                    // 프리셋 드롭다운 전환
+                    if (targetTab === 'negative') {
+                        basePresetDropdown.style.display = 'none';
+                        negativePresetDropdown.style.display = '';
+                    } else {
+                        basePresetDropdown.style.display = '';
+                        negativePresetDropdown.style.display = 'none';
+                    }
+                });
+            });
+
+            // 네거티브 프롬프트 입력 시 탭 상태 업데이트
+            negativeTextarea.addEventListener('input', updateNegativeTabState);
+        }
+
+        initBasePromptTabs();
 
         // 폴더 열기 버튼 핸들러
         async function openFolder(folderType, subfolder = '') {
@@ -16131,7 +16259,6 @@
                 negativePromptHeight: document.getElementById('negativePrompt').style.height || null,
                 basePromptCollapsed: document.getElementById('basePromptContent').classList.contains('collapsed'),
                 charactersCollapsed: document.getElementById('charactersContent').classList.contains('collapsed'),
-                negativePromptCollapsed: document.getElementById('negativePromptContent').classList.contains('collapsed'),
                 pipState: {
                     expanded: pipExpanded,
                     size: pipSize,
@@ -16215,10 +16342,6 @@
                     if (settings.charactersCollapsed) {
                         document.getElementById('charactersContent').classList.add('collapsed');
                         document.querySelector('[data-target="charactersContent"]').classList.add('collapsed');
-                    }
-                    if (settings.negativePromptCollapsed) {
-                        document.getElementById('negativePromptContent').classList.add('collapsed');
-                        document.querySelector('[data-target="negativePromptContent"]').classList.add('collapsed');
                     }
                     if (settings.pipState) {
                         if (settings.pipState.expanded) {
@@ -16641,11 +16764,7 @@
                     document.getElementById('charactersContent').classList.add('collapsed');
                     document.querySelector('[data-target="charactersContent"]').classList.add('collapsed');
                 }
-                if (settings.negativePromptCollapsed) {
-                    document.getElementById('negativePromptContent').classList.add('collapsed');
-                    document.querySelector('[data-target="negativePromptContent"]').classList.add('collapsed');
-                }
-                
+
                 // 레거시 키 삭제하고 새 형식으로 저장
                 localStorage.removeItem('nai_generator_settings');
                 saveAppSettings();
@@ -16749,6 +16868,14 @@
         
         // Init
         loadAppSettings();  // 저장된 설정 먼저 로드
+
+        // 네거티브 탭 상태 업데이트 (설정 로드 후)
+        const negativeTab = document.getElementById('baseNegativeTab');
+        const negativePromptEl = document.getElementById('negativePrompt');
+        if (negativeTab && negativePromptEl && negativePromptEl.value.trim()) {
+            negativeTab.classList.add('has-content');
+        }
+
         initAllSliders();   // 모든 range 슬라이더 채움 초기화
         loadSlotSizePresets();  // 슬롯 사이즈 프리셋 로드
 
@@ -27909,8 +28036,8 @@
                                 </div>
                                 <div class="pm-char-item-content">
                                     <div class="char-tabs">
-                                        <button type="button" class="char-tab-btn active" data-tab="prompt" data-index="${idx}">Prompt</button>
-                                        <button type="button" class="char-tab-btn uc-tab${char.uc?.trim() ? ' has-content' : ''}" data-tab="uc" data-index="${idx}">Undesired Content</button>
+                                        <button type="button" class="char-tab-btn active" data-tab="prompt" data-index="${idx}">${currentProvider === 'local' ? 'Positive Prompt' : 'Prompt'}</button>
+                                        <button type="button" class="char-tab-btn uc-tab${char.uc?.trim() ? ' has-content' : ''}" data-tab="uc" data-index="${idx}">${currentProvider === 'local' ? 'Negative Prompt' : 'Undesired Content'}</button>
                                     </div>
                                     <div class="char-tab-content active" data-tab="prompt">
                                         <textarea data-field="content" data-index="${idx}" placeholder="이 캐릭터에 적용할 태그">${this.escapeHtml(char.content || '')}</textarea>
