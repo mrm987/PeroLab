@@ -9133,19 +9133,18 @@
                         <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">✨</button>
                         <button type="button" class="load-settings-btn" title="전체 설정 불러오기">📋</button>
                     </div>
-                    <div class="seed${data.metadata && data.seed ? ' clickable' : ''}"${data.metadata && data.seed ? ` data-seed="${data.seed}" title="클릭하여 시드 복사"` : ''}>${data.metadata ? 'Seed: ' + data.seed : '메타데이터 없음'}</div>
+                    <div class="seed${data.metadata && data.seed ? ' clickable' : ''}"${data.metadata && data.seed ? ` data-seed="${data.seed}" title="클릭하여 시드 적용"` : ''}>${data.metadata ? 'Seed: ' + data.seed : '메타데이터 없음'}</div>
                 </div>
             `;
 
-            // 시드 클릭 시 복사
+            // 시드 클릭 시 시드 입력란에 적용
             const seedEl = card.querySelector('.seed.clickable');
             if (seedEl) {
                 seedEl.onclick = (e) => {
                     e.stopPropagation();
                     const seed = seedEl.dataset.seed;
-                    navigator.clipboard.writeText(seed).then(() => {
-                        showToast(`시드 ${seed} 복사됨`, 'success');
-                    });
+                    document.getElementById('seed').value = seed;
+                    showToast(`시드 ${seed} 적용됨`, 'success');
                 };
             }
 
@@ -17434,7 +17433,7 @@
                             <span class="filename" title="${img.filename}">${img.filename.replace('.png', '')}</span>
                             <button class="rename-btn" title="이름 변경">✏️</button>
                         </div>
-                        <div class="seed${img.seed ? ' clickable' : ''}"${img.seed ? ` data-seed="${img.seed}" title="클릭하여 시드 복사"` : ''}>${img.seed ? 'Seed: ' + img.seed : '메타데이터 없음'}</div>
+                        <div class="seed${img.seed ? ' clickable' : ''}"${img.seed ? ` data-seed="${img.seed}" title="클릭하여 시드 적용"` : ''}>${img.seed ? 'Seed: ' + img.seed : '메타데이터 없음'}</div>
                     </div>
                     <div class="gallery-item-actions">
                         <button class="inpaint-btn" title="인페인트">🎨 Inpaint</button>
@@ -17498,15 +17497,14 @@
                     showLightbox();
                 };
 
-                // 시드 클릭 시 복사
+                // 시드 클릭 시 시드 입력란에 적용
                 const seedEl = item.querySelector('.seed.clickable');
                 if (seedEl) {
                     seedEl.onclick = (e) => {
                         e.stopPropagation();
                         const seed = seedEl.dataset.seed;
-                        navigator.clipboard.writeText(seed).then(() => {
-                            showToast(`시드 ${seed} 복사됨`, 'success');
-                        });
+                        document.getElementById('seed').value = seed;
+                        showToast(`시드 ${seed} 적용됨`, 'success');
                     };
                 }
 
