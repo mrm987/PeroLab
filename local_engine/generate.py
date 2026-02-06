@@ -40,38 +40,223 @@ def tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
 
 
 def encode_image(vae, image: torch.Tensor, device: str) -> torch.Tensor:
-    """이미지를 latent로 인코딩 (ComfyUI 방식)"""
+    """이미지를 latent로 인코딩 (ComfyUI 방식, 큰 해상도는 자동 타일링)"""
     # [0, 1] -> [-1, 1]
     image = image * 2.0 - 1.0
 
-    # VAE의 실제 dtype 사용 (bfloat16 또는 float16)
     vae_dtype = next(vae.parameters()).dtype
     image = image.to(device=device, dtype=vae_dtype)
 
-    with torch.no_grad():
-        # VAE encode 후 float32로 변환 (noise와 dtype 일치)
-        latent = vae.encode(image).float()
+    # 큰 해상도(한 변이 1024 초과)면 타일링 사용
+    _, _, ih, iw = image.shape
+    if ih > 1024 or iw > 1024:
+        latent = _encode_image_tiled(vae, image, vae_dtype)
+    else:
+        with torch.no_grad():
+            latent = vae.encode(image).float()
 
     # VAE 스케일 팩터 적용 (SDXL: 0.13025)
     latent = latent * 0.13025
     return latent
 
 
+def _encode_image_tiled(vae, image: torch.Tensor, vae_dtype, tile_size=512, overlap=128) -> torch.Tensor:
+    """
+    타일링 VAE 인코딩
+
+    Args:
+        vae: VAE 모델
+        image: [1, 3, H, W] 이미지 텐서 (범위: [-1, 1], vae_dtype)
+        vae_dtype: VAE 연산 dtype
+        tile_size: 타일 크기 (pixel 공간, default: 512)
+        overlap: 오버랩 (pixel 공간, default: 128)
+    """
+    downscale = 8  # VAE downscale factor
+
+    def encode_fn(s):
+        with torch.no_grad():
+            return vae.encode(s.to(vae_dtype)).float()
+
+    # 3가지 타일 비율로 인코딩 후 평균
+    result = (
+        _tiled_scale_encode(image, encode_fn, tile_size // 2, tile_size * 2, overlap, downscale, out_channels=4) +
+        _tiled_scale_encode(image, encode_fn, tile_size * 2, tile_size // 2, overlap, downscale, out_channels=4) +
+        _tiled_scale_encode(image, encode_fn, tile_size, tile_size, overlap, downscale, out_channels=4)
+    ) / 3.0
+
+    return result
+
+
+def _tiled_scale_encode(samples, function, tile_x, tile_y, overlap, downscale, out_channels=4):
+    """
+    타일링 인코딩 처리 (pixel → latent, 다운스케일)
+
+    decode용 _tiled_scale과 동일 구조지만 스케일 방향이 반대입니다.
+    """
+    _, _, h, w = samples.shape
+    out_h = h // downscale
+    out_w = w // downscale
+    output = torch.zeros(1, out_channels, out_h, out_w, device="cpu")
+    out_div = torch.zeros_like(output)
+
+    y_positions = list(range(0, max(1, h - overlap), max(1, tile_y - overlap))) if h > tile_y else [0]
+    x_positions = list(range(0, max(1, w - overlap), max(1, tile_x - overlap))) if w > tile_x else [0]
+
+    for y in y_positions:
+        for x in x_positions:
+            y1 = max(0, min(h - overlap, y))
+            x1 = max(0, min(w - overlap, x))
+            y2 = min(y1 + tile_y, h)
+            x2 = min(x1 + tile_x, w)
+
+            tile_in = samples[:, :, y1:y2, x1:x2]
+            tile_out = function(tile_in).cpu()
+
+            # Feathering mask (latent 공간 크기)
+            mask = torch.ones_like(tile_out)
+            feather_y = overlap // downscale
+            feather_x = overlap // downscale
+
+            if feather_y < mask.shape[2]:
+                for t in range(feather_y):
+                    a = (t + 1) / feather_y
+                    mask[:, :, t, :] *= a
+                    mask[:, :, mask.shape[2] - 1 - t, :] *= a
+
+            if feather_x < mask.shape[3]:
+                for t in range(feather_x):
+                    a = (t + 1) / feather_x
+                    mask[:, :, :, t] *= a
+                    mask[:, :, :, mask.shape[3] - 1 - t] *= a
+
+            oy1 = y1 // downscale
+            oy2 = oy1 + tile_out.shape[2]
+            ox1 = x1 // downscale
+            ox2 = ox1 + tile_out.shape[3]
+
+            output[:, :, oy1:oy2, ox1:ox2] += tile_out * mask
+            out_div[:, :, oy1:oy2, ox1:ox2] += mask
+
+            del tile_out, mask
+
+    result = output / out_div.clamp(min=1e-6)
+    del output, out_div
+    return result.to(samples.device)
+
+
 def decode_latent(vae, latent: torch.Tensor) -> torch.Tensor:
-    """latent를 이미지로 디코딩 (ComfyUI 방식)"""
+    """latent를 이미지로 디코딩 (ComfyUI 방식, 큰 해상도는 자동 타일링)"""
     # VAE 스케일 팩터 역적용
     latent = latent / 0.13025
 
-    # VAE의 실제 dtype 사용 (bfloat16 또는 float16)
     vae_dtype = next(vae.parameters()).dtype
 
-    with torch.no_grad():
-        # VAE dtype으로 계산하되, 출력은 float32로 변환
-        image = vae.decode(latent.to(vae_dtype)).float()
+    # 큰 해상도(latent 한 변이 128 초과, 즉 pixel 1024 초과)면 타일링 사용
+    _, _, lh, lw = latent.shape
+    if lh > 128 or lw > 128:
+        image = _decode_latent_tiled(vae, latent, vae_dtype)
+    else:
+        with torch.no_grad():
+            image = vae.decode(latent.to(vae_dtype)).float()
 
     # [-1, 1] -> [0, 1], clamp로 범위 제한 (ComfyUI 방식)
     image = torch.clamp((image + 1.0) / 2.0, min=0.0, max=1.0)
     return image
+
+
+def _decode_latent_tiled(vae, latent: torch.Tensor, vae_dtype, tile_size=64, overlap=16) -> torch.Tensor:
+    """
+    타일링 VAE 디코딩 (ComfyUI 방식)
+
+    큰 해상도에서 VAE가 한번에 처리하면 VRAM이 급증하므로,
+    latent를 타일로 나누어 디코딩 후 feathering mask로 블렌딩합니다.
+
+    ComfyUI와 동일하게 3가지 타일 비율로 디코딩 후 평균하여 경계 아티팩트를 최소화합니다.
+
+    Args:
+        vae: VAE 모델
+        latent: [1, 4, H, W] latent 텐서 (스케일 역적용 완료 상태)
+        vae_dtype: VAE 연산 dtype
+        tile_size: 기본 타일 크기 (latent 공간, default: 64 = pixel 512)
+        overlap: 타일 간 오버랩 (latent 공간, default: 16 = pixel 128)
+    """
+    upscale = 8  # VAE upscale factor
+
+    def decode_fn(s):
+        with torch.no_grad():
+            return vae.decode(s.to(vae_dtype)).float()
+
+    # ComfyUI 방식: 3가지 타일 비율로 디코딩 후 평균 (경계 아티팩트 최소화)
+    result = (
+        _tiled_scale(latent, decode_fn, tile_size // 2, tile_size * 2, overlap, upscale) +
+        _tiled_scale(latent, decode_fn, tile_size * 2, tile_size // 2, overlap, upscale) +
+        _tiled_scale(latent, decode_fn, tile_size, tile_size, overlap, upscale)
+    ) / 3.0
+
+    return result
+
+
+def _tiled_scale(samples, function, tile_x, tile_y, overlap, upscale_amount, out_channels=3):
+    """
+    타일링 처리 (ComfyUI tiled_scale_multidim 간소화 버전)
+
+    feathering mask로 타일 경계를 부드럽게 블렌딩합니다.
+    출력은 CPU에 누적하여 GPU 메모리를 절약합니다.
+    """
+    _, _, h, w = samples.shape
+    output = torch.zeros(1, out_channels, h * upscale_amount, w * upscale_amount, device="cpu")
+    out_div = torch.zeros_like(output)
+
+    # 타일이 전체를 커버하도록 위치 계산
+    y_positions = list(range(0, max(1, h - overlap), max(1, tile_y - overlap))) if h > tile_y else [0]
+    x_positions = list(range(0, max(1, w - overlap), max(1, tile_x - overlap))) if w > tile_x else [0]
+
+    for y in y_positions:
+        for x in x_positions:
+            # 타일 범위 (경계 클램핑)
+            y1 = max(0, min(h - overlap, y))
+            x1 = max(0, min(w - overlap, x))
+            y2 = min(y1 + tile_y, h)
+            x2 = min(x1 + tile_x, w)
+
+            # 타일 추출 및 디코딩
+            tile_in = samples[:, :, y1:y2, x1:x2]
+            tile_out = function(tile_in).cpu()
+
+            # Feathering mask 생성 (타일 경계를 부드럽게)
+            mask = torch.ones_like(tile_out)
+            feather_y = overlap * upscale_amount
+            feather_x = overlap * upscale_amount
+
+            # 상하 feathering
+            if feather_y < mask.shape[2]:
+                for t in range(feather_y):
+                    a = (t + 1) / feather_y
+                    mask[:, :, t, :] *= a
+                    mask[:, :, mask.shape[2] - 1 - t, :] *= a
+
+            # 좌우 feathering
+            if feather_x < mask.shape[3]:
+                for t in range(feather_x):
+                    a = (t + 1) / feather_x
+                    mask[:, :, :, t] *= a
+                    mask[:, :, :, mask.shape[3] - 1 - t] *= a
+
+            # 출력에 누적 (CPU에서)
+            oy1 = y1 * upscale_amount
+            oy2 = y1 * upscale_amount + tile_out.shape[2]
+            ox1 = x1 * upscale_amount
+            ox2 = x1 * upscale_amount + tile_out.shape[3]
+
+            output[:, :, oy1:oy2, ox1:ox2] += tile_out * mask
+            out_div[:, :, oy1:oy2, ox1:ox2] += mask
+
+            del tile_out, mask
+
+    # 가중 평균으로 최종 결과
+    result = output / out_div.clamp(min=1e-6)
+    del output, out_div
+    return result.to(samples.device)
 
 
 class SDXLGenerator:
@@ -401,6 +586,8 @@ class SDXLGenerator:
             # 초기 latent = noise_scaling(sigma[0], noise, latent)
             noise = self.get_noise(1, height, width, seed)
             x = self.eps.noise_scaling(sigmas[0], noise, latent, max_denoise=is_max_denoise)
+            # noise, latent은 x에 합쳐졌으므로 즉시 해제
+            del noise, latent, image_tensor
         else:
             # txt2img: ComfyUI 방식의 noise_scaling 사용
             # max_denoise 판단 (ComfyUI 방식: samplers.py:718-721)
@@ -412,6 +599,8 @@ class SDXLGenerator:
             noise = self.get_noise(1, height, width, seed)
             latent_image = torch.zeros_like(noise)
             x = self.eps.noise_scaling(sigmas[0], noise, latent_image, max_denoise=is_max_denoise)
+            # noise, latent_image는 x에 합쳐졌으므로 즉시 해제
+            del noise, latent_image
 
         # 인페인트 마스크 처리
         latent_mask = None
@@ -425,6 +614,7 @@ class SDXLGenerator:
             # 원본 latent 저장
             image_tensor = pil_to_tensor(base_image.resize((width, height)))
             original_latent = encode_image(self.vae, image_tensor, self.device)
+            del image_tensor, mask_tensor, mask_resized
 
         # 모델 래퍼 생성
         model_fn = self.model_wrapper(
@@ -455,6 +645,9 @@ class SDXLGenerator:
             disable=True  # tqdm 비활성화 - 콘솔 출력 오버헤드 방지
         )
 
+        # 샘플링 완료 후 model_fn 클로저 해제 (c_in, y_in 등 VRAM 텐서 포함)
+        del model_fn
+
         # 인페인트: 마스크된 영역만 업데이트
         if latent_mask is not None and original_latent is not None:
             samples = original_latent * (1 - latent_mask) + samples * latent_mask
@@ -463,8 +656,12 @@ class SDXLGenerator:
         image = decode_latent(self.vae, samples)
         pil_image = tensor_to_pil(image)
 
-        # conditioning 캐시 저장 (hires fix용)
-        cond_cache = (cond.clone(), cond_pooled.clone(), uncond.clone(), uncond_pooled.clone())
+        # conditioning 캐시 저장 (hires fix용, 1st pass에서만 필요)
+        # cached_cond가 제공된 경우(2nd pass) clone 불필요 - VRAM 절약
+        if cached_cond is not None:
+            cond_cache = None
+        else:
+            cond_cache = (cond.clone(), cond_pooled.clone(), uncond.clone(), uncond_pooled.clone())
 
         # 중간 텐서 해제 (VRAM 절약)
         del cond, cond_pooled, uncond, uncond_pooled
@@ -475,6 +672,8 @@ class SDXLGenerator:
             del original_latent
 
         # GPU 캐시 정리
+        import gc
+        gc.collect()
         torch.cuda.empty_cache()
 
         return pil_image, seed, cond_cache

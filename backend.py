@@ -7,6 +7,7 @@ import os
 import sys
 import io
 import re
+import gc
 import base64
 import json
 import asyncio
@@ -1674,6 +1675,10 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
     import torch
     from local_engine import SDXLGenerator
 
+    # 이전 호출에서 남은 VRAM 캐시 정리 (연속 실행 시 누적 방지)
+    gc.collect()
+    torch.cuda.empty_cache()
+
     if not req.model:
         raise HTTPException(status_code=400, detail="Model not specified")
 
@@ -1749,6 +1754,7 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
         cond_cache = (cond.clone(), cond_pooled.clone(), uncond.clone(), uncond_pooled.clone())
         # 원본 텐서 즉시 해제
         del cond, cond_pooled, uncond, uncond_pooled
+        gc.collect()
         torch.cuda.empty_cache()
     else:
         # 일반 모드: 1st pass 실행
@@ -1792,7 +1798,8 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
             preview_callback(image, used_seed)
         logger.info(f"[LocalEngine Upscale] Starting 2-pass upscale with {req.upscale_model}")
 
-        # 업스케일 모델 로드 전 VRAM 정리 (연속 실행 시 이전 작업 잔여물 해제)
+        # 1st pass 이후 VRAM 정리 (gc.collect로 Python 참조 해제 후 CUDA 캐시 정리)
+        gc.collect()
         torch.cuda.empty_cache()
 
         # 1. 업스케일 모델로 확대 (타일링 처리)
@@ -1811,6 +1818,7 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
         del img_tensor
         upscaled_np = (upscaled_tensor.squeeze(0).permute(1, 2, 0).cpu().float().numpy() * 255).clip(0, 255).astype(np.uint8)
         del upscaled_tensor
+        gc.collect()
         torch.cuda.empty_cache()
 
         upscaled_image = Image.fromarray(upscaled_np)
@@ -1836,6 +1844,8 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
             target_h = max(8, target_h)
 
         resized_image = upscaled_image.resize((target_w, target_h), Image.LANCZOS)
+        # upscaled_image는 더 이상 불필요 (resized_image만 사용)
+        del upscaled_image
         logger.info(f"[LocalEngine Upscale] Resized to {target_w}x{target_h}")
 
         # 취소 체크 (업스케일 후, 2nd pass 전)
@@ -1852,7 +1862,7 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
                 pbar_2nd.close()
                 raise GenerationCancelled("Generation cancelled by user (2nd pass)")
 
-        image, _, _ = _local_engine_generator.generate(
+        image, _, returned_cache = _local_engine_generator.generate(
             prompt=req.prompt,
             negative_prompt=req.negative_prompt,
             width=target_w,
@@ -1869,9 +1879,11 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
         )
         pbar_2nd.close()
 
+        # 2nd pass에서 반환된 불필요한 conditioning 캐시 즉시 해제
+        del returned_cache
+
         # 2nd pass 후 중간 이미지 해제
         del resized_image
-        del upscaled_image
 
         logger.info(f"[LocalEngine Upscale] 2nd pass done, final size={image.size[0]}x{image.size[1]}")
         did_2nd_pass = True
@@ -1883,6 +1895,7 @@ def call_local_engine(req: GenerateRequest, cancel_check=None, preview_callback=
     del cond_cache
 
     # VRAM 정리
+    gc.collect()
     torch.cuda.empty_cache()
 
     # LUT 적용 (마지막 단계)
@@ -2049,16 +2062,16 @@ def tiled_upscale(model, img_tensor, tile_size=512, overlap=32):
     """타일링 업스케일 (OOM 방지)"""
     _, _, h, w = img_tensor.shape
     scale = model.scale if hasattr(model, 'scale') else 2
-    
+
     # 작은 이미지는 그냥 처리
     if h <= tile_size and w <= tile_size:
         return model(img_tensor)
-    
+
     # 출력 텐서
     out_h, out_w = h * scale, w * scale
     output = torch.zeros((1, 3, out_h, out_w), dtype=img_tensor.dtype, device=img_tensor.device)
     weight = torch.zeros((1, 1, out_h, out_w), dtype=img_tensor.dtype, device=img_tensor.device)
-    
+
     # 타일 처리
     step = tile_size - overlap
     for y in range(0, h, step):
@@ -2068,20 +2081,24 @@ def tiled_upscale(model, img_tensor, tile_size=512, overlap=32):
             x1 = min(x, w - tile_size) if x + tile_size > w else x
             y2 = y1 + tile_size
             x2 = x1 + tile_size
-            
+
             # 타일 추출 및 업스케일
             tile = img_tensor[:, :, y1:y2, x1:x2]
             upscaled_tile = model(tile)
-            
+
             # 출력 위치
             oy1, oy2 = y1 * scale, y2 * scale
             ox1, ox2 = x1 * scale, x2 * scale
-            
+
             output[:, :, oy1:oy2, ox1:ox2] += upscaled_tile
             weight[:, :, oy1:oy2, ox1:ox2] += 1
-    
-    # 평균화
+
+            # 타일 중간 텐서 해제
+            del upscaled_tile
+
+    # 평균화 후 weight 즉시 해제
     output = output / weight.clamp(min=1)
+    del weight
     return output.clamp(0, 1)
 
 
