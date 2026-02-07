@@ -19215,44 +19215,39 @@
                 imageBase64 = canvas.toDataURL('image/png').split(',')[1];
             }
 
-            // 메타데이터에서 프롬프트 가져오기
-            let prompt = '';
-            let negativePrompt = '';
-            if (enhanceState.metadata) {
-                const normalized = normalizeMetadata(enhanceState.metadata);
-                prompt = normalized.prompt || '';
-                negativePrompt = normalized.negative_prompt || '';
-            }
+            // 메타데이터에서 원본 생성 설정 복원
+            const normalized = enhanceState.metadata ? normalizeMetadata(enhanceState.metadata) : null;
 
-            // 현재 UI에서 가져오기 (메타데이터가 없으면)
-            if (!prompt) {
-                prompt = document.getElementById('prompt').value || '';
-            }
-            if (!negativePrompt) {
-                negativePrompt = document.getElementById('negativePrompt').value || '';
-            }
+            let prompt = normalized?.prompt || document.getElementById('prompt').value || '';
+            let negativePrompt = normalized?.negative_prompt || document.getElementById('negativePrompt').value || '';
 
             const enhanceParams = {
-                nai_model: document.getElementById('naiModel').value,
+                provider: 'nai',
+                nai_model: normalized?.nai_model || document.getElementById('naiModel').value,
                 base_prompt: prompt,
                 negative_prompt: negativePrompt,
                 width: w,
                 height: h,
-                steps: parseInt(document.getElementById('steps').value) || 28,
-                cfg: parseFloat(document.getElementById('cfg').value) || 5,
+                steps: normalized?.steps || parseInt(document.getElementById('steps').value) || 28,
+                cfg: normalized?.cfg || parseFloat(document.getElementById('cfg').value) || 5,
                 seed: Math.floor(Math.random() * 2147483647),
-                sampler: document.getElementById('sampler').value || 'k_euler_ancestral',
-                scheduler: document.getElementById('scheduler').value || 'karras',
+                sampler: normalized?.sampler || document.getElementById('sampler').value || 'k_euler_ancestral',
+                scheduler: normalized?.scheduler || document.getElementById('scheduler').value || 'karras',
+                smea: normalized?.smea || document.getElementById('smea').value || 'none',
+                uc_preset: normalized?.uc_preset || document.getElementById('ucPreset').value || 'Heavy',
+                quality_tags: normalized?.quality_tags !== undefined ? normalized.quality_tags : document.getElementById('qualityTags').checked,
+                cfg_rescale: normalized?.cfg_rescale || parseFloat(document.getElementById('cfgRescale').value) || 0,
+                variety_plus: normalized?.variety_plus || false,
                 base_image: imageBase64,
                 base_mode: 'img2img',
                 base_strength: preset.strength,
                 base_noise: preset.noise,
-                // 저장 옵션 추가
+                // 결과를 원본 슬롯에 표시
+                prompt_list: [{ name: '', content: '', slotIndex: enhanceState.slotIndex }],
+                // 저장 옵션
                 save_format: document.getElementById('saveFormat').value || 'png',
                 jpg_quality: parseInt(document.getElementById('jpgQuality')?.value) || 95,
                 output_folder: getOutputFolder(),
-                // 슬롯 정보 (결과를 동일 슬롯에 표시)
-                slot_indices: [enhanceState.slotIndex]
             };
 
             // Vibe Transfer 추가 (활성화되어 있고 바이브가 있으면)
