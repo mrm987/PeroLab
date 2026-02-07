@@ -5305,6 +5305,58 @@ def _check_ultralytics_installed():
     """ultralytics 설치 여부 실제 확인"""
     return (_get_site_packages_dir() / "ultralytics").exists()
 
+def _detect_gpu_compute_capability():
+    """nvidia-smi로 GPU compute capability 감지 (torch 설치 전에도 사용 가능)
+
+    Returns:
+        tuple: (major, minor) 예: (8, 6) for RTX 3060, (12, 0) for RTX 5090
+        None: NVIDIA GPU가 없거나 감지 실패
+    """
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            # 멀티 GPU인 경우 첫 번째 GPU 사용
+            cap_str = result.stdout.strip().split('\n')[0].strip()
+            parts = cap_str.split('.')
+            if len(parts) == 2:
+                major, minor = int(parts[0]), int(parts[1])
+                print(f"[GPU] Detected compute capability: {major}.{minor}")
+                return (major, minor)
+    except (FileNotFoundError, subprocess.TimeoutExpired, ValueError) as e:
+        print(f"[GPU] nvidia-smi detection failed: {e}")
+    return None
+
+
+def _get_torch_install_spec():
+    """GPU에 따라 적절한 PyTorch 설치 사양 결정
+
+    Returns:
+        dict: {packages: [...], index_url: str}
+    """
+    gpu_cap = _detect_gpu_compute_capability()
+
+    if gpu_cap and gpu_cap[0] >= 10:
+        # Blackwell (RTX 50 시리즈) 이상: CUDA 12.8 + PyTorch 2.7.1
+        print(f"[GPU] Blackwell+ architecture detected (sm_{gpu_cap[0]}{gpu_cap[1]}), using PyTorch 2.7.1 + CUDA 12.8")
+        return {
+            "packages": ["torch==2.7.1", "torchvision==0.22.1"],
+            "index_url": "https://download.pytorch.org/whl/cu128"
+        }
+    else:
+        # 기존 GPU (RTX 40 이하) 또는 감지 실패: 기존과 동일
+        if gpu_cap:
+            print(f"[GPU] Pre-Blackwell architecture (sm_{gpu_cap[0]}{gpu_cap[1]}), using PyTorch 2.5.1 + CUDA 12.1")
+        else:
+            print("[GPU] No NVIDIA GPU detected or detection failed, using default PyTorch 2.5.1 + CUDA 12.1")
+        return {
+            "packages": ["torch==2.5.1", "torchvision==0.20.1"],
+            "index_url": "https://download.pytorch.org/whl/cu121"
+        }
+
+
 def _check_local_deps_installed():
     """로컬 생성 의존성 설치 여부 확인 (einops, tqdm, spandrel)"""
     site_packages = _get_site_packages_dir()
@@ -5737,15 +5789,18 @@ def _install_local_environment_sync():
         if not python_exe.exists() or not uv_exe.exists():
             python_exe, uv_exe, temp_dir = _setup_python_and_uv()
         
+        # GPU에 따라 적절한 PyTorch 버전 결정
+        torch_spec = _get_torch_install_spec()
+
         # torch CUDA로 업그레이드 (0% -> 50%)
         # reinstall_packages로 torch/torchvision만 재설치 (의존성은 건드리지 않음)
-        install_status["message"] = "Upgrading PyTorch to CUDA version..."
+        install_status["message"] = f"Upgrading PyTorch to CUDA version ({torch_spec['index_url'].split('/')[-1]})..."
         install_status["progress"] = 10
 
         ret = _run_uv_install(
             uv_exe, python_exe,
-            ["torch==2.5.1", "torchvision==0.20.1"],
-            index_url="https://download.pytorch.org/whl/cu121",
+            torch_spec["packages"],
+            index_url=torch_spec["index_url"],
             progress_base=10,
             progress_end=50,
             reinstall_packages=["torch", "torchvision"]  # CPU -> CUDA 강제 교체

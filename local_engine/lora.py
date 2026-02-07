@@ -541,7 +541,7 @@ class LoRALoader:
         if path.endswith('.safetensors'):
             return load_file(path)
         else:
-            return torch.load(path, map_location='cpu')
+            return torch.load(path, map_location='cpu', weights_only=False)
 
     def build_key_map(self, model: nn.Module):
         """모델의 state_dict를 기반으로 키 매핑 테이블 구축"""
