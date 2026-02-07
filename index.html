@@ -9260,9 +9260,9 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            image: card._imageData.image,  // base64 (하위 호환)
+                            image: card._imageData.image || card._imageData.image_base64,  // base64 (미저장 이미지 포함)
                             image_path: card._imageData.image_path,  // 파일 경로
-                            filename: card._imageData.filename,
+                            filename: card._imageData.filename || 'unsaved.png',
                             folder: currentGalleryFolder || '',  // 현재 갤러리 폴더
                             metadata: card._imageData.metadata  // 메타데이터 (JPG/WebP 저장 시 필요)
                         })
@@ -17437,7 +17437,6 @@
                     </div>
                     <div class="gallery-item-actions">
                         <button class="inpaint-btn" title="인페인트">🎨 Inpaint</button>
-                        <button class="enhance-btn" title="Enhance (NAI)" style="display: ${currentProvider === 'nai' ? 'inline-block' : 'none'};">✨ Enhance</button>
                         <button class="apply-all-btn" title="설정 적용">📋 Apply</button>
                         <button class="delete-btn" title="삭제">🗑️</button>
                     </div>
@@ -17601,22 +17600,6 @@
                         }
                     } catch (err) {
                         showToast('인페인트 오류: ' + err.message, 'error');
-                    }
-                };
-
-                // Enhance (NAI 전용)
-                item.querySelector('.enhance-btn').onclick = async (e) => {
-                    e.stopPropagation();
-                    try {
-                        const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
-                        const result = await response.json();
-                        if (result.success && result.image) {
-                            openEnhanceModal(result.image, result.metadata);
-                        } else {
-                            showToast('이미지 로드 실패', 'error');
-                        }
-                    } catch (err) {
-                        showToast('Enhance 오류: ' + err.message, 'error');
                     }
                 };
 
@@ -19244,7 +19227,8 @@
                 base_noise: preset.noise,
                 // 결과를 원본 슬롯에 표시
                 prompt_list: [{ name: '', content: '', slotIndex: enhanceState.slotIndex }],
-                // 저장 옵션
+                // 저장 옵션 (자동저장 설정 반영)
+                auto_save: document.getElementById('autoSaveToggle').checked,
                 save_format: document.getElementById('saveFormat').value || 'png',
                 jpg_quality: parseInt(document.getElementById('jpgQuality')?.value) || 95,
                 output_folder: getOutputFolder(),
