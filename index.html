@@ -18628,6 +18628,12 @@
                     c.style.height = displayHeight + 'px';
                 });
 
+                // wrapper 크기를 캔버스 디스플레이 크기에 맞춤 (absolute 캔버스 정렬용)
+                const wrapper = document.querySelector('.mask-editor-canvas-wrapper');
+                wrapper.style.width = displayWidth + 'px';
+                wrapper.style.height = displayHeight + 'px';
+                wrapper.style.margin = '0 auto';
+
                 maskEditor.imageCtx = maskEditor.imageCanvas.getContext('2d');
                 maskEditor.maskCtx = maskEditor.maskCanvas.getContext('2d');
                 maskEditor.drawCtx = maskEditor.drawCanvas.getContext('2d');
@@ -18849,10 +18855,23 @@
                 maskEditor.isDrawing = false;
                 lastGridPos = null;
             });
+            // 캔버스 밖에서 마우스를 놓아도 드로잉 종료
+            document.addEventListener('mouseup', () => {
+                if (maskEditor.isDrawing) {
+                    maskEditor.isDrawing = false;
+                    lastGridPos = null;
+                }
+            });
             drawCanvas.addEventListener('mouseleave', () => {
-                maskEditor.isDrawing = false;
-                lastGridPos = null;
+                // 드로잉 상태 유지 (캔버스 밖으로 나갔다 돌아와도 이어서 그리기)
                 clearCursor();
+            });
+            drawCanvas.addEventListener('mouseenter', (e) => {
+                // 마우스 버튼이 눌린 상태로 돌아오면 이어서 그리기
+                if (e.buttons === 1 && maskEditor.isDrawing) {
+                    lastGridPos = null;  // 새 위치에서 이어서 그리기
+                    draw(e);
+                }
             });
 
             // Touch support
