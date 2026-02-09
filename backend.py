@@ -857,6 +857,7 @@ class PromptItem(BaseModel):
     name: str = ""
     content: str = ""
     slotIndex: int = 0
+    promptTarget: str = "base"  # "base" or "char"
 
 
 class MultiGenerateRequest(BaseModel):
@@ -2363,34 +2364,53 @@ async def process_job(job):
         extra_prompt = prompt_item.content if hasattr(prompt_item, 'content') else str(prompt_item)
         prompt_name = prompt_item.name if hasattr(prompt_item, 'name') else ""
         slot_index = prompt_item.slotIndex if hasattr(prompt_item, 'slotIndex') else prompt_idx
-        
-        full_prompt = f"{req.base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else req.base_prompt
-        
+        prompt_target = prompt_item.promptTarget if hasattr(prompt_item, 'promptTarget') else "base"
+
+        # promptTarget에 따라 슬롯 프롬프트를 베이스 또는 캐릭터에 추가
+        has_characters = bool(req.character_prompts_with_coords or req.character_prompts)
+        if prompt_target == "char" and extra_prompt and has_characters:
+            # 캐릭터 프롬프트에 슬롯 태그 추가 (임시 복사본 사용)
+            full_prompt = req.base_prompt
+            modified_char_prompts_with_coords = []
+            for cp in req.character_prompts_with_coords:
+                modified_cp = CharacterPromptWithCoordSimple(
+                    prompt=f"{cp.prompt}, {extra_prompt}".strip(", ") if cp.prompt else extra_prompt,
+                    uc=cp.uc,
+                    coord=cp.coord
+                )
+                modified_char_prompts_with_coords.append(modified_cp)
+            modified_char_prompts = [f"{cp}, {extra_prompt}".strip(", ") if cp else extra_prompt for cp in req.character_prompts]
+        else:
+            # 기존 동작 유지: 슬롯 프롬프트를 베이스에 추가, 캐릭터는 원본 그대로
+            full_prompt = f"{req.base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else req.base_prompt
+            modified_char_prompts_with_coords = req.character_prompts_with_coords
+            modified_char_prompts = req.character_prompts
+
         # 로컬인 경우 캐릭터 프롬프트를 메인 프롬프트에 합침
         # 캐릭터 UC(네거티브)도 메인 네거티브에 합침
         full_negative = req.negative_prompt
         if req.provider != "nai":
             # character_prompts_with_coords 우선, 없으면 character_prompts 사용
-            if req.character_prompts_with_coords:
-                char_prompts_str = ", ".join(cp.prompt for cp in req.character_prompts_with_coords if cp.prompt)
-                char_uc_str = ", ".join(cp.uc for cp in req.character_prompts_with_coords if cp.uc)
+            if modified_char_prompts_with_coords:
+                char_prompts_str = ", ".join(cp.prompt for cp in modified_char_prompts_with_coords if cp.prompt)
+                char_uc_str = ", ".join(cp.uc for cp in modified_char_prompts_with_coords if cp.uc)
                 if char_prompts_str:
                     full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
                 if char_uc_str:
                     full_negative = f"{full_negative}, {char_uc_str}".strip(", ")
-            elif req.character_prompts:
-                char_prompts_str = ", ".join(req.character_prompts)
+            elif modified_char_prompts:
+                char_prompts_str = ", ".join(modified_char_prompts)
                 full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
-        
+
         if req.random_seed_per_image and prompt_idx > 0:
             current_seed = random.randint(0, 2**31 - 1)
-        
+
         single_req = GenerateRequest(
             provider=req.provider,
             prompt=full_prompt,
             negative_prompt=full_negative,
-            character_prompts=req.character_prompts,
-            character_prompts_with_coords=req.character_prompts_with_coords,
+            character_prompts=modified_char_prompts,
+            character_prompts_with_coords=modified_char_prompts_with_coords,
             width=req.width,
             height=req.height,
             steps=req.steps,
@@ -2539,7 +2559,8 @@ async def process_job(job):
                 "local_loras": req.loras if req.provider == 'local' and req.loras else None,
                 "vibe_transfer": vibe_info if vibe_info else None,
                 "base_prompt": req.base_prompt,
-                "slot_prompt": extra_prompt if extra_prompt else None
+                "slot_prompt": extra_prompt if extra_prompt else None,
+                "slot_prompt_target": prompt_target if extra_prompt else None
             }
 
             if existing_comment:
@@ -4993,6 +5014,7 @@ class SavePreviewRequest(BaseModel):
     slot_index: int = 0
     slot_name: str = ""
     save_format: str = "png"
+    jpg_quality: int = 95
     output_folder: str = ""
     exclude_slot_number: bool = False  # True면 파일명에서 슬롯 번호 제외
 
@@ -5035,8 +5057,34 @@ async def save_preview_image(req: SavePreviewRequest):
         else:
             filename = f"{file_num:07d}.{ext}"
 
-        # base64 디코딩 및 저장
+        # base64 디코딩 및 포맷 변환
         image_bytes = base64.b64decode(req.image_base64)
+
+        # 원본 포맷과 요청 포맷이 다르면 재인코딩
+        from PIL import Image as PILImage
+        img = PILImage.open(io.BytesIO(image_bytes))
+        source_format = (img.format or '').lower()  # 'png', 'webp', 'jpeg' 등
+
+        # 포맷 매핑 (PIL format name → save_format name)
+        format_normalize = {'jpeg': 'jpg', 'png': 'png', 'webp': 'webp'}
+        normalized_source = format_normalize.get(source_format, source_format)
+
+        if normalized_source != save_format:
+            # 포맷 변환 필요
+            buf = io.BytesIO()
+            pil_format_map = {'png': 'PNG', 'jpg': 'JPEG', 'webp': 'WEBP'}
+            target_pil_format = pil_format_map.get(save_format, 'PNG')
+
+            # RGBA → RGB 변환 (JPEG는 알파 채널 미지원)
+            if save_format == 'jpg' and img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+
+            if save_format in ('jpg', 'webp'):
+                img.save(buf, format=target_pil_format, quality=req.jpg_quality)
+            else:
+                img.save(buf, format=target_pil_format)
+            image_bytes = buf.getvalue()
+
         save_path = save_dir / filename
         with open(save_path, 'wb') as f:
             f.write(image_bytes)

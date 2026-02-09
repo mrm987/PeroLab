@@ -101,6 +101,42 @@
             flex-direction: column;
             flex-shrink: 0;
             position: relative;
+            transition: width 0.25s ease, min-width 0.25s ease, opacity 0.25s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            border-right: none;
+        }
+
+        .sidebar-toggle-btn {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 48px;
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            color: var(--text-dim);
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: left 0.25s ease, background 0.15s, color 0.15s;
+            padding: 0;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: var(--bg-lighter);
+            color: var(--text);
         }
 
         .sidebar-resize-handle {
@@ -2238,9 +2274,8 @@
         .pip-float {
             position: absolute;
             bottom: 12px;
-            /* 슬라이더 바 우측에 배치: 중앙 + 슬라이더 너비/2 + 간격 */
-            left: calc(50% + 100px);
-            right: auto;
+            right: 12px;
+            left: auto;
             z-index: 1000;
             cursor: move;
             user-select: none;
@@ -2804,6 +2839,36 @@
             align-items: center;
         }
         
+        .slot-prompt-target-global {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-dim);
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .slot-prompt-target-global:hover {
+            border-color: var(--text-dim);
+            color: var(--text);
+        }
+
+        .slot-prompt-target-global[data-target="char"] {
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #a78bfa;
+        }
+
+        .slot-prompt-target-global[data-target="char"]:hover {
+            background: rgba(139, 92, 246, 0.25);
+            border-color: rgba(139, 92, 246, 0.6);
+        }
+
         .slot-prompt-header input {
             flex: 1;
             background: transparent;
@@ -7504,6 +7569,7 @@
             </div>
             <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
         </aside>
+        <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" title="사이드바 접기/펼치기">◀</button>
 
         <!-- Main -->
         <main class="main">
@@ -7527,6 +7593,7 @@
                         <button type="button" class="slot-size-preset-btn" id="slotSizePreset2" title="좌클릭: 프리셋 2 적용 | 우클릭: 현재 크기 저장">675</button>
                         <button type="button" class="slot-size-preset-btn" id="slotSizePreset3" title="좌클릭: 프리셋 3 적용 | 우클릭: 현재 크기 저장">1200</button>
                     </div>
+                    <button type="button" class="slot-prompt-target-global" id="slotPromptTargetGlobal" data-target="char" title="슬롯 프롬프트 적용 대상: Base (베이스에 추가) / Char (활성 캐릭터 전체에 추가)">Char</button>
                     <button type="button" class="header-btn" id="clearImagesBtn" title="미리보기 이미지 지우기 (파일은 삭제되지 않음)">
                         <span>🧹</span>
                         <span>Clear</span>
@@ -8837,6 +8904,46 @@
             });
         })();
 
+        // 사이드바 접기/펼치기
+        (function setupSidebarToggle() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            if (!sidebar || !toggleBtn) return;
+
+            function updateToggleBtn() {
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                toggleBtn.textContent = isCollapsed ? '▶' : '◀';
+                toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
+                if (isCollapsed) {
+                    toggleBtn.style.left = '0px';
+                } else {
+                    toggleBtn.style.left = currentSidebarWidth + 'px';
+                }
+            }
+
+            toggleBtn.onclick = () => {
+                sidebar.classList.toggle('collapsed');
+                updateToggleBtn();
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed') ? '1' : '0');
+            };
+
+            // 사이드바 너비 변경 시 토글 버튼 위치 업데이트
+            const origSetSidebarWidth = setSidebarWidth;
+            setSidebarWidth = function(width) {
+                origSetSidebarWidth(width);
+                if (!sidebar.classList.contains('collapsed')) {
+                    toggleBtn.style.left = currentSidebarWidth + 'px';
+                }
+            };
+
+            // 초기 상태 복원
+            const savedState = localStorage.getItem('sidebarCollapsed');
+            if (savedState === '1') {
+                sidebar.classList.add('collapsed');
+            }
+            updateToggleBtn();
+        })();
+
         function createSlot(name = '', content = '') {
             const slotId = slotCounter++;
             const slot = document.createElement('div');
@@ -9184,6 +9291,7 @@
                                 slot_index: card._imageData.slotIndex,
                                 slot_name: slotName,
                                 save_format: document.getElementById('saveFormat').value,
+                                jpg_quality: parseInt(document.getElementById('jpgQuality').value) || 95,
                                 output_folder: currentFolder,
                                 exclude_slot_number: document.getElementById('excludeSlotNumber').checked
                             })
@@ -9718,6 +9826,7 @@
                             slot_index: card._imageData.slotIndex,
                             slot_name: slotName,
                             save_format: document.getElementById('saveFormat').value,
+                            jpg_quality: parseInt(document.getElementById('jpgQuality').value) || 95,
                             output_folder: currentFolder,
                             exclude_slot_number: document.getElementById('excludeSlotNumber').checked
                         })
@@ -9846,6 +9955,18 @@
             updateAnlasCost();
             autoSaveSettings();
         };
+
+        // === Slot Prompt Target (Global) ===
+        const slotPromptTargetGlobal = document.getElementById('slotPromptTargetGlobal');
+        if (slotPromptTargetGlobal) {
+            slotPromptTargetGlobal.onclick = () => {
+                const current = slotPromptTargetGlobal.dataset.target;
+                const next = current === 'base' ? 'char' : 'base';
+                slotPromptTargetGlobal.dataset.target = next;
+                slotPromptTargetGlobal.textContent = next === 'char' ? 'Char' : 'Base';
+                autoSaveSettings();
+            };
+        }
 
         // === Preset System ===
         const presetDropdown = document.getElementById('presetDropdown');
@@ -10908,6 +11029,12 @@
                     if (promptTab) promptTab.textContent = 'Positive Prompt';
                     if (ucTab) ucTab.textContent = 'Negative Prompt';
                 });
+            }
+
+            // Slot Prompt Target 버튼: NAI에서만 표시
+            const promptTargetBtn = document.getElementById('slotPromptTargetGlobal');
+            if (promptTargetBtn) {
+                promptTargetBtn.style.display = currentProvider === 'nai' ? '' : 'none';
             }
         }
 
@@ -12034,9 +12161,10 @@
             const promptCount = slotList.length || 1;
 
             // 백엔드용 데이터 변환
+            const globalPromptTarget = document.getElementById('slotPromptTargetGlobal')?.dataset.target || 'char';
             const promptData = slotList.length > 0
-                ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex }))
-                : [{ name: '', content: '', slotIndex: 0 }];
+                ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex, promptTarget: globalPromptTarget }))
+                : [{ name: '', content: '', slotIndex: 0, promptTarget: globalPromptTarget }];
 
             console.log(`[Queue] Adding job: slots=${slotList.length}, promptData=`, promptData);
             
@@ -16016,6 +16144,7 @@
                 
                 // Slots & Preset
                 slots: getAllSlotList(),
+                slotPromptTarget: document.getElementById('slotPromptTargetGlobal')?.dataset.target || 'char',
                 currentPreset: currentPreset,
                 
                 // NAI-specific (NAI일 때만 의미있음)
@@ -16207,6 +16336,15 @@
                     }
                 }
                 updateLockAllBtnState();
+            }
+
+            // Slot Prompt Target (global)
+            if (settings.slotPromptTarget) {
+                const btn = document.getElementById('slotPromptTargetGlobal');
+                if (btn) {
+                    btn.dataset.target = settings.slotPromptTarget;
+                    btn.textContent = settings.slotPromptTarget === 'char' ? 'Char' : 'Base';
+                }
             }
 
             // Preset
@@ -16586,6 +16724,15 @@
                             addSlot(slot.name || '', slot.content || '', slot.locked || false);
                         });
                         updateLockAllBtnState();
+                    }
+
+                    // Slot Prompt Target (global)
+                    if (currentSettings.slotPromptTarget) {
+                        const btn = document.getElementById('slotPromptTargetGlobal');
+                        if (btn) {
+                            btn.dataset.target = currentSettings.slotPromptTarget;
+                            btn.textContent = currentSettings.slotPromptTarget === 'char' ? 'Char' : 'Base';
+                        }
                     }
 
                     // Preset
