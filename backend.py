@@ -2559,6 +2559,7 @@ async def process_job(job):
                 "local_loras": req.loras if req.provider == 'local' and req.loras else None,
                 "vibe_transfer": vibe_info if vibe_info else None,
                 "base_prompt": req.base_prompt,
+                "base_negative_prompt": req.negative_prompt,
                 "slot_prompt": extra_prompt if extra_prompt else None,
                 "slot_prompt_target": prompt_target if extra_prompt else None
             }

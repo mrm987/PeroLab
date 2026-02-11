@@ -5001,6 +5001,8 @@
         .file-item.draggable:active { cursor: grabbing; }
         .file-item.dragging { opacity: 0.5; background: var(--bg-lighter); }
         .file-item.drag-over { border-top: 2px solid var(--accent); margin-top: -2px; }
+        .file-item.drop-indicator { border-bottom: 2px solid var(--accent); margin-bottom: -2px; }
+        .file-item.drop-indicator-top { border-top: 2px solid var(--accent); margin-top: -2px; }
         .file-item .drag-handle {
             color: var(--text-dim);
             opacity: 0.4;
@@ -14149,6 +14151,23 @@
                 if (!foundPreset) {
                     ucPreset = 'None';
                 }
+            } else {
+                // PeroPix 이미지: base_negative_prompt가 있으면 직접 사용 (UC 프리셋 제거됨)
+                if (ppx.base_negative_prompt !== undefined) {
+                    negativePrompt = ppx.base_negative_prompt || '';
+                } else {
+                    // 이전 버전 하위호환: meta.uc에서 UC 프리셋 제거 시도
+                    let foundPreset = false;
+                    for (const [presetName, presetTags] of Object.entries(v45UcPresets)) {
+                        if (negativePrompt.startsWith(presetTags)) {
+                            ucPreset = presetName;
+                            negativePrompt = negativePrompt.slice(presetTags.length);
+                            negativePrompt = negativePrompt.replace(/^,\s*/, '');
+                            foundPreset = true;
+                            break;
+                        }
+                    }
+                }
             }
 
             // PeroPix 이미지: base_prompt가 있으면 직접 사용 (v3+)
@@ -14757,7 +14776,18 @@
         document.getElementById('openLorasFolderBtn').onclick = () => openFolder('loras');
         document.getElementById('addLoraSlotBtn').onclick = addLoraSlot;
 
+        // 우측 Ctrl 키 추적 (일부 키보드/로케일에서 e.ctrlKey가 false인 경우 대비)
+        let _rightCtrlPressed = false;
         document.addEventListener('keydown', (e) => {
+            if (e.code === 'ControlRight') _rightCtrlPressed = true;
+        }, true);
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ControlRight') _rightCtrlPressed = false;
+        }, true);
+
+        document.addEventListener('keydown', (e) => {
+            const isCtrl = e.ctrlKey || _rightCtrlPressed;
+
             if (e.key === 'Escape') {
                 closeLightbox();
                 closeSettings();
@@ -14765,22 +14795,22 @@
             // Lightbox key navigation
             if (lightbox.classList.contains('active') && lightboxCurrentSlot) {
                 // Slot switching (works even on empty slots)
-                if (e.key === 'ArrowLeft') {
+                if (e.key === 'ArrowLeft' || e.key === 'a') {
                     e.preventDefault();
                     switchToAdjacentSlot(-1);
-                } else if (e.key === 'ArrowRight') {
+                } else if (e.key === 'ArrowRight' || e.key === 'd') {
                     e.preventDefault();
                     switchToAdjacentSlot(1);
                 }
                 // Image navigation + actions (only when slot has images)
                 if (lightboxCurrentCard) {
-                    if (e.key === 'ArrowDown') {
+                    if (e.key === 'ArrowDown' || e.key === 's') {
                         e.preventDefault();
                         const imagesContainer = lightboxCurrentSlot.querySelector('.slot-images');
                         const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
                         const idx = cards.indexOf(lightboxCurrentCard);
                         navigateSlotLightbox(idx + 1 >= cards.length ? 0 : idx + 1);
-                    } else if (e.key === 'ArrowUp') {
+                    } else if (e.key === 'ArrowUp' || e.key === 'w') {
                         e.preventDefault();
                         const imagesContainer = lightboxCurrentSlot.querySelector('.slot-images');
                         const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
@@ -14788,7 +14818,7 @@
                         navigateSlotLightbox(idx - 1 < 0 ? cards.length - 1 : idx - 1);
                     } else if (e.key === 'Delete') {
                         lightboxActions.querySelector('.lightbox-clear-btn').click();
-                    } else if (e.key === 'Enter' && !e.ctrlKey) {
+                    } else if (e.key === 'Enter' && !isCtrl) {
                         e.preventDefault();
                         const saveBtn = lightboxActions.querySelector('.lightbox-save-btn');
                         const deleteBtn = lightboxActions.querySelector('.lightbox-delete-btn');
@@ -14800,7 +14830,7 @@
                     }
                 }
             }
-            if (e.ctrlKey && e.key === 'Enter') {
+            if (isCtrl && e.key === 'Enter') {
                 addToQueue();
             }
         });
@@ -17111,6 +17141,15 @@
                 // 파일 관리자 설정
                 fileManagerViewMode: utilityState.fileManager?.viewMode || 'thumbnail',
                 fileManagerPipMode: utilityState.fileManager?.pipMode || false,
+                // 파일 관리자 변환 패널 설정
+                fmConvertFormat: utilityState.fileManager?.convertPanel?.format || 'png',
+                fmConvertQuality: utilityState.fileManager?.convertPanel?.quality || 95,
+                fmConvertRenameEnabled: utilityState.fileManager?.convertPanel?.renameEnabled || false,
+                fmConvertRenamePrefix: utilityState.fileManager?.convertPanel?.renamePrefix || '',
+                fmConvertRenameStart: utilityState.fileManager?.convertPanel?.renameStart || 1,
+                fmConvertRenamePadding: utilityState.fileManager?.convertPanel?.renamePadding || 1,
+                fmConvertStripMetadata: utilityState.fileManager?.convertPanel?.stripMetadata || false,
+                fmConvertOpenFolder: utilityState.fileManager?.convertPanel?.openFolder ?? true,
             };
 
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
@@ -17242,6 +17281,15 @@
                     if (settings.fileManagerPipMode !== undefined) {
                         window._pendingFileManagerPipMode = settings.fileManagerPipMode;
                     }
+                    // 파일 관리자 변환 패널 설정
+                    if (settings.fmConvertFormat) window._pendingFmConvertFormat = settings.fmConvertFormat;
+                    if (settings.fmConvertQuality !== undefined) window._pendingFmConvertQuality = settings.fmConvertQuality;
+                    if (settings.fmConvertRenameEnabled !== undefined) window._pendingFmConvertRenameEnabled = settings.fmConvertRenameEnabled;
+                    if (settings.fmConvertRenamePrefix !== undefined) window._pendingFmConvertRenamePrefix = settings.fmConvertRenamePrefix;
+                    if (settings.fmConvertRenameStart !== undefined) window._pendingFmConvertRenameStart = settings.fmConvertRenameStart;
+                    if (settings.fmConvertRenamePadding !== undefined) window._pendingFmConvertRenamePadding = settings.fmConvertRenamePadding;
+                    if (settings.fmConvertStripMetadata !== undefined) window._pendingFmConvertStripMetadata = settings.fmConvertStripMetadata;
+                    if (settings.fmConvertOpenFolder !== undefined) window._pendingFmConvertOpenFolder = settings.fmConvertOpenFolder;
 
                     // 현재 provider 설정 적용
                     const currentSettings = currentProvider === 'nai' ? naiSettings : localSettings;
@@ -17921,6 +17969,12 @@
             // 보조 도구 모드 초기화
             if (typeof initUtilityMode === 'function') {
                 initUtilityMode();
+            }
+
+            // 파일 관리 탭이 활성 상태면 진입 시 갱신
+            if (utilityState.currentTab === 'filemanager' && utilityState.fileManager.initialized) {
+                fmLoadFolders();
+                fmLoadFiles();
             }
         };
 
@@ -20214,8 +20268,14 @@
             document.getElementById('utilityFileManagerContent').style.display = tab === 'filemanager' ? 'flex' : 'none';
 
             // 파일 관리 탭 초기화
-            if (tab === 'filemanager' && !utilityState.fileManager.initialized) {
-                initFileManagerTab();
+            if (tab === 'filemanager') {
+                if (!utilityState.fileManager.initialized) {
+                    initFileManagerTab();
+                } else {
+                    // 이미 초기화된 경우 파일/폴더 갱신
+                    fmLoadFolders();
+                    fmLoadFiles();
+                }
             }
         }
 
@@ -20301,7 +20361,7 @@
                 utilityState.renameEnabled = renameEnabled.checked;
                 renameOptions.style.display = renameEnabled.checked ? 'block' : 'none';
                 document.getElementById('convertReorderHint').style.display =
-                    (renameEnabled.checked && utilityState.convertFiles.length > 1) ? 'inline' : 'none';
+                    (utilityState.convertFiles.length > 1) ? 'inline' : 'none';
                 updateRenamePreview();
                 updateConvertFileList();
             };
@@ -20389,12 +20449,11 @@
             // 순서 변경 힌트 표시
             if (reorderHint) {
                 reorderHint.style.display =
-                    (utilityState.renameEnabled && utilityState.convertFiles.length > 1) ? 'inline' : 'none';
+                    (utilityState.convertFiles.length > 1) ? 'inline' : 'none';
             }
 
             if (hasFiles) {
                 fileCount.textContent = `${utilityState.convertFiles.length}개 파일`;
-                const isDraggable = utilityState.renameEnabled;
 
                 fileItems.innerHTML = utilityState.convertFiles.map((item, idx) => {
                     const previewName = utilityState.renameEnabled
@@ -20402,10 +20461,10 @@
                         : null;
 
                     return `
-                        <div class="file-item${isDraggable ? ' draggable' : ''}"
+                        <div class="file-item draggable"
                              data-index="${idx}"
-                             ${isDraggable ? 'draggable="true"' : ''}>
-                            ${isDraggable ? '<span class="drag-handle">⠿</span>' : ''}
+                             draggable="true">
+                            <span class="drag-handle">⠿</span>
                             <img class="file-item-thumb" src="${item.url}" alt="">
                             <div class="file-item-info">
                                 <div class="file-item-name">${item.file.name}</div>
@@ -20418,9 +20477,7 @@
                 }).join('');
 
                 // 드래그 리오더링 설정
-                if (isDraggable) {
-                    setupFileDragReorder();
-                }
+                setupFileDragReorder();
             }
         }
 
@@ -20456,60 +20513,84 @@
         // 드래그 리오더링 설정
         function setupFileDragReorder() {
             const fileItems = document.getElementById('convertFileItems');
-            const items = fileItems.querySelectorAll('.file-item.draggable');
+            let draggedItem = null;
+            let isDraggingReorder = false;
 
-            let draggedIndex = -1;
-
-            items.forEach((item) => {
-                item.ondragstart = (e) => {
-                    draggedIndex = parseInt(item.dataset.index);
+            fileItems.querySelectorAll('.file-item.draggable').forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedItem = item;
+                    isDraggingReorder = true;
                     item.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', draggedIndex);
-                };
+                });
 
-                item.ondragend = () => {
-                    item.classList.remove('dragging');
-                    items.forEach(i => i.classList.remove('drag-over'));
-                    draggedIndex = -1;
-                };
+                item.addEventListener('dragend', () => {
+                    fileItems.querySelectorAll('.file-item').forEach(el => {
+                        el.classList.remove('drop-indicator', 'drop-indicator-top', 'dragging');
+                    });
+                    draggedItem = null;
+                    isDraggingReorder = false;
+                });
 
-                item.ondragover = (e) => {
+                item.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (draggedIndex >= 0 && parseInt(item.dataset.index) !== draggedIndex) {
-                        items.forEach(i => i.classList.remove('drag-over'));
-                        item.classList.add('drag-over');
+                    if (!draggedItem) return;
+
+                    fileItems.querySelectorAll('.file-item').forEach(el => {
+                        el.classList.remove('drop-indicator', 'drop-indicator-top');
+                    });
+
+                    const allItems = Array.from(fileItems.querySelectorAll('.file-item'));
+                    const hoverIndex = allItems.indexOf(item);
+                    const rect = item.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+
+                    if (e.clientY < midY) {
+                        if (hoverIndex === 0) {
+                            item.classList.add('drop-indicator-top');
+                        } else {
+                            allItems[hoverIndex - 1].classList.add('drop-indicator');
+                        }
+                    } else {
+                        item.classList.add('drop-indicator');
                     }
-                };
+                });
 
-                item.ondragleave = () => {
-                    item.classList.remove('drag-over');
-                };
-
-                item.ondrop = (e) => {
+                item.addEventListener('drop', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    item.classList.remove('drag-over');
+                    if (!draggedItem || draggedItem === item) return;
 
-                    const targetIndex = parseInt(item.dataset.index);
-                    if (draggedIndex >= 0 && targetIndex !== draggedIndex) {
-                        reorderConvertFiles(draggedIndex, targetIndex);
+                    const rect = item.getBoundingClientRect();
+                    const midY = rect.top + rect.height / 2;
+
+                    if (e.clientY < midY) {
+                        item.parentNode.insertBefore(draggedItem, item);
+                    } else {
+                        item.parentNode.insertBefore(draggedItem, item.nextSibling);
                     }
-                };
+
+                    fileItems.querySelectorAll('.file-item').forEach(el => {
+                        el.classList.remove('drop-indicator', 'drop-indicator-top');
+                    });
+                });
             });
-        }
 
-        // 파일 순서 변경
-        function reorderConvertFiles(fromIndex, toIndex) {
-            if (fromIndex === toIndex) return;
-
-            const files = utilityState.convertFiles;
-            const [movedItem] = files.splice(fromIndex, 1);
-            files.splice(toIndex, 0, movedItem);
-
-            updateConvertFileList();
-            updateRenamePreview();
+            fileItems.addEventListener('dragend', () => {
+                fileItems.querySelectorAll('.file-item').forEach(el => {
+                    el.classList.remove('drop-indicator', 'drop-indicator-top', 'dragging');
+                });
+                // DOM 순서 기반으로 배열 재정렬
+                const newFiles = [];
+                fileItems.querySelectorAll('.file-item').forEach(item => {
+                    const idx = parseInt(item.dataset.index);
+                    newFiles.push(utilityState.convertFiles[idx]);
+                });
+                utilityState.convertFiles = newFiles;
+                updateConvertFileList();
+                updateRenamePreview();
+            });
         }
 
         // 변환 실행
@@ -21183,6 +21264,64 @@
 
             // 변환 패널 초기화
             fmInitConvertPanel();
+
+            // 변환 패널 저장된 설정 복원
+            if (window._pendingFmConvertFormat) {
+                const cp = utilityState.fileManager.convertPanel;
+                const fmt = window._pendingFmConvertFormat;
+                cp.format = fmt;
+                document.querySelectorAll('#fmConvertPanel .format-btn').forEach(b => {
+                    b.classList.toggle('active', b.dataset.format === fmt);
+                });
+                document.getElementById('fmConvertQualityGroup').style.display =
+                    (fmt === 'jpg' || fmt === 'webp') ? 'flex' : 'none';
+                delete window._pendingFmConvertFormat;
+            }
+            if (window._pendingFmConvertQuality !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.quality = window._pendingFmConvertQuality;
+                document.getElementById('fmConvertQuality').value = cp.quality;
+                document.getElementById('fmConvertQualityValue').textContent = cp.quality;
+                delete window._pendingFmConvertQuality;
+            }
+            if (window._pendingFmConvertRenameEnabled !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.renameEnabled = window._pendingFmConvertRenameEnabled;
+                document.getElementById('fmConvertRenameEnabled').checked = cp.renameEnabled;
+                document.getElementById('fmConvertRenameOptions').style.display = cp.renameEnabled ? 'block' : 'none';
+                delete window._pendingFmConvertRenameEnabled;
+            }
+            if (window._pendingFmConvertRenamePrefix !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.renamePrefix = window._pendingFmConvertRenamePrefix;
+                document.getElementById('fmConvertRenamePrefix').value = cp.renamePrefix;
+                delete window._pendingFmConvertRenamePrefix;
+            }
+            if (window._pendingFmConvertRenameStart !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.renameStart = window._pendingFmConvertRenameStart;
+                document.getElementById('fmConvertRenameStart').value = cp.renameStart;
+                delete window._pendingFmConvertRenameStart;
+            }
+            if (window._pendingFmConvertRenamePadding !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.renamePadding = window._pendingFmConvertRenamePadding;
+                document.getElementById('fmConvertRenamePadding').value = cp.renamePadding;
+                delete window._pendingFmConvertRenamePadding;
+            }
+            if (window._pendingFmConvertStripMetadata !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.stripMetadata = window._pendingFmConvertStripMetadata;
+                document.getElementById('fmConvertStripMetadata').checked = cp.stripMetadata;
+                delete window._pendingFmConvertStripMetadata;
+            }
+            if (window._pendingFmConvertOpenFolder !== undefined) {
+                const cp = utilityState.fileManager.convertPanel;
+                cp.openFolder = window._pendingFmConvertOpenFolder;
+                document.getElementById('fmConvertOpenFolder').checked = cp.openFolder;
+                delete window._pendingFmConvertOpenFolder;
+            }
+            fmConvertPanelUpdateRenamePreview();
 
             // 초기 데이터 로드
             fmLoadFolders();
@@ -22302,6 +22441,7 @@
                     document.getElementById('fmConvertQualityGroup').style.display =
                         (cp.format === 'jpg' || cp.format === 'webp') ? 'flex' : 'none';
                     fmConvertPanelUpdateRenamePreview();
+                    autoSaveSettings();
                 };
             });
 
@@ -22310,6 +22450,7 @@
             qualitySlider.oninput = () => {
                 cp.quality = parseInt(qualitySlider.value);
                 document.getElementById('fmConvertQualityValue').textContent = cp.quality;
+                autoSaveSettings();
             };
 
             // 리네이밍 체크박스
@@ -22318,28 +22459,34 @@
                 cp.renameEnabled = renameCheckbox.checked;
                 document.getElementById('fmConvertRenameOptions').style.display = cp.renameEnabled ? 'block' : 'none';
                 fmConvertPanelUpdateRenamePreview();
+                autoSaveSettings();
             };
 
             // 리네이밍 옵션
             document.getElementById('fmConvertRenamePrefix').oninput = (e) => {
                 cp.renamePrefix = e.target.value;
                 fmConvertPanelUpdateRenamePreview();
+                autoSaveSettings();
             };
             document.getElementById('fmConvertRenameStart').oninput = (e) => {
                 cp.renameStart = parseInt(e.target.value) || 1;
                 fmConvertPanelUpdateRenamePreview();
+                autoSaveSettings();
             };
             document.getElementById('fmConvertRenamePadding').oninput = (e) => {
                 cp.renamePadding = parseInt(e.target.value) || 1;
                 fmConvertPanelUpdateRenamePreview();
+                autoSaveSettings();
             };
 
             // 옵션 체크박스
             document.getElementById('fmConvertStripMetadata').onchange = (e) => {
                 cp.stripMetadata = e.target.checked;
+                autoSaveSettings();
             };
             document.getElementById('fmConvertOpenFolder').onchange = (e) => {
                 cp.openFolder = e.target.checked;
+                autoSaveSettings();
             };
 
             // 변환 버튼
@@ -22368,6 +22515,8 @@
                 if (dragData) {
                     const filePaths = JSON.parse(dragData);
                     await fmConvertPanelAddFiles(filePaths);
+                    // 드롭 후 파일 선택 해제
+                    fmDeselectAll();
                 }
             });
         }
