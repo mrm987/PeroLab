@@ -697,7 +697,7 @@
         
         .checkbox-row input[type="checkbox"] {
             width: 18px;
-            height: 18px;
+            height: 22px;
             margin: 0;
             accent-color: var(--accent);
         }
@@ -775,7 +775,7 @@
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            padding: var(--space-md);
+            padding: 6px 10px;
             transition: var(--transition-fast);
         }
 
@@ -786,9 +786,10 @@
         .character-item-header {
             display: flex;
             align-items: center;
-            gap: var(--space-sm);
-            padding: var(--space-xs) 0;
+            gap: 4px;
+            padding: 0;
             user-select: none;
+            height: 22px;
         }
 
         .character-item-header .char-name {
@@ -796,15 +797,18 @@
         }
 
         .character-item .char-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             color: var(--accent-gold);
-            font-size: 0.75rem;
+            font-size: 11px;
             font-weight: 700;
             font-family: 'SF Mono', 'Consolas', monospace;
             background: rgba(245, 185, 66, 0.1);
-            padding: 2px 8px;
-            border-radius: var(--radius-sm);
-            min-width: 28px;
-            text-align: center;
+            border-radius: 3px;
+            min-width: 18px;
+            height: 22px;
+            padding: 0 5px;
         }
 
         .character-item .char-name {
@@ -812,11 +816,13 @@
             flex: none;
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            padding: 4px 6px;
+            border-radius: 3px;
             margin: 0;
-            font-size: 0.8rem;
+            font-size: 11px;
             color: var(--text);
+            height: 22px;
+            padding: 0 5px;
+            box-sizing: border-box;
         }
 
         .character-item .char-name::placeholder {
@@ -832,20 +838,29 @@
             margin-left: auto;
         }
 
+        .char-coord-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
         /* 캐릭터 좌표 버튼 */
         .char-coord-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background: var(--bg-light);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-dim);
             cursor: pointer;
-            padding: 4px 6px;
-            font-size: 0.8rem;
-            border-radius: 4px;
+            font-size: 11px;
+            border-radius: 3px;
             transition: var(--transition-fast);
-            min-width: 32px;
-            text-align: center;
+            min-width: 22px;
             font-family: 'SF Mono', 'Consolas', monospace;
             text-transform: uppercase;
+            height: 22px;
+            padding: 0 4px;
+            box-sizing: border-box;
         }
 
         .char-coord-btn:hover {
@@ -858,6 +873,35 @@
             background: rgba(138, 180, 248, 0.15);
             border-color: var(--accent);
             color: var(--accent);
+        }
+
+        .char-skip-slot-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 11px;
+            border-radius: 3px;
+            transition: var(--transition-fast);
+            white-space: nowrap;
+            font-family: 'SF Mono', 'Consolas', monospace;
+            height: 22px;
+            padding: 0 4px;
+            box-sizing: border-box;
+        }
+
+        .char-skip-slot-btn:hover {
+            background: var(--bg-lighter);
+            border-color: var(--accent);
+        }
+
+        .char-skip-slot-btn.active {
+            color: #ef5350;
+            border-color: #ef5350;
+            background: rgba(239, 83, 80, 0.15);
         }
 
         /* 5x5 좌표 그리드 팝업 */
@@ -929,8 +973,10 @@
         }
 
         .character-item .prompt-preset-btn {
-            padding: 2px 6px;
-            font-size: 0.7rem;
+            height: 22px;
+            padding: 0 5px;
+            font-size: 11px;
+            box-sizing: border-box;
         }
 
         /* Local provider일 때 NAI 전용 기능 숨기기 */
@@ -1040,15 +1086,18 @@
         }
 
         .character-item .delete-char-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background: none;
             border: none;
             color: var(--text-dim);
             cursor: pointer;
-            padding: var(--space-xs) var(--space-sm);
-            font-size: 1rem;
+            padding: 0 3px;
+            font-size: 13px;
             opacity: 0.4;
             transition: var(--transition-fast);
-            border-radius: var(--radius-sm);
+            height: 22px;
         }
 
         .character-item .delete-char-btn:hover {
@@ -1058,12 +1107,12 @@
         }
 
         .char-enable-toggle {
-            width: 14px;
-            height: 14px;
-            margin: 0 4px 0 0;
+            width: 13px;
+            height: 13px;
+            margin: 0;
             cursor: pointer;
             accent-color: var(--accent);
-            vertical-align: middle;
+            flex-shrink: 0;
         }
 
         .character-item.disabled {
@@ -1077,14 +1126,16 @@
 
         /* 캐릭터 드래그 핸들 (슬롯 드래그와 동일 스타일) */
         .char-drag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background: none;
             border: none;
             color: var(--text-dim);
             cursor: grab;
-            padding: 2px 4px;
-            font-size: 0.9rem;
-            line-height: 1;
-            border-radius: 4px;
+            padding: 0 2px;
+            font-size: 12px;
+            height: 22px;
         }
 
         .char-drag:hover {
@@ -1906,6 +1957,18 @@
             height: 4px;
         }
 
+        .precise-ref-slider-group .clickable-value {
+            color: var(--accent);
+            cursor: pointer;
+            padding: 0 2px;
+            border-radius: 2px;
+            transition: background 0.15s;
+        }
+
+        .precise-ref-slider-group .clickable-value:hover {
+            background: rgba(138, 180, 248, 0.2);
+        }
+
         .precise-ref-remove {
             width: 28px;
             height: 28px;
@@ -2085,6 +2148,16 @@
             background: var(--accent);
             border-color: var(--accent);
             color: white;
+        }
+        .enhance-clickable-value {
+            color: var(--accent);
+            cursor: pointer;
+            padding: 0 4px;
+            border-radius: 3px;
+            transition: background 0.15s;
+        }
+        .enhance-clickable-value:hover {
+            background: rgba(138, 180, 248, 0.2);
         }
         .enhance-res-btn.active:hover {
             background: var(--accent-hover);
@@ -4419,7 +4492,7 @@
             cursor: pointer;
             font-size: 0.8rem;
             height: 32px;
-            line-height: 18px;
+            line-height: 22px;
         }
         .censor-proc-tools .tool-btn:hover {
             border-color: var(--primary);
@@ -8576,13 +8649,32 @@
                         </div>
                         <div id="enhanceResInfo" style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;"></div>
                     </div>
-                    <div style="margin-bottom: 12px;">
+                    <div style="margin-bottom: 12px;" id="enhanceMagnitudeSection">
                         <label>Magnitude: <span id="enhanceModalMagnitude">3</span></label>
                         <input type="range" id="enhanceModalMagnitudeSlider" min="1" max="5" step="1" value="3" style="width: 100%;">
                         <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim);">
                             <span>Low (원본 유지)</span>
                             <span>High (변형 많음)</span>
                         </div>
+                    </div>
+                    <div id="enhanceAdvancedSection" style="display: none; margin-bottom: 12px;">
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Strength</span>
+                                <span id="enhanceStrengthValue" class="enhance-clickable-value">0.5</span>
+                            </label>
+                            <input type="range" id="enhanceStrengthSlider" min="0" max="1" step="0.01" value="0.5" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                <span>Noise</span>
+                                <span id="enhanceNoiseValue" class="enhance-clickable-value">0</span>
+                            </label>
+                            <input type="range" id="enhanceNoiseSlider" min="0" max="1" step="0.01" value="0" style="width: 100%;">
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <button type="button" class="btn btn-ghost" id="enhanceAdvancedToggle" style="font-size: 0.8rem; padding: 4px 12px;">Show Advanced</button>
                     </div>
                     <div id="enhanceModalCost" style="font-size: 0.9rem; padding: 8px; background: var(--bg); border-radius: 6px; text-align: center;">
                         Cost: <span id="enhanceModalAnlas">0</span> Anlas
@@ -11696,7 +11788,7 @@
         const charactersList = document.getElementById('charactersList');
         const addCharBtn = document.getElementById('addCharBtn');
         
-        function createCharacterItem(content = '', collapsed = false, enabled = true, name = '', coord = null, uc = '') {
+        function createCharacterItem(content = '', collapsed = false, enabled = true, name = '', coord = null, uc = '', skipSlotPrompt = false) {
             const item = document.createElement('div');
             item.className = 'character-item' + (enabled ? '' : ' disabled');
             item.dataset.coord = coord || '';  // 좌표 저장 (예: 'c3', 'a1' 등)
@@ -11840,6 +11932,23 @@
 
             coordWrapper.appendChild(coordBtn);
 
+            // 슬롯 프롬프트 제외 버튼
+            const skipSlotBtn = document.createElement('button');
+            skipSlotBtn.type = 'button';
+            skipSlotBtn.className = 'char-skip-slot-btn' + (skipSlotPrompt ? ' active' : '');
+            skipSlotBtn.textContent = 'S✕';
+            skipSlotBtn.title = skipSlotPrompt
+                ? '슬롯 프롬프트 적용 제외됨 (클릭하여 해제)'
+                : '슬롯 프롬프트 적용 제외 (Char 모드에서 이 캐릭터에 슬롯 프롬프트를 추가하지 않음)';
+            skipSlotBtn.onclick = (e) => {
+                e.stopPropagation();
+                skipSlotBtn.classList.toggle('active');
+                skipSlotBtn.title = skipSlotBtn.classList.contains('active')
+                    ? '슬롯 프롬프트 적용 제외됨 (클릭하여 해제)'
+                    : '슬롯 프롬프트 적용 제외 (Char 모드에서 이 캐릭터에 슬롯 프롬프트를 추가하지 않음)';
+                autoSaveSettings();
+            };
+
             // 프리셋 드롭다운
             const presetDropdown = document.createElement('div');
             presetDropdown.className = 'prompt-preset-dropdown';
@@ -11870,6 +11979,7 @@
             header.appendChild(charNum);
             header.appendChild(charName);
             header.appendChild(coordWrapper);
+            header.appendChild(skipSlotBtn);
             header.appendChild(presetDropdown);
             header.appendChild(deleteBtn);
 
@@ -11972,7 +12082,7 @@
             // 헤더 바 전체 클릭으로 접기/펴기
             header.addEventListener('click', (e) => {
                 // 체크박스, 프리셋, 삭제, 드래그 버튼, 이름 입력, 좌표 버튼 클릭은 무시
-                if (e.target.closest('.char-enable-toggle, .prompt-preset-dropdown, .delete-char-btn, .char-drag, .char-name, .char-coord-wrapper')) return;
+                if (e.target.closest('.char-enable-toggle, .prompt-preset-dropdown, .delete-char-btn, .char-drag, .char-name, .char-coord-wrapper, .char-skip-slot-btn')) return;
                 collapseBtn.classList.toggle('collapsed');
                 contentDiv.classList.toggle('collapsed');
                 autoSaveSettings();
@@ -12050,7 +12160,8 @@
                 .map(item => ({
                     prompt: item.querySelector('.char-prompt-textarea').value,
                     uc: item.querySelector('.char-uc-textarea').value || '',
-                    coord: item.dataset.coord || null
+                    coord: item.dataset.coord || null,
+                    skipSlotPrompt: item.querySelector('.char-skip-slot-btn')?.classList.contains('active') || false
                 }));
         }
 
@@ -12063,7 +12174,8 @@
                 height: item.querySelector('.char-prompt-textarea').style.height || null,
                 enabled: item.querySelector('.char-enable-toggle').checked,
                 name: item.querySelector('.char-name').value || '',
-                coord: item.dataset.coord || null
+                coord: item.dataset.coord || null,
+                skipSlotPrompt: item.querySelector('.char-skip-slot-btn')?.classList.contains('active') || false
             }));
         }
 
@@ -12126,7 +12238,8 @@
                     const collapsed = charData.collapsed || false;
                     const coord = charData.coord || null;
                     const uc = charData.uc || '';
-                    const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
+                    const skipSlotPrompt = charData.skipSlotPrompt || false;
+                    const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
                     if (height) {
                         item.querySelector('.char-prompt-textarea').style.height = height;
                     }
@@ -15133,12 +15246,12 @@
                             </select>
                             <div class="precise-ref-sliders">
                                 <div class="precise-ref-slider-group">
-                                    <label><span>Strength</span><span class="precise-ref-strength-value">${ref.strength}</span></label>
-                                    <input type="range" class="precise-ref-strength" data-idx="${idx}" value="${ref.strength}" min="0" max="1" step="0.05">
+                                    <label><span>Strength</span><span class="precise-ref-strength-value clickable-value" data-idx="${idx}" data-field="strength">${ref.strength}</span></label>
+                                    <input type="range" class="precise-ref-strength" data-idx="${idx}" value="${Math.min(1, Math.max(0, ref.strength))}" min="0" max="1" step="0.05">
                                 </div>
                                 <div class="precise-ref-slider-group">
-                                    <label><span>Fidelity</span><span class="precise-ref-fidelity-value">${ref.fidelity}</span></label>
-                                    <input type="range" class="precise-ref-fidelity" data-idx="${idx}" value="${ref.fidelity}" min="0" max="1" step="0.05">
+                                    <label><span>Fidelity</span><span class="precise-ref-fidelity-value clickable-value" data-idx="${idx}" data-field="fidelity">${ref.fidelity}</span></label>
+                                    <input type="range" class="precise-ref-fidelity" data-idx="${idx}" value="${Math.min(1, Math.max(0, ref.fidelity))}" min="0" max="1" step="0.05">
                                 </div>
                             </div>
                         </div>
@@ -15181,6 +15294,50 @@
                     preciseRefList[idx].fidelity = parseFloat(this.value);
                     this.closest('.precise-ref-slider-group').querySelector('.precise-ref-fidelity-value').textContent = this.value;
                     saveAppSettings();
+                };
+            });
+
+            // 클릭 가능한 값 (직접 입력)
+            container.querySelectorAll('.clickable-value').forEach(span => {
+                span.onclick = function() {
+                    const idx = parseInt(this.dataset.idx);
+                    const field = this.dataset.field;
+                    const currentValue = preciseRefList[idx][field];
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'inline-value-input';
+                    input.value = currentValue;
+                    input.step = '0.05';
+                    input.style.cssText = 'width: 50px; font-size: inherit; padding: 1px 4px; border-radius: 3px; border: 1px solid var(--accent); background: var(--bg-light); color: var(--text); text-align: right;';
+
+                    const spanRef = this;
+                    this.replaceWith(input);
+                    input.focus();
+                    input.select();
+
+                    const finishEdit = () => {
+                        let newValue = parseFloat(input.value);
+                        if (isNaN(newValue)) newValue = currentValue;
+                        preciseRefList[idx][field] = newValue;
+
+                        // 슬라이더는 0~1 범위로 클램프해서 업데이트
+                        const slider = container.querySelector(`.precise-ref-${field}[data-idx="${idx}"]`);
+                        if (slider) {
+                            slider.value = Math.min(1, Math.max(0, newValue));
+                            updateSliderFill(slider);
+                        }
+
+                        spanRef.textContent = newValue;
+                        input.replaceWith(spanRef);
+                        saveAppSettings();
+                    };
+
+                    input.onblur = finishEdit;
+                    input.onkeydown = (e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+                        if (e.key === 'Escape') { input.value = currentValue; input.blur(); }
+                    };
                 };
             });
 
@@ -16836,8 +16993,9 @@
                     const name = charData.name || '';
                     const coord = charData.coord || null;
                     const uc = charData.uc || '';
+                    const skipSlotPrompt = charData.skipSlotPrompt || false;
                     if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
+                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
                         if (height) {
                             item.querySelector('.char-prompt-textarea').style.height = height;
                         }
@@ -17821,8 +17979,9 @@
                     const name = charData.name || '';
                     const coord = charData.coord || null;
                     const uc = charData.uc || '';
+                    const skipSlotPrompt = charData.skipSlotPrompt || false;
                     if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc);
+                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
                         if (height) {
                             item.querySelector('.char-prompt-textarea').style.height = height;
                         }
@@ -19822,7 +19981,10 @@
             height: 0,
             scale: 1,       // 1 또는 1.5
             magnitude: 3,   // 1-5
-            slotIndex: 0    // 결과를 표시할 슬롯 인덱스
+            slotIndex: 0,   // 결과를 표시할 슬롯 인덱스
+            advancedMode: false,
+            strength: 0.5,
+            noise: 0
         };
 
         // Magnitude별 strength/noise 매핑
@@ -19849,6 +20011,9 @@
                 enhanceState.scale = 1;
                 enhanceState.magnitude = 3;
                 enhanceState.slotIndex = slotIndex;
+                enhanceState.advancedMode = false;
+                enhanceState.strength = 0.5;
+                enhanceState.noise = 0;
 
                 // 모달 UI 업데이트
                 document.getElementById('enhanceModalImg').src = img.src;
@@ -19856,6 +20021,17 @@
                 const magnitudeSlider = document.getElementById('enhanceModalMagnitudeSlider');
                 magnitudeSlider.value = 3;
                 updateSliderFill(magnitudeSlider);
+
+                // Advanced 모드 초기화
+                document.getElementById('enhanceMagnitudeSection').style.display = 'block';
+                document.getElementById('enhanceAdvancedSection').style.display = 'none';
+                document.getElementById('enhanceAdvancedToggle').textContent = 'Show Advanced';
+                document.getElementById('enhanceStrengthSlider').value = 0.5;
+                document.getElementById('enhanceNoiseSlider').value = 0;
+                document.getElementById('enhanceStrengthValue').textContent = '0.5';
+                document.getElementById('enhanceNoiseValue').textContent = '0';
+                updateSliderFill(document.getElementById('enhanceStrengthSlider'));
+                updateSliderFill(document.getElementById('enhanceNoiseSlider'));
 
                 // Large 이미지(1MP 초과)는 1.5x 비활성화 (NAI 제한)
                 const megapixels = (img.width * img.height) / 1000000;
@@ -19928,8 +20104,8 @@
             // Enhance 비용 계산: sidebar steps 사용, 해상도 * scale, magnitude별 strength
             const [w, h] = getEnhanceTargetSize();
             const steps = parseInt(document.getElementById('steps').value) || 28;
-            const preset = magnitudePresets[enhanceState.magnitude];
-            const strength = preset.strength;
+            // Advanced 모드면 직접 설정한 값, 아니면 preset 사용
+            const strength = enhanceState.advancedMode ? enhanceState.strength : magnitudePresets[enhanceState.magnitude].strength;
 
             try {
                 const response = await fetch(`${API_BASE}/api/nai/calculate-cost`, {
@@ -19972,7 +20148,9 @@
                 return;
             }
 
-            const preset = magnitudePresets[enhanceState.magnitude];
+            // Advanced 모드가 아니면 magnitude preset 사용
+            const strength = enhanceState.advancedMode ? enhanceState.strength : magnitudePresets[enhanceState.magnitude].strength;
+            const noise = enhanceState.advancedMode ? enhanceState.noise : magnitudePresets[enhanceState.magnitude].noise;
 
             // 목표 해상도 (1.5x면 NAI 지원 해상도로 스냅)
             const [w, h] = getEnhanceTargetSize();
@@ -20020,8 +20198,8 @@
                 variety_plus: normalized?.variety_plus || false,
                 base_image: imageBase64,
                 base_mode: 'img2img',
-                base_strength: preset.strength,
-                base_noise: preset.noise,
+                base_strength: strength,
+                base_noise: noise,
                 // 결과를 원본 슬롯에 표시
                 prompt_list: [{ name: '', content: '', slotIndex: enhanceState.slotIndex }],
                 // 저장 옵션 (자동저장 설정 반영)
@@ -20094,7 +20272,94 @@
             magnitudeSlider.addEventListener('input', () => {
                 enhanceState.magnitude = parseInt(magnitudeSlider.value);
                 document.getElementById('enhanceModalMagnitude').textContent = enhanceState.magnitude;
+                // Magnitude 변경 시 Advanced 모드가 아니면 strength/noise도 업데이트
+                if (!enhanceState.advancedMode) {
+                    const preset = magnitudePresets[enhanceState.magnitude];
+                    enhanceState.strength = preset.strength;
+                    enhanceState.noise = preset.noise;
+                }
                 updateEnhanceModalCost();
+            });
+
+            // Advanced 토글
+            document.getElementById('enhanceAdvancedToggle').addEventListener('click', () => {
+                enhanceState.advancedMode = !enhanceState.advancedMode;
+                const btn = document.getElementById('enhanceAdvancedToggle');
+                if (enhanceState.advancedMode) {
+                    document.getElementById('enhanceMagnitudeSection').style.display = 'none';
+                    document.getElementById('enhanceAdvancedSection').style.display = 'block';
+                    btn.textContent = 'Hide Advanced';
+                    // 현재 magnitude의 preset 값으로 슬라이더 초기화
+                    const preset = magnitudePresets[enhanceState.magnitude];
+                    document.getElementById('enhanceStrengthSlider').value = enhanceState.strength;
+                    document.getElementById('enhanceNoiseSlider').value = enhanceState.noise;
+                    document.getElementById('enhanceStrengthValue').textContent = enhanceState.strength;
+                    document.getElementById('enhanceNoiseValue').textContent = enhanceState.noise;
+                    updateSliderFill(document.getElementById('enhanceStrengthSlider'));
+                    updateSliderFill(document.getElementById('enhanceNoiseSlider'));
+                } else {
+                    document.getElementById('enhanceMagnitudeSection').style.display = 'block';
+                    document.getElementById('enhanceAdvancedSection').style.display = 'none';
+                    btn.textContent = 'Show Advanced';
+                    // Magnitude preset으로 복원
+                    const preset = magnitudePresets[enhanceState.magnitude];
+                    enhanceState.strength = preset.strength;
+                    enhanceState.noise = preset.noise;
+                }
+                updateEnhanceModalCost();
+            });
+
+            // Strength 슬라이더
+            const strengthSlider = document.getElementById('enhanceStrengthSlider');
+            strengthSlider.addEventListener('input', () => {
+                enhanceState.strength = parseFloat(strengthSlider.value);
+                document.getElementById('enhanceStrengthValue').textContent = enhanceState.strength;
+                updateEnhanceModalCost();
+            });
+
+            // Noise 슬라이더
+            const noiseSlider = document.getElementById('enhanceNoiseSlider');
+            noiseSlider.addEventListener('input', () => {
+                enhanceState.noise = parseFloat(noiseSlider.value);
+                document.getElementById('enhanceNoiseValue').textContent = enhanceState.noise;
+            });
+
+            // 클릭 가능한 값 (직접 입력)
+            document.querySelectorAll('.enhance-clickable-value').forEach(span => {
+                span.addEventListener('click', function() {
+                    const field = this.id === 'enhanceStrengthValue' ? 'strength' : 'noise';
+                    const currentValue = enhanceState[field];
+                    const slider = document.getElementById(field === 'strength' ? 'enhanceStrengthSlider' : 'enhanceNoiseSlider');
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.value = currentValue;
+                    input.step = '0.01';
+                    input.style.cssText = 'width: 50px; font-size: inherit; padding: 1px 4px; border-radius: 3px; border: 1px solid var(--accent); background: var(--bg-light); color: var(--text); text-align: right;';
+
+                    const spanRef = this;
+                    this.replaceWith(input);
+                    input.focus();
+                    input.select();
+
+                    const finishEdit = () => {
+                        let newValue = parseFloat(input.value);
+                        if (isNaN(newValue)) newValue = currentValue;
+                        if (newValue < 0) newValue = 0;
+                        enhanceState[field] = newValue;
+                        slider.value = Math.min(1, Math.max(0, newValue));
+                        updateSliderFill(slider);
+                        spanRef.textContent = newValue;
+                        input.replaceWith(spanRef);
+                        updateEnhanceModalCost();
+                    };
+
+                    input.addEventListener('blur', finishEdit);
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+                        if (e.key === 'Escape') { input.value = currentValue; input.blur(); }
+                    });
+                });
             });
 
             // 취소 버튼

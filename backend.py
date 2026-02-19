@@ -783,6 +783,7 @@ class CharacterPromptWithCoordSimple(BaseModel):
     prompt: str
     uc: str = ""  # 캐릭터별 네거티브 프롬프트
     coord: Optional[str] = None  # 'a1' ~ 'e5' 형식
+    skipSlotPrompt: bool = False  # 슬롯 프롬프트 적용 제외
 
 class GenerateRequest(BaseModel):
     provider: str = "nai"
@@ -2369,17 +2370,33 @@ async def process_job(job):
         # promptTarget에 따라 슬롯 프롬프트를 베이스 또는 캐릭터에 추가
         has_characters = bool(req.character_prompts_with_coords or req.character_prompts)
         if prompt_target == "char" and extra_prompt and has_characters:
-            # 캐릭터 프롬프트에 슬롯 태그 추가 (임시 복사본 사용)
+            # 캐릭터 프롬프트에 슬롯 태그 추가 (임시 복사본 사용, skipSlotPrompt 제외)
             full_prompt = req.base_prompt
             modified_char_prompts_with_coords = []
             for cp in req.character_prompts_with_coords:
-                modified_cp = CharacterPromptWithCoordSimple(
-                    prompt=f"{cp.prompt}, {extra_prompt}".strip(", ") if cp.prompt else extra_prompt,
-                    uc=cp.uc,
-                    coord=cp.coord
-                )
+                if cp.skipSlotPrompt:
+                    # 슬롯 프롬프트 적용 제외된 캐릭터는 원본 유지
+                    modified_cp = CharacterPromptWithCoordSimple(
+                        prompt=cp.prompt,
+                        uc=cp.uc,
+                        coord=cp.coord
+                    )
+                else:
+                    modified_cp = CharacterPromptWithCoordSimple(
+                        prompt=f"{cp.prompt}, {extra_prompt}".strip(", ") if cp.prompt else extra_prompt,
+                        uc=cp.uc,
+                        coord=cp.coord
+                    )
                 modified_char_prompts_with_coords.append(modified_cp)
-            modified_char_prompts = [f"{cp}, {extra_prompt}".strip(", ") if cp else extra_prompt for cp in req.character_prompts]
+            # flat list도 skipSlotPrompt 반영 (character_prompts_with_coords와 동일 순서)
+            modified_char_prompts = []
+            for i, cp in enumerate(req.character_prompts):
+                skip = (i < len(req.character_prompts_with_coords) and
+                        req.character_prompts_with_coords[i].skipSlotPrompt)
+                if skip:
+                    modified_char_prompts.append(cp)
+                else:
+                    modified_char_prompts.append(f"{cp}, {extra_prompt}".strip(", ") if cp else extra_prompt)
         else:
             # 기존 동작 유지: 슬롯 프롬프트를 베이스에 추가, 캐릭터는 원본 그대로
             full_prompt = f"{req.base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else req.base_prompt
@@ -7467,4 +7484,26 @@ if __name__ == "__main__":
         except:
             pass
 
-    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
+    except SystemExit as e:
+        if e.code in (1, 3):
+            # 포트 바인딩 실패 - Windows excluded port range 가능성 안내
+            print()
+            print("=" * 60)
+            print("  [ERROR] 포트 8765 바인딩에 실패했습니다.")
+            print()
+            print("  원인: Windows가 포트 8765를 임시 예약했을 수 있습니다.")
+            print("        (Hyper-V, WSL, Docker 등이 동적 포트를 예약)")
+            print()
+            print("  해결 방법:")
+            print("    1. 컴퓨터를 재시작하면 대부분 해결됩니다.")
+            print("    2. 또는 관리자 CMD에서 다음 명령어를 실행:")
+            print("       netsh int ipv4 add excludedportrange")
+            print("         protocol=tcp startport=8765")
+            print("         numberofports=1 store=persistent")
+            print("       (이후 재시작 필요)")
+            print("=" * 60)
+            input("\n계속하려면 아무 키나 누르십시오 . . . ")
+        else:
+            raise
