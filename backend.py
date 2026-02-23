@@ -1253,10 +1253,21 @@ async def call_nai_api(req: GenerateRequest):
         # V3 이하 모델은 NAI 서버가 처리
         negative_for_nai = req.negative_prompt
 
+    # NAI API는 64 배수 해상도만 지원 - 비정렬 값 유입 시 올림 조정 (NAI 웹과 동일)
+    import math
+    width = math.ceil(req.width / 64) * 64
+    height = math.ceil(req.height / 64) * 64
+    if width != req.width or height != req.height:
+        print(f"[NAI] Resolution aligned to 64: {req.width}x{req.height} -> {width}x{height}")
+    if width <= 0:
+        width = 832
+    if height <= 0:
+        height = 1216
+
     params = {
         "params_version": 3,
-        "width": req.width,
-        "height": req.height,
+        "width": width,
+        "height": height,
         "scale": req.cfg,
         "sampler": nai_sampler,
         "steps": req.steps,
@@ -1492,7 +1503,7 @@ async def call_nai_api(req: GenerateRequest):
     action = "generate"
     model_to_use = req.nai_model
     if req.base_image:
-        # 이미지를 PNG로 변환
+        # 이미지를 PNG로 변환 (NAI 서버가 내부적으로 width/height에 맞춰 리사이즈)
         base_png = ensure_png_base64(req.base_image)
         params["image"] = base_png
         params["strength"] = req.base_strength

@@ -12744,8 +12744,22 @@
             
             // 커스텀 해상도인 경우 기록
             const sizePresetValue = document.getElementById('sizePreset').value;
-            const currentWidth = parseInt(document.getElementById('width').value);
-            const currentHeight = parseInt(document.getElementById('height').value);
+            let currentWidth = parseInt(document.getElementById('width').value);
+            let currentHeight = parseInt(document.getElementById('height').value);
+
+            // NAI 모드에서 64 배수가 아니면 자동 조정 (Base Image 등에서 비정렬 값 유입 방지)
+            if (currentProvider === 'nai') {
+                const alignedW = alignTo64(currentWidth);
+                const alignedH = alignTo64(currentHeight);
+                if (currentWidth !== alignedW || currentHeight !== alignedH) {
+                    currentWidth = alignedW;
+                    currentHeight = alignedH;
+                    document.getElementById('width').value = alignedW;
+                    document.getElementById('height').value = alignedH;
+                    showToast(`해상도를 64 배수로 조정: ${alignedW}×${alignedH}`, 'info');
+                }
+            }
+
             if (sizePresetValue === 'custom' || sizePresetValue.startsWith('recent_')) {
                 addRecentCustomSize(currentWidth, currentHeight);
             }
@@ -14972,7 +14986,7 @@
         
         // 64 배수로 조정 (낮은 쪽으로 - 높은 쪽은 유료 재화 추가 소모 가능)
         function alignTo64(value) {
-            return Math.floor(value / 64) * 64;
+            return Math.ceil(value / 64) * 64;
         }
 
         // Width/Height 직접 수정 시 Custom으로 변경 + 64 배수 조정
@@ -19389,18 +19403,36 @@
             const img = new Image();
 
             img.onload = () => {
-                maskEditor.originalImage = img;
+                // NAI 모드: 64 배수가 아니면 Canvas로 리사이즈 (NAI 웹과 동일)
+                // 마스크가 리사이즈된 이미지 위에 그려져야 경계 아티팩트 방지
+                let sourceImage = img;
+                if (currentProvider === 'nai') {
+                    const alignedW = alignTo64(img.width);
+                    const alignedH = alignTo64(img.height);
+                    if (img.width !== alignedW || img.height !== alignedH) {
+                        const resizeCanvas = document.createElement('canvas');
+                        resizeCanvas.width = alignedW;
+                        resizeCanvas.height = alignedH;
+                        resizeCanvas.getContext('2d').drawImage(img, 0, 0, alignedW, alignedH);
+                        const resizedImg = new Image();
+                        resizedImg.src = resizeCanvas.toDataURL('image/png');
+                        sourceImage = resizedImg;
+                        sourceImage.width = alignedW;
+                        sourceImage.height = alignedH;
+                        console.log(`[MaskEditor] Resized image for NAI: ${img.width}x${img.height} -> ${alignedW}x${alignedH}`);
+                    }
+                }
+                maskEditor.originalImage = sourceImage;
 
-                // 원본 크기로 캔버스 설정 (축소/업스케일 없음)
                 // 디스플레이는 CSS로 조정
                 const maxWidth = window.innerWidth * 0.9;
                 const maxHeight = window.innerHeight * 0.65;
-                let displayScale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+                let displayScale = Math.min(maxWidth / sourceImage.width, maxHeight / sourceImage.height, 1);
                 maskEditor.scale = displayScale;
 
-                // 캔버스 실제 크기 = 원본 이미지 크기
-                const canvasWidth = img.width;
-                const canvasHeight = img.height;
+                // 캔버스 실제 크기 = (정렬된) 이미지 크기
+                const canvasWidth = sourceImage.width;
+                const canvasHeight = sourceImage.height;
 
                 // 디스플레이 크기 (CSS)
                 const displayWidth = Math.round(img.width * displayScale);
@@ -19791,9 +19823,14 @@
                 // 마스크 수정 버튼: inpaint 모드일 때만 표시
                 editMaskBtn.style.display = baseImageData.mode === 'inpaint' ? 'block' : 'none';
 
-                // 사이즈 동기화
-                document.getElementById('width').value = baseImageData.width;
-                document.getElementById('height').value = baseImageData.height;
+                // 사이즈 동기화 (NAI 모드에서 64 배수 정렬)
+                if (currentProvider === 'nai') {
+                    document.getElementById('width').value = alignTo64(baseImageData.width);
+                    document.getElementById('height').value = alignTo64(baseImageData.height);
+                } else {
+                    document.getElementById('width').value = baseImageData.width;
+                    document.getElementById('height').value = baseImageData.height;
+                }
             } else {
                 // 이미지가 없을 때: 드롭존 표시
                 dropZone.style.display = 'block';
