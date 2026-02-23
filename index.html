@@ -29,6 +29,8 @@
             --success: #4CAF82;
             --error: #E57373;
             --warning: #F5B942;
+            --success-hover: #3A9A6E;
+            --warning-hover: #E0A830;
 
             /* Spacing System - 일관된 간격 */
             --space-xs: 4px;
@@ -39,6 +41,7 @@
             --space-2xl: 24px;
 
             /* Border Radius - 통일 */
+            --radius-xs: 4px;
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 14px;
@@ -202,12 +205,12 @@
         .sidebar-content {
             flex: 1;
             overflow-y: auto;
-            padding: 16px 20px;
+            padding: var(--space-lg) var(--space-xl);
         }
 
 
         .sidebar-footer {
-            padding: 16px 20px;
+            padding: var(--space-lg) var(--space-xl);
             border-top: 1px solid var(--border);
         }
         
@@ -261,7 +264,7 @@
         .section-title .section-toggle {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--space-xs);
             font-size: 0.8rem;
             font-weight: 500;
             text-transform: none;
@@ -278,8 +281,8 @@
         }
 
         .subsection {
-            margin-bottom: 16px;
-            padding-bottom: 12px;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-md);
             border-bottom: 1px solid var(--border);
         }
 
@@ -295,13 +298,13 @@
             justify-content: space-between;
             font-size: 0.85rem;
             color: var(--text-dim);
-            margin-bottom: 8px;
+            margin-bottom: var(--space-sm);
         }
 
         .subsection-title .section-toggle {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--space-xs);
             font-size: 0.8rem;
             font-weight: 500;
             color: var(--text);
@@ -374,7 +377,7 @@
             left: 0;
             right: 0;
             height: 6px;
-            background: #243044;
+            background: var(--border);
             border-radius: 3px;
             pointer-events: none;
         }
@@ -382,7 +385,7 @@
             position: absolute;
             left: 0;
             height: 6px;
-            background: #4A7AB8;
+            background: var(--accent);
             border-radius: 3px;
             pointer-events: none;
             width: 0%;
@@ -409,7 +412,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: #4A7AB8;
+            background: var(--accent);
             cursor: pointer;
             border: none;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -423,7 +426,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: #4A7AB8;
+            background: var(--accent);
             cursor: pointer;
             border: none;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -436,7 +439,7 @@
             -webkit-appearance: none;
             appearance: none;
             height: 6px;
-            background: #243044;
+            background: var(--border);
             border-radius: 3px;
             cursor: pointer;
             padding: 0;
@@ -448,7 +451,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: #4A7AB8;
+            background: var(--accent);
             cursor: pointer;
             border: none;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -458,7 +461,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: #4A7AB8;
+            background: var(--accent);
             cursor: pointer;
             border: none;
         }
@@ -550,12 +553,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: var(--space-sm) var(--space-md);
+            padding: 6px var(--space-md);
             background: var(--bg-lighter);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             color: var(--text-dim);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
             transition: var(--transition-fast);
@@ -596,7 +599,7 @@
             z-index: 10000;
             background: var(--bg);
             border: 1px solid var(--accent);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             padding: 6px 10px;
             font-size: 0.85rem;
             color: var(--text);
@@ -607,8 +610,8 @@
             pointer-events: none;
         }
 
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+        .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md); }
         
         .size-row {
             display: flex;
@@ -691,7 +694,7 @@
         .checkbox-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             margin-bottom: 10px;
         }
         
@@ -716,11 +719,11 @@
         .characters-header {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             margin-bottom: 8px;
             padding: 8px 10px;
             margin: 0 -10px 8px -10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             transition: background 0.15s;
         }
@@ -743,7 +746,7 @@
             color: white;
             width: 22px;
             height: 22px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 1rem;
             line-height: 1;
@@ -786,7 +789,7 @@
         .character-item-header {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 0;
             user-select: none;
             height: 22px;
@@ -910,7 +913,7 @@
             top: 100%;
             left: 0;
             margin-top: 4px;
-            background: var(--bg-darker, #1a1a2e);
+            background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             padding: 8px;
@@ -921,7 +924,7 @@
         .coord-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
+            gap: var(--space-xs);
         }
 
         .coord-grid-cell {
@@ -969,7 +972,7 @@
             font-family: 'SF Mono', 'Consolas', monospace;
             background: rgba(245, 185, 66, 0.1);
             padding: 1px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
 
         .character-item .prompt-preset-btn {
@@ -1013,18 +1016,18 @@
         }
         .char-tab-btn.active {
             color: var(--text);
-            border-bottom-color: var(--primary);
+            border-bottom-color: var(--accent);
         }
         .char-tab-btn.uc-tab {
             color: var(--text-dim);
         }
         .char-tab-btn.uc-tab.has-content {
-            color: var(--error-light, #e57373);
+            color: var(--error);
             opacity: 0.7;
         }
         .char-tab-btn.uc-tab.active {
-            color: var(--error-light, #e57373);
-            border-bottom-color: var(--error-light, #e57373);
+            color: var(--error);
+            border-bottom-color: var(--error);
             opacity: 1;
         }
         .char-tab-btn .char-tab-delete {
@@ -1064,18 +1067,18 @@
         }
         .base-tab-btn.active {
             color: var(--text);
-            border-bottom-color: var(--primary);
+            border-bottom-color: var(--accent);
         }
         .base-tab-btn.negative-tab {
             color: var(--text-dim);
         }
         .base-tab-btn.negative-tab.has-content {
-            color: var(--error-light, #e57373);
+            color: var(--error);
             opacity: 0.7;
         }
         .base-tab-btn.negative-tab.active {
-            color: var(--error-light, #e57373);
-            border-bottom-color: var(--error-light, #e57373);
+            color: var(--error);
+            border-bottom-color: var(--error);
             opacity: 1;
         }
         .base-tab-content {
@@ -1120,7 +1123,7 @@
         }
 
         .character-item.disabled textarea {
-            background: var(--bg-tertiary);
+            background: var(--bg-lighter);
             color: var(--text-dim);
         }
 
@@ -1155,7 +1158,7 @@
         .char-placeholder {
             background: var(--bg-lighter);
             border: 2px dashed var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             margin: 3px 0;
         }
 
@@ -1167,7 +1170,7 @@
             margin-bottom: 4px;
             padding: 8px 10px;
             margin: 0 -10px 4px -10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             transition: background 0.15s;
         }
@@ -1184,7 +1187,7 @@
         .mode-toggle {
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             padding: 2px 6px;
             font-size: 1rem;
             cursor: pointer;
@@ -1249,7 +1252,7 @@
         }
         /* 섹션 타이틀 강조 */
         .section-title.setting-highlight {
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
 
         .prompt-preset-dropdown {
@@ -1261,7 +1264,7 @@
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 0.75rem;
             display: flex;
@@ -1332,7 +1335,7 @@
             padding: 3px 8px;
             font-size: 0.7rem;
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             background: var(--bg);
             color: var(--text);
@@ -1366,7 +1369,7 @@
             padding: 6px 10px;
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             font-size: 0.8rem;
             cursor: pointer;
@@ -1395,7 +1398,7 @@
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 0.7rem;
             display: flex;
@@ -1442,7 +1445,7 @@
         .char-preset-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: var(--space-sm) var(--space-sm);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             cursor: pointer;
@@ -1482,7 +1485,7 @@
             border: none;
             color: var(--text-dim);
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
 
         .char-preset-item .delete-btn:hover {
@@ -1502,7 +1505,7 @@
             padding: 6px 10px;
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             font-size: 0.8rem;
             cursor: pointer;
@@ -1555,8 +1558,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            border-bottom: 1px solid var(--border-dim);
+            gap: var(--space-sm);
+            border-bottom: 1px solid var(--border);
             transition: background 0.15s;
         }
 
@@ -1598,7 +1601,7 @@
         }
 
         .tag-autocomplete-item-badge.general {
-            background: var(--bg-tertiary);
+            background: var(--bg-lighter);
             color: var(--text-dim);
         }
 
@@ -1659,7 +1662,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: var(--bg-tertiary);
+            background-color: var(--bg-lighter);
             transition: background-color var(--transition-normal), border-color var(--transition-normal);
             border-radius: 24px;
             border: 1px solid var(--border);
@@ -1684,26 +1687,26 @@
 
         .toggle-switch input:checked + .toggle-slider:before {
             transform: translateX(20px);
-            background-color: #fff;
+            background-color: var(--text);
         }
 
         .toggle-switch input:focus + .toggle-slider {
             box-shadow: 0 0 0 2px var(--accent-gold-dim);
         }
 
-        /* 폴더 열기 아이콘 버튼 (작은 크기) */
-        .folder-btn {
-            padding: 4px 8px !important;
-            margin: 0 !important;
-            font-size: 0.9rem !important;
+        /* 폴더 열기 아이콘 버튼 - 사이드바 전용 (작은 크기) */
+        .sidebar .folder-btn {
+            padding: 4px 8px;
+            margin: 0;
+            font-size: 0.9rem;
             line-height: 1;
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             flex-shrink: 0;
         }
-        .folder-btn:hover {
+        .sidebar .folder-btn:hover {
             background: var(--bg-lighter);
         }
         
@@ -1711,7 +1714,7 @@
         .lora-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             margin-bottom: 8px;
         }
         
@@ -1724,9 +1727,9 @@
             padding: 4px 10px;
             font-size: 0.8rem;
             background: var(--accent-gold);
-            color: var(--bg-dark);
+            color: var(--bg);
             border: none;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
         }
         
@@ -1745,7 +1748,7 @@
             gap: 6px;
             padding: 6px 8px;
             background: var(--bg);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             margin-bottom: 4px;
         }
         
@@ -1775,7 +1778,7 @@
         
         .lora-slot .lora-remove-btn:hover {
             opacity: 1;
-            color: #ff6b6b;
+            color: var(--error);
         }
         
         .lora-empty {
@@ -1789,7 +1792,7 @@
         .vibe-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
         }
 
         .vibe-item {
@@ -1801,7 +1804,7 @@
         .vibe-item-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             margin-bottom: 8px;
         }
 
@@ -1809,7 +1812,7 @@
             width: 48px;
             height: 48px;
             object-fit: cover;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
         }
 
         .vibe-item-header .vibe-info {
@@ -1840,7 +1843,7 @@
         .nai-vibe-placeholder {
             width: 48px;
             height: 48px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
@@ -1850,7 +1853,7 @@
         }
 
         .vibe-cached-badge {
-            color: #4ade80;
+            color: var(--success);
             font-size: 0.7rem;
             margin-left: 4px;
         }
@@ -1864,7 +1867,7 @@
         .vibe-slider-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             font-size: 0.75rem;
         }
 
@@ -2053,12 +2056,12 @@
         .anlas-refresh:hover { opacity: 1; color: var(--text); }
 
         .free-tag {
-            background: #22c55e;
+            background: var(--success);
             color: white;
             font-size: 0.75rem;
             font-weight: 700;
             padding: 2px 5px;
-            border-radius: 3px;
+            border-radius: var(--radius-xs);
             margin-left: 4px;
         }
 
@@ -2125,9 +2128,9 @@
         }
 
         .btn-success {
-            background: #22c55e;
+            background: var(--success);
         }
-        .btn-success:hover { background: #16a34a; }
+        .btn-success:hover { background: var(--success-hover); }
 
         /* Enhance Modal Resolution Buttons */
         .enhance-res-btn {
@@ -2166,16 +2169,16 @@
         /* Inline button row (for vibe buttons, etc.) */
         .btn-row {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             margin-top: 8px;
         }
         .btn-row .btn {
             width: auto;
             margin-top: 0;
-            padding: 10px 16px;
+            padding: var(--space-md) var(--space-lg);
         }
         .btn-row .btn-icon {
-            padding: 10px 12px;
+            padding: var(--space-md) var(--space-md);
             flex-shrink: 0;
         }
         
@@ -2222,12 +2225,12 @@
         .toolbar-right {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             min-height: 32px;
         }
 
         .toolbar-label {
-            color: var(--text-muted);
+            color: var(--text-dim);
             font-size: 0.8rem;
             font-weight: 500;
             white-space: nowrap;
@@ -2238,9 +2241,9 @@
             border: none;
             color: white;
             padding: 6px 10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             line-height: 1;
             display: flex;
             align-items: center;
@@ -2255,16 +2258,16 @@
         .lock-all-btn {
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            color: var(--text-muted);
+            color: var(--text-dim);
             padding: 6px 10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             line-height: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.15s ease;
+            transition: all var(--transition-fast);
         }
 
         .lock-all-btn:hover {
@@ -2282,7 +2285,7 @@
         .slot-size-presets {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 0 4px;
         }
 
@@ -2290,8 +2293,8 @@
             background: var(--bg-lighter);
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 6px 10px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 0.8rem;
             font-family: monospace;
@@ -2310,16 +2313,11 @@
             font-weight: bold;
         }
 
-        .header-btn.icon-only {
-            padding: 6px 8px;
-            font-size: 1rem;
-        }
-        
         .header-btn {
             display: flex;
             align-items: center;
             gap: var(--space-xs);
-            padding: var(--space-sm) var(--space-md);
+            padding: 6px var(--space-md);
             background: var(--bg-lighter);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
@@ -2495,11 +2493,11 @@
         #censorTabProcessing.active {
             background: var(--accent-gold);
             border-color: var(--accent-gold);
-            color: #1a1a1a;
+            color: var(--bg);
         }
 
         .header-btn.icon-only {
-            padding: var(--space-sm) var(--space-sm);
+            padding: 6px var(--space-sm);
             font-size: 1rem;
         }
         
@@ -2598,7 +2596,7 @@
             cursor: pointer;
             opacity: 0.5;
             font-size: 0.85rem;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         
         .preset-item .edit-btn:hover,
@@ -2617,7 +2615,7 @@
             padding: 8px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
         }
         
         .preset-action-btn {
@@ -2625,7 +2623,7 @@
             padding: 8px 12px;
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             font-size: 0.85rem;
             cursor: pointer;
@@ -2733,7 +2731,7 @@
             padding: 8px 12px;
             background: var(--bg-lighter);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             font-size: 0.85rem;
             cursor: pointer;
@@ -2787,7 +2785,7 @@
         .slots-container {
             height: 100%;
             display: flex;
-            gap: 16px;
+            gap: var(--space-lg);
             padding: 16px;
             overflow-x: auto;
             overflow-y: hidden;
@@ -2801,7 +2799,7 @@
             max-width: 1200px;
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             display: flex;
             flex-direction: column;
             overflow: visible;  /* 리사이즈 핸들이 바깥에 표시되도록 */
@@ -2837,6 +2835,10 @@
 
         body.resizing-slot * {
             cursor: ew-resize !important;
+        }
+        body.resizing-slot .sidebar,
+        body.resizing-slot .sidebar-toggle-btn {
+            transition: none !important;
         }
 
         /* 슬롯 사이즈 조절 플로팅 바 */
@@ -2881,7 +2883,7 @@
         .slot-placeholder {
             background: var(--bg-lighter);
             border: 2px dashed var(--border);
-            border-radius: 10px;
+            border-radius: var(--radius-md);
             flex-shrink: 0;
         }
         
@@ -2905,7 +2907,7 @@
             font-family: monospace;
             background: var(--bg);
             padding: 4px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             flex-shrink: 0;
             line-height: 1;
             display: flex;
@@ -2913,9 +2915,9 @@
         }
         
         .slot-prompt-target-global {
-            font-size: 0.75rem;
-            padding: 4px 8px;
-            border-radius: 4px;
+            font-size: 0.8rem;
+            padding: 6px 8px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-weight: 600;
             border: 1px solid var(--border);
@@ -2969,7 +2971,7 @@
             padding: 2px 4px;
             font-size: 0.9rem;
             line-height: 1;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         
         .slot-drag:hover {
@@ -2989,7 +2991,7 @@
             padding: 2px 6px;
             font-size: 1.1rem;
             line-height: 1;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         
         .slot-delete:hover {
@@ -3005,7 +3007,7 @@
             padding: 2px 6px;
             font-size: 0.9rem;
             line-height: 1;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             opacity: 0.5;
         }
         .slot-lock:hover {
@@ -3110,7 +3112,7 @@
             width: 20px;
             height: 20px;
             background: rgba(40,167,69,0.85);
-            color: #fff;
+            color: var(--text);
             font-size: 12px;
             line-height: 20px;
             text-align: center;
@@ -3227,7 +3229,7 @@
             display: flex;
             flex-direction: row;
             align-items: flex-start;
-            gap: 12px;
+            gap: var(--space-md);
             max-height: 95vh;
             max-width: 98vw;
             margin-left: -160px;
@@ -3251,7 +3253,7 @@
             display: none;
             flex-direction: row;
             align-items: flex-start;
-            gap: 4px;
+            gap: var(--space-xs);
             max-height: 90vh;
             flex-shrink: 1;
             min-width: 0;
@@ -3283,7 +3285,7 @@
             overflow-x: hidden;
             display: none;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 6px;
             max-height: calc(100vh - 24px);
             scrollbar-width: thin;
@@ -3365,14 +3367,14 @@
             width: 100%;
             aspect-ratio: 1;
             border: 1px dashed rgba(255,255,255,0.15);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
 
         .lightbox-thumb {
             position: relative;
             width: 100%;
             border: 2px solid transparent;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             opacity: 0.5;
             transition: opacity 0.15s, border-color 0.15s;
@@ -3399,7 +3401,7 @@
             width: 16px;
             height: 16px;
             background: rgba(40,167,69,0.85);
-            color: #fff;
+            color: var(--text);
             font-size: 10px;
             line-height: 16px;
             text-align: center;
@@ -3411,7 +3413,7 @@
         .lightbox-actions {
             display: none;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-md);
             margin-top: 10px;
             padding: 6px 16px;
             background: rgba(30,30,30,0.85);
@@ -3423,11 +3425,11 @@
         .lightbox-btn {
             background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.2);
-            color: #fff;
+            color: var(--text);
             padding: 6px 14px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 13px;
+            font-size: 0.8rem;
             transition: background 0.15s, border-color 0.15s;
         }
 
@@ -3443,7 +3445,7 @@
 
         .lightbox-key {
             display: block;
-            font-size: 9px;
+            font-size: 0.55rem;
             opacity: 0.45;
             margin-top: 1px;
             letter-spacing: 0.5px;
@@ -3492,28 +3494,28 @@
         .drop-modal.active { display: flex; }
         .drop-modal-content {
             background: var(--bg-light);
-            border-radius: 16px;
-            padding: 24px;
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl);
             max-width: 650px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
         }
         .drop-modal-content h3 { margin: 0; }
-        .drop-modal-content .modal-header { margin-bottom: 16px; }
+        .drop-modal-content .modal-header { margin-bottom: var(--space-lg); }
         .drop-modal-content .modal-header h3 { font-size: 1.1rem; }
         .drop-modal-content .preview {
             max-width: 200px;
             max-height: 200px;
-            border-radius: 8px;
-            margin-bottom: 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
         }
         .drop-modal-content .metadata {
             background: var(--bg);
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-bottom: 16px;
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+            margin-bottom: var(--space-lg);
             max-height: none;
             overflow-y: visible;
         }
@@ -3538,7 +3540,7 @@
             border: none;
             cursor: pointer;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             font-size: 14px;
             color: var(--text-dim);
             transition: background 0.15s, color 0.15s;
@@ -3554,7 +3556,7 @@
             resize: vertical;
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             padding: 8px;
             font-size: 12px;
             font-family: inherit;
@@ -3578,43 +3580,43 @@
             margin-bottom: 0;
         }
         .drop-modal-content .nai-notice {
-            color: #4ade80;
+            color: var(--success);
             margin-top: 8px;
             font-size: 12px;
         }
-        .drop-modal-content .buttons { display: flex; gap: 12px; justify-content: flex-end; }
+        .drop-modal-content .buttons { display: flex; gap: var(--space-md); justify-content: flex-end; }
         .drop-modal-content .checkbox-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; color: var(--text-dim); font-size: 13px; cursor: pointer; }
         .drop-modal-content .checkbox-row input { margin: 0; }
         .drop-modal-content .buttons .btn {
             width: auto;
             flex: 1;
-            padding: 10px 16px;
+            padding: var(--space-md) var(--space-lg);
         }
 
         /* Drop Modal Buttons - Multi-row layout */
         #dropModalButtons {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: var(--space-md);
             width: 100%;
-            margin-top: 16px;
+            margin-top: var(--space-lg);
         }
         #dropModalButtons .btn-row {
             display: flex;
-            gap: 10px;
+            gap: var(--space-md);
             justify-content: center;
             width: 100%;
         }
         #dropModalButtons .btn-row .btn {
             flex: 1;
             min-width: 0;
-            padding: 12px 8px;
-            font-size: 13px;
+            padding: var(--space-md) var(--space-sm);
+            font-size: 0.8rem;
             white-space: nowrap;
         }
         #dropModalButtons .btn-row-actions {
             display: flex;
-            gap: 10px;
+            gap: var(--space-md);
             justify-content: center;
             margin-top: 4px;
             width: 100%;
@@ -3622,7 +3624,7 @@
         #dropModalButtons .btn-row-actions .btn {
             flex: 0 1 auto;
             min-width: 100px;
-            padding: 12px 20px;
+            padding: var(--space-md) var(--space-xl);
         }
 
         /* Mask Editor Modal */
@@ -3638,13 +3640,13 @@
         .mask-editor-modal.active { display: flex; }
         .mask-editor-container {
             background: var(--bg-light);
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
             max-width: 95vw;
             max-height: 95vh;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: var(--space-md);
         }
         .mask-editor-header {
             display: flex;
@@ -3657,8 +3659,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #1a1a1a;
-            border-radius: 8px;
+            background: var(--bg);
+            border-radius: var(--radius-md);
             overflow: hidden;
         }
         .mask-editor-canvas-wrapper canvas {
@@ -3673,35 +3675,35 @@
         }
         .mask-editor-toolbar {
             display: flex;
-            gap: 12px;
+            gap: var(--space-md);
             align-items: center;
             flex-wrap: wrap;
         }
         .mask-editor-toolbar .tool-group {
             display: flex;
-            gap: 4px;
+            gap: var(--space-xs);
             background: var(--bg);
-            padding: 4px;
-            border-radius: 8px;
+            padding: var(--space-xs);
+            border-radius: var(--radius-sm);
         }
         .mask-editor-toolbar .tool-btn {
-            padding: 8px 12px;
+            padding: 6px var(--space-md);
             border: none;
             background: transparent;
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.85rem;
         }
         .mask-editor-toolbar .tool-btn:hover { background: var(--border); }
-        .mask-editor-toolbar .tool-btn.active { background: var(--primary); color: white; }
+        .mask-editor-toolbar .tool-btn.active { background: var(--accent); color: white; }
         .mask-editor-toolbar .slider-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .mask-editor-toolbar .slider-group label {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-dim);
         }
         .mask-editor-toolbar .slider-group input[type="range"] {
@@ -3709,10 +3711,10 @@
         }
         .mask-editor-footer {
             display: flex;
-            gap: 12px;
+            gap: var(--space-md);
             justify-content: flex-end;
         }
-        .mask-editor-footer .btn { padding: 10px 20px; }
+        .mask-editor-footer .btn { width: auto; padding: var(--space-md) var(--space-xl); }
 
         /* Censor Mode Container - New Design */
         .censor-container {
@@ -3733,7 +3735,7 @@
         }
         .censor-thumbnails {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             overflow-x: auto;
             padding: 8px 0;
             scroll-behavior: smooth;
@@ -3743,7 +3745,7 @@
             flex-shrink: 0;
             width: 80px;
             height: 80px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             overflow: hidden;
             cursor: pointer;
             border: 2px solid transparent;
@@ -3769,12 +3771,12 @@
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.7);
             border: none;
-            color: #fff;
+            color: var(--text);
             font-size: 12px;
             line-height: 1;
             cursor: pointer;
             opacity: 0;
-            transition: opacity 0.15s ease;
+            transition: opacity var(--transition-fast);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -3791,7 +3793,7 @@
             flex-shrink: 0;
             width: 80px;
             height: 80px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             border: 2px dashed var(--border);
             background: var(--bg-lighter);
             cursor: pointer;
@@ -3799,7 +3801,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: var(--space-xs);
             transition: all 0.2s;
             color: var(--text-dim);
         }
@@ -3883,7 +3885,7 @@
             margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
         }
 
         /* 모델 선택 */
@@ -3891,7 +3893,7 @@
             width: 100%;
             height: 32px;
             padding: 0 8px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
@@ -3913,7 +3915,7 @@
             padding: 0 8px;
             height: 30px;
             background: var(--bg);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             border: 1px solid var(--border);
             font-size: 0.8rem;
             box-sizing: border-box;
@@ -3948,14 +3950,14 @@
         }
         .censor-side-targets .censor-target-item .censor-conf-input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         /* 검열 설정 */
         .censor-side-settings .side-setting-row {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
             margin-bottom: 10px;
         }
         .censor-side-settings .side-setting-row:last-child {
@@ -3966,14 +3968,14 @@
             color: var(--text-dim);
         }
         .censor-side-settings .side-setting-row label span {
-            color: var(--primary);
+            color: var(--accent);
             font-weight: 500;
         }
         .censor-side-settings select {
             width: 100%;
             height: 28px;
             padding: 0 8px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
@@ -3991,19 +3993,19 @@
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 0.8rem;
             text-align: left;
             transition: all 0.15s;
         }
         .side-tool-btn:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
             background: var(--bg-light);
         }
         .side-tool-btn.active {
-            border-color: var(--primary);
-            background: var(--primary);
+            border-color: var(--accent);
+            background: var(--accent);
             color: white;
         }
 
@@ -4011,14 +4013,14 @@
         .side-shortcuts-list {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
         }
         .shortcut-row {
             font-size: 0.75rem;
             color: var(--text-dim);
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
         }
         .shortcut-row kbd {
             background: var(--bg);
@@ -4035,15 +4037,15 @@
             padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
             border-top: 1px solid var(--border);
             background: var(--bg-light);
         }
         .censor-side-actions .btn {
             width: 100%;
-            padding: 10px 12px;
-            font-size: 0.85rem;
-            border-radius: 6px;
+            padding: var(--space-md) var(--space-md);
+            font-size: 0.8rem;
+            border-radius: var(--radius-sm);
         }
         .censor-side-actions .btn-secondary {
             background: var(--bg);
@@ -4188,7 +4190,7 @@
             display: none;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-md);
             color: rgba(100, 120, 160, 0.9);
             font-size: 0.9rem;
             pointer-events: none;
@@ -4227,7 +4229,7 @@
             color: white;
             cursor: pointer;
             opacity: 0.6;
-            transition: all 0.2s ease;
+            transition: all var(--transition-normal);
             backdrop-filter: blur(8px);
         }
         .censor-nav-arrow:hover {
@@ -4272,7 +4274,7 @@
         /* 단축키 안내 */
         .censor-shortcuts-guide {
             display: flex;
-            gap: 16px;
+            gap: var(--space-lg);
             flex-wrap: wrap;
             align-items: center;
             padding: 8px 0;
@@ -4287,7 +4289,7 @@
         .censor-shortcuts-guide kbd {
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             padding: 2px 8px;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.85rem;
@@ -4317,7 +4319,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 12px 16px;
             overflow-y: auto;
             overflow-x: hidden;
@@ -4367,7 +4369,7 @@
         }
         .censor-model-row select {
             padding: 0 10px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
@@ -4414,7 +4416,7 @@
         .censor-method-select select {
             height: 32px;
             padding: 0 10px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
@@ -4451,7 +4453,7 @@
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 0.9rem;
             line-height: 30px;
@@ -4459,7 +4461,7 @@
         }
         .censor-nav-info .nav-btn:hover,
         .nav-btn:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
             background: var(--bg-light);
         }
         .censor-nav-info .nav-btn:disabled,
@@ -4488,19 +4490,19 @@
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 0.8rem;
             height: 32px;
             line-height: 22px;
         }
         .censor-proc-tools .tool-btn:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .censor-proc-tools .tool-btn.active {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         
         /* 검열중 탭 - 방식 선택 */
@@ -4520,7 +4522,7 @@
         .censor-proc-method select {
             height: 32px;
             padding: 0 10px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
             border: 1px solid var(--border);
@@ -4541,21 +4543,26 @@
         .censor-after-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
-        
-        /* 편집 모달 (더 이상 사용 안함 - 검열후 탭에서 직접 편집) */
+
+        /* 편집 모달 (deprecated - 검열후 탭에서 직접 편집) */
         .censor-edit-modal {
-            display: none !important;
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10000;
+            background: var(--bg);
+            flex-direction: column;
         }
         .censor-edit-modal.show {
-            display: none !important;
+            display: flex;
         }
         .censor-edit-modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 20px;
+            padding: var(--space-md) var(--space-xl);
             background: var(--bg-light);
             border-bottom: 1px solid var(--border);
         }
@@ -4570,7 +4577,7 @@
             color: var(--text-dim);
             font-size: 1.5rem;
             cursor: pointer;
-            padding: 4px 8px;
+            padding: var(--space-xs) var(--space-sm);
         }
         .censor-edit-modal-close:hover {
             color: var(--text);
@@ -4580,7 +4587,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: var(--space-xl);
             overflow: hidden;
         }
         .censor-edit-modal-canvas-container {
@@ -4591,38 +4598,38 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 20px;
+            padding: var(--space-md) var(--space-xl);
             background: var(--bg-light);
             border-top: 1px solid var(--border);
-            gap: 16px;
+            gap: var(--space-lg);
         }
         .censor-edit-modal-tools {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .censor-edit-modal-tools .tool-btn {
-            padding: 8px 14px;
+            padding: 6px var(--space-md);
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
         .censor-edit-modal-tools .tool-btn:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .censor-edit-modal-tools .tool-btn.active {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .censor-edit-modal-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
         }
-        
+
         /* 감지 박스 스타일 */
         .censor-box {
             position: absolute;
@@ -4631,7 +4638,7 @@
             cursor: move;
         }
         .censor-box.selected {
-            border: 2px solid var(--primary);
+            border: 2px solid var(--accent);
             background: rgba(0, 122, 255, 0.1);
         }
         .censor-box .resize-handle {
@@ -4639,7 +4646,7 @@
             width: 10px;
             height: 10px;
             background: white;
-            border: 1px solid var(--primary);
+            border: 1px solid var(--accent);
         }
         .censor-box .resize-handle.nw { top: -5px; left: -5px; cursor: nw-resize; }
         .censor-box .resize-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
@@ -4665,7 +4672,7 @@
             max-height: 95vh;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: var(--space-md);
         }
         .censor-editor-header {
             display: flex;
@@ -4676,7 +4683,7 @@
         .censor-editor-header .header-right {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-md);
         }
         .censor-editor-header h3 { margin: 0; }
         .censor-editor-header .image-counter {
@@ -4684,27 +4691,27 @@
             color: var(--text-dim);
             padding: 4px 12px;
             background: var(--bg);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         .censor-editor-header .nav-btn {
             padding: 8px 16px;
             border: none;
             background: var(--bg);
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 1rem;
         }
         .censor-editor-header .nav-btn:hover { background: var(--border); }
         .censor-editor-toolbar {
             display: flex;
-            gap: 12px;
+            gap: var(--space-md);
             align-items: center;
             flex-wrap: wrap;
         }
         .censor-editor-toolbar .tool-group {
             display: flex;
-            gap: 4px;
+            gap: var(--space-xs);
             background: var(--bg);
             padding: 4px;
             border-radius: 8px;
@@ -4714,12 +4721,12 @@
             border: none;
             background: transparent;
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 0.9rem;
         }
         .censor-editor-toolbar .tool-btn:hover { background: var(--border); }
-        .censor-editor-toolbar .tool-btn.active { background: var(--primary); color: white; }
+        .censor-editor-toolbar .tool-btn.active { background: var(--accent); color: white; }
         .censor-editor-toolbar .tool-btn.fill-btn {
             width: 36px;
             padding: 8px;
@@ -4728,7 +4735,7 @@
         .censor-editor-toolbar .slider-group {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .censor-editor-toolbar .slider-group label {
             font-size: 0.85rem;
@@ -4742,8 +4749,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #1a1a1a;
-            border-radius: 8px;
+            background: var(--bg);
+            border-radius: var(--radius-md);
             overflow: hidden;
         }
         .censor-editor-canvas-wrapper canvas {
@@ -4758,15 +4765,15 @@
         .censor-editor-footer .footer-left,
         .censor-editor-footer .footer-right {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
         }
-        .censor-editor-footer .btn { padding: 10px 16px; }
+        .censor-editor-footer .btn { padding: var(--space-md) var(--space-lg); }
         .btn-warning {
-            background: #FF9800 !important;
+            background: var(--warning) !important;
             color: white !important;
         }
         .btn-warning:hover {
-            background: #F57C00 !important;
+            background: var(--warning-hover) !important;
         }
 
         /* Mode Toggle */
@@ -4842,13 +4849,13 @@
             display: flex;
             flex-direction: column;
             padding: 16px;
-            gap: 16px;
+            gap: var(--space-lg);
             overflow-y: auto;
         }
         .utility-side-section {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .utility-side-section .side-section-title {
             font-size: 0.85rem;
@@ -4953,7 +4960,7 @@
         .file-item {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-md);
             padding: 8px 12px;
             border-radius: var(--radius-md);
             transition: background 0.15s;
@@ -4964,7 +4971,7 @@
         .file-item-thumb {
             width: 40px;
             height: 40px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             object-fit: cover;
             flex-shrink: 0;
         }
@@ -5003,13 +5010,13 @@
         .utility-progress {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
             margin-top: 16px;
         }
         .utility-progress .progress-bar {
             height: 8px;
             background: var(--bg);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             overflow: hidden;
         }
         .utility-progress .progress-fill {
@@ -5028,7 +5035,7 @@
         .rename-input-row {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
             margin-bottom: 12px;
         }
         .rename-input-row label {
@@ -5043,7 +5050,7 @@
         .rename-preview {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 10px 12px;
             background: var(--bg);
             border-radius: var(--radius-md);
@@ -5123,7 +5130,7 @@
             align-items: center;
             justify-content: center;
             color: var(--text-dim);
-            gap: 8px;
+            gap: var(--space-sm);
             cursor: pointer;
         }
         .exif-drop-guide .dropzone-icon {
@@ -5142,13 +5149,13 @@
             display: flex;
             flex-direction: column;
             padding: 16px;
-            gap: 16px;
+            gap: var(--space-lg);
             overflow: hidden;
         }
         .exif-image-row {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: var(--space-md);
             flex-shrink: 0;
         }
         .exif-image-row img {
@@ -5161,7 +5168,7 @@
         .exif-image-info {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .exif-format {
             font-weight: 600;
@@ -5199,7 +5206,7 @@
         .exif-columns {
             flex: 1;
             display: flex;
-            gap: 16px;
+            gap: var(--space-lg);
             overflow: hidden;
         }
         .exif-column {
@@ -5226,7 +5233,7 @@
         .exif-field {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 8px 10px;
             background: var(--bg);
             border-radius: var(--radius-sm);
@@ -5305,7 +5312,7 @@
         .folder-item {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 8px 12px;
             border-radius: var(--radius-md);
             cursor: pointer;
@@ -5334,7 +5341,7 @@
             color: var(--text-dim);
             background: var(--bg);
             padding: 2px 6px;
-            border-radius: 10px;
+            border-radius: var(--radius-md);
         }
         .folder-item .folder-actions-menu {
             position: absolute;
@@ -5361,6 +5368,7 @@
             border-top: 1px solid var(--border);
         }
         .file-manager-main {
+            position: relative;
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -5379,14 +5387,14 @@
         .fm-toolbar-left {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             flex: 1;
             min-width: 0;
         }
         .fm-toolbar-right {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .fm-toolbar-divider {
             width: 1px;
@@ -5426,7 +5434,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, 120px);
             grid-auto-rows: 120px;
-            gap: 12px;
+            gap: var(--space-md);
             overflow-y: auto;
             padding: 8px;
             align-content: start;
@@ -5471,7 +5479,7 @@
             height: 22px;
             background: rgba(0, 0, 0, 0.5);
             border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -5526,14 +5534,14 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 8px;
             box-sizing: border-box;
         }
         .fm-folder-item:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
-            background: var(--bg-dark);
+            background: var(--bg);
         }
         .fm-folder-item.drag-over {
             background: rgba(99, 102, 241, 0.2);
@@ -5565,7 +5573,7 @@
             cursor: pointer;
         }
         .fm-list-folder:hover {
-            background: var(--bg-dark);
+            background: var(--bg);
         }
         .fm-list-folder.drag-over {
             background: rgba(99, 102, 241, 0.2);
@@ -5582,7 +5590,7 @@
             align-items: center;
             justify-content: center;
             color: var(--text-dim);
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .fm-empty-icon {
             font-size: 3rem;
@@ -5595,14 +5603,11 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
         .fm-load-more {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 16px 0;
             color: var(--text-dim);
             font-size: 0.85rem;
@@ -5633,9 +5638,6 @@
         }
 
         /* File Manager Convert Panel */
-        .file-manager-main {
-            position: relative;
-        }
         .fm-convert-toggle-wrapper {
             position: relative;
             flex-shrink: 0;
@@ -5675,7 +5677,7 @@
             border-left: 2px solid var(--accent);
             display: flex;
             flex-direction: column;
-            transition: width 0.2s ease;
+            transition: width var(--transition-normal);
             box-shadow: -4px 0 12px rgba(0, 0, 0, 0.15);
         }
         .file-manager-content-wrapper.panel-open .fm-convert-panel {
@@ -5824,8 +5826,8 @@
             border-radius: var(--radius-sm);
         }
         .fm-convert-file-item-remove:hover {
-            background: var(--bg-hover);
-            color: var(--danger);
+            background: var(--bg-lighter);
+            color: var(--error);
         }
         .fm-convert-settings {
             flex: 1;
@@ -5833,14 +5835,14 @@
             padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-sm);
             background: var(--bg);
             border-top: 1px solid var(--border);
         }
         .fm-convert-setting-group {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
         }
         .fm-convert-setting-group > label {
             font-size: 0.85rem;
@@ -5848,7 +5850,7 @@
         }
         .fm-convert-format-btns {
             display: flex;
-            gap: 4px;
+            gap: var(--space-xs);
         }
         .fm-convert-format-btns .format-btn {
             flex: 1;
@@ -5862,7 +5864,7 @@
             transition: all 0.15s;
         }
         .fm-convert-format-btns .format-btn:hover {
-            background: var(--bg-hover);
+            background: var(--bg-lighter);
         }
         .fm-convert-format-btns .format-btn.active {
             background: var(--accent);
@@ -5878,7 +5880,7 @@
         .fm-convert-rename-options {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 6px 8px;
             background: var(--bg-light);
             border-radius: var(--radius-sm);
@@ -5887,7 +5889,7 @@
         .fm-convert-rename-options .rename-option-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .fm-convert-rename-options .rename-option-row label {
             font-size: 0.75rem;
@@ -6000,7 +6002,7 @@
         .fm-modal-buttons {
             display: flex;
             justify-content: flex-end;
-            gap: 8px;
+            gap: var(--space-sm);
         }
         .fm-modal-message {
             font-size: 0.9rem;
@@ -6041,7 +6043,7 @@
         .folder-tree-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 6px 8px;
             border-radius: var(--radius-md);
             cursor: pointer;
@@ -6177,7 +6179,7 @@
             flex: 1;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             overflow: hidden;
         }
         .fm-list-row .fm-col-name .fm-list-thumb {
@@ -6282,10 +6284,10 @@
             padding: 6px 12px;
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             transition: all 0.2s;
             white-space: nowrap;
         }
@@ -6311,9 +6313,9 @@
             border: none;
             color: white;
             padding: 6px 10px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             line-height: 1;
             display: flex;
             align-items: center;
@@ -6333,7 +6335,7 @@
             padding: 6px 10px;
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             cursor: pointer;
             font-size: 1rem;
@@ -6346,7 +6348,7 @@
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px;
+            gap: var(--space-xl);
             width: 100%;
             align-items: start;
             align-content: start;
@@ -6403,7 +6405,7 @@
             font-size: 0.85rem;
             padding: 2px 6px;
             border: 1px solid var(--accent-gold);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg);
             color: var(--text);
         }
@@ -6431,7 +6433,7 @@
         }
         .gallery-item-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 8px 12px 12px;
         }
         .gallery-item-actions button {
@@ -6441,12 +6443,12 @@
             border: 1px solid var(--border);
             background: var(--bg);
             color: var(--text);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
         }
         .gallery-item-actions button:hover {
-            background: var(--primary);
-            border-color: var(--primary);
+            background: var(--accent);
+            border-color: var(--accent);
             color: white;
         }
         .gallery-empty {
@@ -6504,16 +6506,16 @@
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 12px;
             flex-shrink: 0;
             transition: all 0.2s;
         }
         .slot-image-card .load-settings-btn:hover {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .slot-image-card .inpaint-btn:hover {
             background: #9b59b6;
@@ -6528,7 +6530,7 @@
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 12px;
             flex-shrink: 0;
@@ -6557,16 +6559,16 @@
             50% { opacity: 0.6; }
         }
         .slot-image-card .clear-card-btn:hover {
-            background: var(--danger);
+            background: var(--error);
             color: white;
-            border-color: var(--danger);
+            border-color: var(--error);
         }
         .slot-image-card .delete-file-btn {
             background: var(--bg-lighter);
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 12px;
             flex-shrink: 0;
@@ -6582,16 +6584,16 @@
             border: 1px solid var(--border);
             color: var(--text-dim);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 12px;
             flex-shrink: 0;
             transition: all 0.2s;
         }
         .slot-image-card .save-preview-btn:hover {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .slot-image-card .filename.unsaved {
             color: var(--text-dim);
@@ -6613,8 +6615,8 @@
         
         .modal-content {
             background: var(--bg-light);
-            border-radius: 16px;
-            padding: 24px;
+            border-radius: var(--radius-lg);
+            padding: var(--space-2xl);
             width: 90%;
             max-width: 500px;
             max-height: 80vh;
@@ -6625,7 +6627,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: var(--space-lg);
         }
         
         .modal-header h2 {
@@ -6638,14 +6640,19 @@
             color: var(--text-dim);
             font-size: 1.5rem;
             cursor: pointer;
+            padding: var(--space-xs) var(--space-sm);
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: var(--text);
         }
         
         .input-group {
-            margin-bottom: 16px;
+            margin-bottom: var(--space-lg);
         }
-        
+
         .input-group label {
-            margin-bottom: 6px;
+            margin-bottom: var(--space-xs);
         }
         
         .input-group small {
@@ -6665,7 +6672,7 @@
         }
         
         .status-badge.success {
-            background: rgba(34, 197, 94, 0.2);
+            background: rgba(76, 175, 130, 0.2);
             color: var(--success);
         }
         
@@ -6678,10 +6685,10 @@
         .local-env-status {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 8px 12px;
             background: var(--bg-lighter);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             margin-top: 6px;
         }
         
@@ -6690,7 +6697,7 @@
         }
         
         .local-env-status.installed {
-            background: rgba(34, 197, 94, 0.15);
+            background: rgba(76, 175, 130, 0.15);
             color: var(--success);
         }
         
@@ -6720,14 +6727,14 @@
             flex: 1;
             height: 8px;
             background: var(--bg-lighter);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             overflow: hidden;
         }
         
         .local-env-progress-fill {
             height: 100%;
             background: var(--accent);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             transition: width 0.3s ease;
             width: 0%;
         }
@@ -6817,7 +6824,7 @@
             font-size: 1.5rem;
             cursor: pointer;
             padding: 4px 8px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         .pm-close-btn:hover {
             background: var(--bg-light);
@@ -6826,7 +6833,7 @@
 
         .pm-tabs {
             display: flex;
-            gap: 4px;
+            gap: var(--space-xs);
             padding: 12px 20px;
             border-bottom: 1px solid var(--border);
         }
@@ -6834,7 +6841,7 @@
             padding: 8px 16px;
             background: transparent;
             border: 1px solid transparent;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text-dim);
             cursor: pointer;
             font-size: 0.9rem;
@@ -6845,14 +6852,14 @@
             color: var(--text);
         }
         .pm-tab-btn.active {
-            background: var(--primary);
+            background: var(--accent);
             color: white;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         .pm-toolbar {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 12px 20px;
             border-bottom: 1px solid var(--border);
             flex-wrap: wrap;
@@ -6861,18 +6868,18 @@
             padding: 6px 12px;
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             color: var(--text);
             cursor: pointer;
             font-size: 0.85rem;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-xs);
             transition: all 0.2s;
         }
         .pm-toolbar-btn:hover {
             background: var(--bg-lighter);
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
         .pm-toolbar-btn:disabled {
             opacity: 0.5;
@@ -6895,7 +6902,7 @@
         .pm-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            gap: var(--space-lg);
             flex: 1;
             overflow: hidden;
             padding: 16px 20px;
@@ -6913,7 +6920,7 @@
         .pm-list-header {
             display: grid;
             grid-template-columns: 32px 32px 1fr 60px 80px;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 8px 12px;
             background: var(--bg);
             border-bottom: 1px solid var(--border);
@@ -6930,7 +6937,7 @@
         .pm-list-item {
             display: grid;
             grid-template-columns: 32px 32px 1fr 60px 80px;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 10px 12px;
             border-bottom: 1px solid var(--border);
             align-items: center;
@@ -6942,7 +6949,7 @@
         }
         .pm-list-item.selected {
             background: rgba(108, 92, 231, 0.15);
-            border-left: 3px solid var(--primary);
+            border-left: 3px solid var(--accent);
         }
         .pm-list-item.modified .pm-preset-name {
             color: var(--warning, #f59e0b);
@@ -6988,7 +6995,7 @@
 
         .pm-detail-header {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 12px;
             border-bottom: 1px solid var(--border);
             align-items: center;
@@ -6997,14 +7004,14 @@
             flex: 1;
             padding: 8px 12px;
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             background: var(--bg);
             color: var(--text);
             font-size: 0.9rem;
         }
         .pm-detail-header input:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         .pm-detail-body {
@@ -7024,7 +7031,7 @@
 
         .pm-detail-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--space-sm);
             padding: 12px;
             border-top: 1px solid var(--border);
         }
@@ -7032,7 +7039,7 @@
         /* 리스트 항목 액션 버튼 */
         .pm-item-actions {
             display: flex;
-            gap: 4px;
+            gap: var(--space-xs);
             justify-content: flex-end;
         }
         .pm-item-action-btn {
@@ -7041,7 +7048,7 @@
             color: var(--text-dim);
             cursor: pointer;
             padding: 4px 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             font-size: 0.85rem;
             transition: all 0.15s;
         }
@@ -7061,7 +7068,7 @@
             min-width: 28px;
             height: 24px;
             padding: 0 6px;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             font-size: 0.85rem;
             line-height: 1;
@@ -7096,7 +7103,7 @@
         .pm-prompt-preset-content {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: var(--space-md);
             height: 100%;
         }
         .pm-prompt-textarea {
@@ -7105,7 +7112,7 @@
             width: 100%;
             padding: 12px;
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             background: var(--bg);
             color: var(--text);
             font-size: 0.9rem;
@@ -7115,7 +7122,7 @@
         }
         .pm-prompt-textarea:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         .pm-char-item, .pm-slot-item {
@@ -7150,7 +7157,7 @@
             font-size: 0.75rem;
             padding: 2px 4px;
             user-select: none;
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
         }
         .pm-item-drag-handle:hover {
             background: var(--bg);
@@ -7164,8 +7171,8 @@
         }
         .pm-item-placeholder {
             background: var(--bg-lighter);
-            border: 2px dashed var(--primary);
-            border-radius: 6px;
+            border: 2px dashed var(--accent);
+            border-radius: var(--radius-sm);
             margin-bottom: 8px;
         }
         .pm-char-item-content textarea, .pm-slot-item-content textarea {
@@ -7173,7 +7180,7 @@
             min-height: 50px;
             padding: 8px;
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             background: var(--bg-light);
             color: var(--text);
             font-size: 0.85rem;
@@ -7183,7 +7190,7 @@
         }
         .pm-char-item-content textarea:focus, .pm-slot-item-content textarea:focus {
             outline: none;
-            border-color: var(--primary);
+            border-color: var(--accent);
         }
 
         /* 프리셋 매니저 - 항목 헤더 스타일 (기존 슬롯 UI와 동일) */
@@ -7203,7 +7210,7 @@
             flex: none;
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             padding: 4px 6px;
             margin: 0;
             font-size: 0.8rem;
@@ -7224,7 +7231,7 @@
         .pm-coord-btn {
             background: var(--bg);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             padding: 4px 8px;
             font-size: 0.75rem;
             color: var(--text-dim);
@@ -7234,16 +7241,16 @@
             min-width: 36px;
         }
         .pm-coord-btn:hover {
-            border-color: var(--primary);
+            border-color: var(--accent);
             color: var(--text);
         }
         .pm-coord-btn.active {
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--accent);
+            color: var(--accent);
             background: rgba(108, 92, 231, 0.1);
         }
         .pm-coord-popup {
-            background: var(--bg-darker, #1a1a2e);
+            background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 8px;
@@ -7253,14 +7260,14 @@
         .pm-coord-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
+            gap: var(--space-xs);
         }
         .pm-coord-cell {
             width: 32px;
             height: 32px;
             background: var(--bg-light);
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -7273,13 +7280,13 @@
         }
         .pm-coord-cell:hover {
             background: var(--bg-lighter);
-            border-color: var(--primary);
+            border-color: var(--accent);
             color: var(--text);
         }
         .pm-coord-cell.selected {
             background: rgba(108, 92, 231, 0.2);
-            border-color: var(--primary);
-            color: var(--primary);
+            border-color: var(--accent);
+            color: var(--accent);
         }
         button.pm-coord-clear {
             display: block;
@@ -7288,7 +7295,7 @@
             padding: 4px 12px;
             background: transparent;
             border: 1px solid var(--border);
-            border-radius: 4px;
+            border-radius: var(--radius-xs);
             font-size: 0.75rem;
             color: var(--text-dim);
             cursor: pointer;
@@ -7306,23 +7313,228 @@
 
         .pm-list-placeholder {
             background: var(--bg-lighter);
-            border: 2px dashed var(--primary);
-            border-radius: 4px;
+            border: 2px dashed var(--accent);
+            border-radius: var(--radius-xs);
         }
+
+        /* ── Utility & Component Classes ── */
+
+        /* Loading overlay */
+        .app-loading-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+        .app-loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .app-loading-text {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        /* Logo */
+        .logo img { width: 42px; height: 42px; }
+
+        /* Preview containers (base image, enhance modal) */
+        .preview-box {
+            background: var(--bg);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .preview-box-sm { flex: 0 0 120px; height: 120px; }
+        .preview-box-md { flex: 0 0 150px; height: 150px; }
+        .preview-box img {
+            max-width: 100%; max-height: 100%;
+            object-fit: contain;
+        }
+        .preview-mask-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        /* Section hint (small description under toggle) */
+        .section-hint {
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: var(--space-sm);
+        }
+
+        /* Range slider value labels row */
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        /* Settings toggle row (toggle switch + description) */
+        .settings-toggle-row {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+        .settings-toggle-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .settings-toggle-title {
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Modal size variants */
+        .drop-modal-content.modal-sm,
+        .modal-content.modal-sm { max-width: 400px; }
+        .drop-modal-content.modal-md,
+        .modal-content.modal-md { max-width: 450px; }
+        .drop-modal-content.modal-lg,
+        .modal-content.modal-lg { max-width: 500px; }
+
+        /* Horizontal divider */
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: var(--space-lg) 0;
+        }
+
+        /* Modal button row */
+        .modal-btn-row {
+            display: flex;
+            gap: var(--space-sm);
+            margin-top: var(--space-lg);
+        }
+
+        /* Modal description & note text */
+        .modal-desc {
+            color: var(--text-dim);
+            margin-bottom: var(--space-lg);
+        }
+        .modal-note {
+            display: block;
+            margin-top: var(--space-md);
+            color: var(--text-dim);
+        }
+
+        /* Modal text input */
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-light);
+            color: var(--text);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* Base image section */
+        .base-image-dropzone {
+            text-align: center;
+            padding: var(--space-md);
+        }
+        .base-image-dropzone-hint {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            margin-top: 6px;
+        }
+        .base-image-layout {
+            display: flex;
+            gap: var(--space-md);
+            align-items: flex-start;
+        }
+
+        /* Enhance modal layout */
+        .enhance-layout {
+            display: flex;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* Generate button row */
+        .generate-row {
+            display: flex;
+            margin-bottom: var(--space-sm);
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        /* Volume label */
+        .vol-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* Checkbox row with top separator */
+        .checkbox-row.checkbox-row-separated {
+            border-top: 1px solid var(--border);
+            margin-top: var(--space-sm);
+            padding-top: var(--space-sm);
+        }
+
+        /* Vibe cache info bar */
+        #vibeCacheInfo {
+            font-size: 12px;
+            margin-bottom: var(--space-sm);
+            padding: var(--space-xs) var(--space-sm);
+            background: rgba(0,0,0,0.2);
+            border-radius: var(--radius-sm);
+        }
+
+        /* Section title annotation */
+        .section-title-note {
+            font-weight: normal;
+            text-transform: none;
+            letter-spacing: 0;
+            opacity: 0.7;
+        }
+
+        /* Flex label (space-between) */
+        .label-flex {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Tool separator (vertical pipe) */
+        .tool-separator {
+            color: var(--border);
+            margin: 0 var(--space-sm);
+        }
+
+        /* Global: range inputs fill width */
+        input[type="range"] { width: 100%; }
     </style>
 </head>
 <body>
     <!-- 초기화 완료 전 로딩 오버레이 -->
-    <div id="appLoadingOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-primary, #1a1a2e); z-index: 99999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;">
-        <div style="width: 40px; height: 40px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary, #6c5ce7); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-        <div style="color: #888; font-size: 14px;">Loading...</div>
+    <div id="appLoadingOverlay" class="app-loading-overlay">
+        <div class="app-loading-spinner"></div>
+        <div class="app-loading-text">Loading...</div>
     </div>
-    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
     <div class="app">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo"><img src="assets/icon.png" alt="" style="width: 42px; height: 42px;"> PeroPix</div>
+                <div class="logo"><img src="assets/icon.png" alt=""> PeroPix</div>
                 <button class="settings-btn" onclick="openSettings()">
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -7459,7 +7671,7 @@
                         <div class="section-title">
                             <button type="button" class="collapse-toggle" data-target="vibeCharRefContent" title="접기/펼치기">▼</button>
                             <span>Vibe / Character Ref</span>
-                            <small style="font-weight: normal; text-transform: none; letter-spacing: 0; opacity: 0.7;">(택1)</small>
+                            <small class="section-title-note">(택1)</small>
                         </div>
                         <div id="vibeCharRefContent" class="collapsible-content">
                             <!-- Vibe Transfer -->
@@ -7473,11 +7685,11 @@
                                 </div>
 
                                 <div id="vibeTransferSettings" style="display: none;">
-                                    <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
+                                    <small class="section-hint">
                                         최대 16개 이미지. 강도 합계가 1.0 이하가 되도록 권장.
                                     </small>
 
-                                    <div id="vibeCacheInfo" style="display: none; font-size: 12px; margin-bottom: 8px; padding: 4px 8px; background: rgba(0,0,0,0.2); border-radius: 4px;"></div>
+                                    <div id="vibeCacheInfo" style="display: none;"></div>
 
                                     <div id="vibeList" class="vibe-list"></div>
 
@@ -7503,7 +7715,7 @@
                                 </div>
 
                                 <div id="preciseRefSettings" style="display: none;">
-                                    <small style="color: var(--text-dim); display: block; margin-bottom: 8px;">
+                                    <small class="section-hint">
                                         V4.5 전용. Vibe Transfer와 동시 사용 불가. 레퍼런스당 5 Anlas.
                                     </small>
 
@@ -7596,8 +7808,8 @@
                                 <div class="row">
                                     <div style="flex: 1;">
                                         <label>Denoise</label>
-                                        <input type="range" id="upscaleDenoise" value="0.5" min="0.1" max="1.0" step="0.05" style="width: 100%;">
-                                        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                                        <input type="range" id="upscaleDenoise" value="0.5" min="0.1" max="1.0" step="0.05">
+                                        <div class="range-labels">
                                             <span>0.1</span>
                                             <span id="upscaleDenoiseValue">0.5</span>
                                             <span>1.0</span>
@@ -7630,8 +7842,8 @@
                             <div class="row" style="margin-top: 8px;">
                                 <div style="flex: 1;">
                                     <label>Intensity</label>
-                                    <input type="range" id="lutIntensity" value="1.0" min="0.0" max="1.0" step="0.05" style="width: 100%;">
-                                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                                    <input type="range" id="lutIntensity" value="1.0" min="0.0" max="1.0" step="0.05">
+                                    <div class="range-labels">
                                         <span>0</span>
                                         <span id="lutIntensityValue">1.0</span>
                                         <span>1</span>
@@ -7656,19 +7868,19 @@
                     </div>
                     <div id="baseImageContent" class="collapsible-content">
                         <!-- 이미지가 없을 때: 파일 선택 버튼 -->
-                        <div id="baseImageDropZone" style="text-align: center; padding: 12px;">
+                        <div id="baseImageDropZone" class="base-image-dropzone">
                             <button type="button" class="btn" id="baseImageSelectBtn" style="width: 100%;">📷 이미지 선택</button>
-                            <div style="color: var(--text-dim); font-size: 0.75rem; margin-top: 6px;">
+                            <div class="base-image-dropzone-hint">
                                 또는 슬롯/갤러리에서 🎨 Inpaint / ✨ Enhance 사용
                             </div>
                             <input type="file" id="baseImageFileInput" accept="image/*" style="display: none;">
                         </div>
                         <!-- 이미지가 있을 때: 프리뷰 및 설정 -->
                         <div id="baseImageSettings" style="display: none;">
-                            <div style="display: flex; gap: 12px; align-items: flex-start;">
-                                <div id="baseImagePreview" style="flex: 0 0 120px; height: 120px; background: var(--bg); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
-                                    <img id="baseImageImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                                    <div id="baseImageMaskOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.5; pointer-events: none;"></div>
+                            <div class="base-image-layout">
+                                <div id="baseImagePreview" class="preview-box preview-box-sm">
+                                    <img id="baseImageImg" src="">
+                                    <div id="baseImageMaskOverlay" class="preview-mask-overlay"></div>
                                 </div>
                                 <div style="flex: 1;">
                                     <div class="row" style="margin-bottom: 8px;">
@@ -7682,11 +7894,11 @@
                                     </div>
                                     <div style="margin-bottom: 8px;">
                                         <label><span id="baseImageStrengthLabel">Strength</span>: <span id="baseImageStrengthValue">0.7</span></label>
-                                        <input type="range" id="baseImageStrength" min="0" max="1" step="0.05" value="0.7" style="width: 100%;">
+                                        <input type="range" id="baseImageStrength" min="0" max="1" step="0.05" value="0.7">
                                     </div>
                                     <div id="baseImageNoiseContainer">
                                         <label>Noise: <span id="baseImageNoiseValue">0</span></label>
-                                        <input type="range" id="baseImageNoise" min="0" max="1" step="0.05" value="0" style="width: 100%;">
+                                        <input type="range" id="baseImageNoise" min="0" max="1" step="0.05" value="0">
                                     </div>
                                     <button type="button" class="btn" id="editMaskBtn" style="margin-top: 8px; width: 100%; display: none;">🎨 마스크 수정</button>
                                 </div>
@@ -7834,12 +8046,12 @@
                             <input type="checkbox" id="excludeSlotNumber">
                             <label for="excludeSlotNumber">슬롯 번호 제외</label>
                         </div>
-                        <div class="checkbox-row" style="border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px;">
+                        <div class="checkbox-row checkbox-row-separated">
                             <input type="checkbox" id="notifySoundOnComplete">
                             <label for="notifySoundOnComplete" style="flex: 1;">🔔 큐 완료 알림</label>
-                            <span style="font-size: 0.8rem; color: var(--text-dim);">vol</span>
+                            <span class="vol-label">vol</span>
                             <input type="text" id="notifySoundVolume" value="50" style="width: 50px; padding: 4px 6px; margin: 0; text-align: center;" title="볼륨 (1-100)">
-                            <span style="font-size: 0.8rem; color: var(--text-dim);">%</span>
+                            <span class="vol-label">%</span>
                         </div>
                     </div>
                 </div>
@@ -7862,11 +8074,11 @@
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
 
-                <div style="display: flex; margin-bottom: 8px; align-items: center; gap: 8px;">
+                <div class="generate-row">
                     <div style="flex: 1;">
                         <button class="btn" id="generateBtn">Queue (0)</button>
                     </div>
-                    <span style="color: var(--text-dim); font-size: 0.9rem;">×</span>
+                    <span class="vol-label">×</span>
                     <div style="width: 60px;">
                         <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="반복 횟수">
                     </div>
@@ -8129,21 +8341,21 @@
                                     <span>확장</span>
                                     <span id="censorExpandValue" style="font-weight: 500;">0</span>
                                 </label>
-                                <input type="range" id="censorExpandPixels" min="0" max="50" value="0" style="width: 100%;">
+                                <input type="range" id="censorExpandPixels" min="0" max="50" value="0">
                             </div>
                             <div class="side-setting-row">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">
                                     <span>부드럽게</span>
                                     <span id="censorFeatherValue" style="font-weight: 500;">0</span>
                                 </label>
-                                <input type="range" id="censorFeather" min="0" max="50" value="0" style="width: 100%;">
+                                <input type="range" id="censorFeather" min="0" max="50" value="0">
                             </div>
                             <div class="side-setting-row" id="steamOpacityRow">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">
                                     <span>조작시 투명도</span>
                                     <span id="steamOpacityValue" style="font-weight: 500;">30%</span>
                                 </label>
-                                <input type="range" id="steamOpacity" min="0" max="100" value="30" style="width: 100%;">
+                                <input type="range" id="steamOpacity" min="0" max="100" value="30">
                             </div>
                         </div>
 
@@ -8524,7 +8736,7 @@
                         <button type="button" class="tool-btn active" id="editToolSelect">↔ 선택</button>
                         <button type="button" class="tool-btn" id="editToolAdd">+ 추가</button>
                         <button type="button" class="tool-btn" id="editToolDelete">🗑️ 삭제</button>
-                        <span style="color: var(--border); margin: 0 8px;">|</span>
+                        <span class="tool-separator">|</span>
                         <div class="censor-method-select">
                             <label>방식:</label>
                             <select id="editCensorMethod">
@@ -8605,7 +8817,7 @@
 
     <!-- Generic Confirm Modal -->
     <div class="drop-modal" id="confirmModal">
-        <div class="drop-modal-content" style="max-width: 400px;">
+        <div class="drop-modal-content modal-sm">
             <h3 id="confirmModalTitle">확인</h3>
             <div id="confirmModalMessage" class="metadata" style="margin: 16px 0;"></div>
             <div class="buttons">
@@ -8621,10 +8833,10 @@
 
     <!-- Input Prompt Modal -->
     <div class="drop-modal" id="inputModal">
-        <div class="drop-modal-content" style="max-width: 400px;">
+        <div class="drop-modal-content modal-sm">
             <h3 id="inputModalTitle">입력</h3>
-            <div id="inputModalMessage" style="margin: 12px 0; color: var(--text-dim);"></div>
-            <input type="text" id="inputModalInput" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-light); color: var(--text); margin-bottom: 16px;">
+            <div id="inputModalMessage" class="modal-desc" style="margin-top: 12px;"></div>
+            <input type="text" id="inputModalInput" class="modal-input">
             <div class="buttons">
                 <button type="button" class="btn btn-secondary" id="inputModalCancel">취소</button>
                 <button type="button" class="btn" id="inputModalOk">확인</button>
@@ -8634,11 +8846,11 @@
 
     <!-- Enhance Modal (NAI) -->
     <div class="drop-modal" id="enhanceModal">
-        <div class="drop-modal-content" style="max-width: 500px;">
+        <div class="drop-modal-content modal-lg">
             <h3>✨ Enhance</h3>
-            <div style="display: flex; gap: 16px; margin-bottom: 16px;">
-                <div id="enhanceModalPreview" style="flex: 0 0 150px; height: 150px; background: var(--bg); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
-                    <img id="enhanceModalImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <div class="enhance-layout">
+                <div id="enhanceModalPreview" class="preview-box preview-box-md">
+                    <img id="enhanceModalImg" src="">
                 </div>
                 <div style="flex: 1;">
                     <div style="margin-bottom: 12px;">
@@ -8647,30 +8859,30 @@
                             <button type="button" class="btn enhance-res-btn active" data-scale="1">Normal (1x)</button>
                             <button type="button" class="btn enhance-res-btn" data-scale="1.5">Large (1.5x)</button>
                         </div>
-                        <div id="enhanceResInfo" style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;"></div>
+                        <div id="enhanceResInfo" class="vol-label" style="margin-top: 4px;"></div>
                     </div>
                     <div style="margin-bottom: 12px;" id="enhanceMagnitudeSection">
                         <label>Magnitude: <span id="enhanceModalMagnitude">3</span></label>
-                        <input type="range" id="enhanceModalMagnitudeSlider" min="1" max="5" step="1" value="3" style="width: 100%;">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim);">
+                        <input type="range" id="enhanceModalMagnitudeSlider" min="1" max="5" step="1" value="3">
+                        <div class="range-labels">
                             <span>Low (원본 유지)</span>
                             <span>High (변형 많음)</span>
                         </div>
                     </div>
                     <div id="enhanceAdvancedSection" style="display: none; margin-bottom: 12px;">
                         <div style="margin-bottom: 10px;">
-                            <label style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <label class="label-flex">
                                 <span>Strength</span>
                                 <span id="enhanceStrengthValue" class="enhance-clickable-value">0.5</span>
                             </label>
-                            <input type="range" id="enhanceStrengthSlider" min="0" max="1" step="0.01" value="0.5" style="width: 100%;">
+                            <input type="range" id="enhanceStrengthSlider" min="0" max="1" step="0.01" value="0.5">
                         </div>
                         <div>
-                            <label style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <label class="label-flex">
                                 <span>Noise</span>
                                 <span id="enhanceNoiseValue" class="enhance-clickable-value">0</span>
                             </label>
-                            <input type="range" id="enhanceNoiseSlider" min="0" max="1" step="0.01" value="0" style="width: 100%;">
+                            <input type="range" id="enhanceNoiseSlider" min="0" max="1" step="0.01" value="0">
                         </div>
                     </div>
                     <div style="text-align: center; margin-bottom: 12px;">
@@ -8693,7 +8905,7 @@
         <div class="mask-editor-container">
             <div class="mask-editor-header">
                 <h3>🎨 Inpaint Mask Editor</h3>
-                <button class="btn btn-secondary" id="maskEditorClose" style="padding: 6px 12px;">✕</button>
+                <button class="modal-close" id="maskEditorClose">&times;</button>
             </div>
             <div class="mask-editor-toolbar">
                 <div class="tool-group">
@@ -8705,7 +8917,7 @@
                     <input type="range" id="maskBrushSize" min="5" max="100" value="30">
                     <span id="maskBrushSizeValue">30</span>
                 </div>
-                <div class="tool-group" style="margin-left: auto;">
+                <div class="tool-group" style="margin-left:auto;">
                     <button class="tool-btn" id="maskToolClear" title="전체 지우기">🗑️ Clear</button>
                     <button class="tool-btn" id="maskToolInvert" title="마스크 반전">🔄 Invert</button>
                 </div>
@@ -8758,33 +8970,33 @@
                 <input type="text" id="loraDir" placeholder="./models/loras">
             </div>
 
-            <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+            <div class="settings-toggle-row">
                 <label class="toggle-switch" style="flex-shrink: 0; margin-top: 2px;">
                     <input type="checkbox" id="tagAutocompleteToggle" checked>
                     <span class="toggle-slider"></span>
                 </label>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; margin-bottom: 4px;">태그 자동 완성</div>
-                    <small style="color: var(--text-dim); display: block; line-height: 1.4;">
+                <div class="settings-toggle-body">
+                    <div class="settings-toggle-title">태그 자동 완성</div>
+                    <small class="section-hint" style="line-height: 1.4;">
                         댄부루 태그 데이터베이스 기반 자동완성 제안 (Base/Negative/Character 프롬프트)
                     </small>
                 </div>
             </div>
 
-            <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+            <div class="settings-toggle-row">
                 <label class="toggle-switch" style="flex-shrink: 0; margin-top: 2px;">
                     <input type="checkbox" id="promptHighlightToggle" checked>
                     <span class="toggle-slider"></span>
                 </label>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 600; margin-bottom: 4px;">프롬프트 가중치 강조</div>
-                    <small style="color: var(--text-dim); display: block; line-height: 1.4;">
+                <div class="settings-toggle-body">
+                    <div class="settings-toggle-title">프롬프트 가중치 강조</div>
+                    <small class="section-hint" style="line-height: 1.4;">
                         가중치 문법 색상 표시 (NAI: {강화} [약화], Local: (강화) [약화])
                     </small>
                 </div>
             </div>
 
-            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
+            <hr class="divider">
             
             <div class="input-group">
                 <label>Local Generation Environment</label>
@@ -8800,10 +9012,10 @@
                     </div>
                     <span class="local-env-progress-text" id="localEnvProgressText">0%</span>
                 </div>
-                <small style="display: block; margin-top: 12px; color: var(--text-dim);">Python + PyTorch CUDA (~5GB, 3-5분)</small>
+                <small class="modal-note">Python + PyTorch CUDA (~5GB, 3-5분)</small>
             </div>
 
-            <hr style="border: none; border-top: 1px solid var(--border); margin: 16px 0;">
+            <hr class="divider">
 
             <!-- App Info -->
             <div class="input-group">
@@ -8829,16 +9041,16 @@
     
     <!-- Local Install Modal -->
     <div class="modal" id="localInstallModal">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content modal-md">
             <div class="modal-header">
                 <h2>⚙️ 환경 설치</h2>
                 <button class="modal-close" id="localInstallModalClose" onclick="closeLocalInstallModal()">&times;</button>
             </div>
             
-            <p style="color: var(--text-dim); margin-bottom: 16px;">
+            <p class="modal-desc">
                 로컬 생성/검열 기능을 위해 Python 환경과 PyTorch를 설치해야 합니다. (최초 1회)
             </p>
-            
+
             <div class="input-group">
                 <div id="installModalStatus" class="local-env-status">
                     <span class="status-text">확인 중...</span>
@@ -8850,17 +9062,17 @@
                     <span class="local-env-progress-text" id="installModalProgressText">0%</span>
                 </div>
             </div>
-            
-            <div style="display: flex; gap: 8px; margin-top: 16px;">
+
+            <div class="modal-btn-row">
                 <button class="btn" id="installModalBtn" onclick="installFromModal()" style="flex: 1;">
                     ⬇️ 설치 (~5GB)
                 </button>
-                <button class="btn" id="installModalCancelBtn" onclick="closeLocalInstallModal()" style="flex: 1; background: var(--surface-light);">
+                <button class="btn" id="installModalCancelBtn" onclick="closeLocalInstallModal()" style="flex: 1; background: var(--bg-lighter);">
                     취소
                 </button>
             </div>
-            
-            <small style="display: block; margin-top: 12px; color: var(--text-dim);">
+
+            <small class="modal-note">
                 인터넷 속도에 따라 3~5분 정도 소요됩니다.
             </small>
         </div>
@@ -8868,25 +9080,25 @@
     
     <!-- Restart Confirmation Modal -->
     <div class="modal" id="restartModal">
-        <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-content modal-sm">
             <div class="modal-header">
                 <h2>🔄 재시작 필요</h2>
             </div>
             
-            <p style="color: var(--text); margin-bottom: 8px;">
+            <p style="margin-bottom: 8px;">
                 재시작이 필요합니다
             </p>
-            <p style="color: var(--text-dim); margin-bottom: 16px;">
+            <p class="modal-desc">
                 재시작 후 GPU(CUDA) 환경 설치가 자동으로 시작됩니다.
             </p>
-            
-            <div style="display: flex; gap: 8px;">
+
+            <div class="modal-btn-row" style="margin-top: 0;">
                 <button class="btn" id="restartConfirmBtn" onclick="confirmRestart()" style="flex: 1;">
                     🔄 지금 재시작
                 </button>
             </div>
-            
-            <small style="display: block; margin-top: 12px; color: var(--text-dim);">
+
+            <small class="modal-note">
                 재시작 후 자동으로 연결됩니다.
             </small>
         </div>
@@ -8894,27 +9106,27 @@
     
     <!-- NAI Token Modal -->
     <div class="modal" id="naiTokenModal">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content modal-md">
             <div class="modal-header">
                 <h2>🔑 NovelAI API 토큰</h2>
                 <button class="modal-close" onclick="closeNaiTokenModal()">&times;</button>
             </div>
             
-            <p style="color: var(--text-dim); margin-bottom: 16px;">
+            <p class="modal-desc">
                 NAI 생성을 사용하려면 API 토큰이 필요합니다.
             </p>
-            
+
             <div class="input-group">
                 <label>API 토큰</label>
                 <input type="password" id="naiTokenModalInput" placeholder="토큰 붙여넣기">
-                <small><a href="https://novelai.net/image" target="_blank" style="color: var(--primary);">novelai.net</a> → Account Settings → Get Persistent API Token</small>
+                <small><a href="https://novelai.net/image" target="_blank" style="color: var(--accent);">novelai.net</a> → Account Settings → Get Persistent API Token</small>
             </div>
-            
-            <div style="display: flex; gap: 8px; margin-top: 16px;">
+
+            <div class="modal-btn-row">
                 <button class="btn" id="naiTokenModalBtn" onclick="saveNaiTokenFromModal()" style="flex: 2;">
                     💾 저장
                 </button>
-                <button class="btn" onclick="closeNaiTokenModal()" style="flex: 1; background: var(--surface-light);">
+                <button class="btn" onclick="closeNaiTokenModal()" style="flex: 1; background: var(--bg-lighter);">
                     취소
                 </button>
             </div>
@@ -9510,10 +9722,10 @@
         const MIN_SIDEBAR_WIDTH = 360;
         const MAX_SIDEBAR_WIDTH = 800;
 
-        function setSidebarWidth(width) {
+        function setSidebarWidth(width, skipSave) {
             currentSidebarWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width));
             document.documentElement.style.setProperty('--sidebar-width', currentSidebarWidth + 'px');
-            autoSaveSettings();
+            if (!skipSave) autoSaveSettings();
         }
 
         // 사이드바 리사이즈 핸들 설정
@@ -9532,8 +9744,7 @@
                 let rafId = null;
                 function onMouseMove(e) {
                     const deltaX = e.clientX - startX;
-                    setSidebarWidth(startWidth + deltaX);
-                    // 드래그 중 프롬프트 하이라이트 동기화 (throttled via rAF)
+                    setSidebarWidth(startWidth + deltaX, true);
                     if (!rafId) {
                         rafId = requestAnimationFrame(() => {
                             if (typeof updatePromptHighlights === 'function') {
@@ -9549,7 +9760,7 @@
                     handle.classList.remove('active');
                     document.removeEventListener('mousemove', onMouseMove);
                     document.removeEventListener('mouseup', onMouseUp);
-                    // 사이드바 리사이즈 완료 후 프롬프트 하이라이트 동기화
+                    autoSaveSettings();
                     if (typeof updatePromptHighlights === 'function') {
                         updatePromptHighlights();
                     }
@@ -9585,8 +9796,8 @@
 
             // 사이드바 너비 변경 시 토글 버튼 위치 업데이트
             const origSetSidebarWidth = setSidebarWidth;
-            setSidebarWidth = function(width) {
-                origSetSidebarWidth(width);
+            setSidebarWidth = function(width, skipSave) {
+                origSetSidebarWidth(width, skipSave);
                 if (!sidebar.classList.contains('collapsed')) {
                     toggleBtn.style.left = currentSidebarWidth + 'px';
                 }
@@ -13411,14 +13622,14 @@
                                 </div>
                                 <div style="color: var(--text-dim); font-size: 12px; margin-bottom: 12px;">
                                     재설치 없이 자동 패치할 수 있습니다.<br>
-                                    <span style="color: var(--text-dimmer);">완료 시 앱이 자동으로 재시작됩니다.</span>
+                                    <span style="color: var(--text-dim);">완료 시 앱이 자동으로 재시작됩니다.</span>
                                 </div>
                                 ${pipNote}
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <button class="btn btn-sm" onclick="applyPatch()" id="applyPatchBtn" style="background: var(--success); border-color: var(--success);">
                                         🔄 지금 패치
                                     </button>
-                                    <a href="${data.release_url}" target="_blank" class="btn btn-sm" style="background: var(--surface-light);">
+                                    <a href="${data.release_url}" target="_blank" class="btn btn-sm" style="background: var(--bg-lighter);">
                                         📋 릴리즈 노트
                                     </a>
                                 </div>
@@ -13516,14 +13727,14 @@
                                     코드는 업데이트되었으나 의존성 설치에 실패했습니다.<br>
                                     앱이 정상 작동하지 않을 수 있습니다.
                                 </div>
-                                <div style="color: var(--error); font-size: 11px; margin-bottom: 12px; padding: 8px; background: var(--surface); border-radius: 4px; font-family: monospace; word-break: break-all;">
+                                <div style="color: var(--error); font-size: 11px; margin-bottom: 12px; padding: 8px; background: var(--bg-light); border-radius: 4px; font-family: monospace; word-break: break-all;">
                                     ${data.pip_error}
                                 </div>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <a href="${releaseUrl}" target="_blank" class="btn btn-sm" style="background: var(--primary); border-color: var(--primary);">
+                                    <a href="${releaseUrl}" target="_blank" class="btn btn-sm" style="background: var(--accent); border-color: var(--accent);">
                                         📥 최신 버전 다운로드
                                     </a>
-                                    <button class="btn btn-sm" onclick="confirmRestart()" style="background: var(--surface-light);">
+                                    <button class="btn btn-sm" onclick="confirmRestart()" style="background: var(--bg-lighter);">
                                         🔄 그래도 재시작
                                     </button>
                                 </div>
@@ -18863,7 +19074,7 @@
                         <div><strong>Model:</strong> ${model}</div>
                         <div><strong>Strength:</strong> ${strength}</div>
                         <div><strong>Info Extracted:</strong> ${infoExtracted}</div>
-                        ${encodedData ? '<div style="color:#4ade80">✓ 인코딩 캐시 있음 (Anlas 무료)</div>' : '<div style="color:#fbbf24">⚠ 인코딩 없음 - 생성 시 인코딩됨</div>'}
+                        ${encodedData ? '<div style="color:var(--success)">✓ 인코딩 캐시 있음 (Anlas 무료)</div>' : '<div style="color:#fbbf24">⚠ 인코딩 없음 - 생성 시 인코딩됨</div>'}
                     `;
                     // 바이브 파일: 확인/취소만 표시
                     document.getElementById('dropModalVibeActions').style.display = 'flex';
@@ -18921,7 +19132,7 @@
                     metadataDiv.innerHTML = `
                         <div><strong>Strength:</strong> ${result.vibe_strength}</div>
                         <div><strong>Info Extracted:</strong> ${result.vibe_info_extracted}</div>
-                        ${hasCache ? `<div><strong>Model:</strong> ${result.vibe_model}</div><div style="color:#4ade80">✓ 인코딩 캐시 있음 (Anlas 무료)</div>` : ''}
+                        ${hasCache ? `<div><strong>Model:</strong> ${result.vibe_model}</div><div style="color:var(--success)">✓ 인코딩 캐시 있음 (Anlas 무료)</div>` : ''}
                     `;
                     // 바이브 캐시 파일: 확인/취소만 표시
                     document.getElementById('dropModalVibeActions').style.display = 'flex';
