@@ -87,6 +87,14 @@
             overflow: hidden;
         }
         
+        /* Global checkbox reset */
+        input[type="checkbox"] {
+            all: revert;
+            margin: 0; vertical-align: middle;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
         /* Layout */
         .app {
             display: flex;
@@ -4808,6 +4816,12 @@
             color: white;
             box-shadow: var(--shadow-md);
         }
+        .mode-toggle-sep {
+            width: 1px;
+            align-self: stretch;
+            margin: 4px 2px;
+            background: var(--border);
+        }
 
         /* ============================================================
            Utility Mode (보조 도구)
@@ -7522,6 +7536,368 @@
 
         /* Global: range inputs fill width */
         input[type="range"] { width: 100%; }
+
+        /* ============================================================
+           Character Card Editor (캐릭터 카드 에디터)
+           ============================================================ */
+        .card-editor-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            flex: 1 1 0;
+            min-height: 0;
+            background: var(--bg);
+        }
+
+        /* --- Card Collection View --- */
+        .card-collection-view { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+        .card-collection-toolbar {
+            display: flex; align-items: center; gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-lg); background: var(--bg-light);
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .card-collection-toolbar .toolbar-search {
+            flex: 1; max-width: 300px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); padding: 6px var(--space-sm); border-radius: var(--radius-sm); font-size: 0.8rem;
+            margin-bottom: 0; width: auto;
+        }
+        .card-collection-toolbar .toolbar-search:focus { border-color: var(--accent); outline: none; }
+        .card-collection-grid {
+            flex: 1 1 0; overflow-y: auto; padding: var(--space-lg);
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: var(--space-md); align-content: start;
+        }
+        .card-item {
+            position: relative;
+            background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius-md);
+            cursor: pointer; transition: var(--transition-fast);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .card-item:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+        .card-item-info { padding: 10px 12px 10px; display: flex; flex-direction: column; gap: 3px; }
+        .card-item-name { font-size: 0.9rem; font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .card-item-desc {
+            font-size: 0.78rem; color: var(--text-dim); overflow: hidden;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            line-height: 1.4; min-height: 0;
+        }
+        .card-item-meta { font-size: 0.7rem; color: var(--text-dim); opacity: 0.6; margin-top: 2px; }
+        .card-item-new {
+            border: 2px dashed var(--border); background: transparent;
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+            gap: var(--space-sm); color: var(--text-dim);
+        }
+        .card-item-new:hover { border-color: var(--accent); color: var(--accent); background: rgba(138,180,248,0.05); transform: translateY(-2px); }
+        .card-item-new-icon { font-size: 2rem; }
+        .card-item-new-label { font-size: 0.85rem; }
+
+        /* Card thumbnail */
+        .card-item-thumbnail-wrap {
+            position: relative; width: 100%; aspect-ratio: 1/1;
+            overflow: hidden; background: #111; flex-shrink: 0;
+        }
+        .card-item-thumbnail-wrap img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .card-item-thumbnail-wrap .thumb-add {
+            position: absolute; bottom: 6px; right: 6px;
+            width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.15s;
+            color: #fff; font-size: 1rem; cursor: pointer;
+        }
+        .card-item-thumbnail-wrap:hover .thumb-add { opacity: 1; }
+        .card-item .card-fav-btn {
+            position: absolute; top: 6px; right: 6px;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: rgba(0,0,0,0.7); border: none;
+            color: white; font-size: 14px; cursor: pointer;
+            opacity: 0; transition: opacity 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2;
+        }
+        .card-item:hover .card-fav-btn { opacity: 1; }
+        .card-item .card-fav-btn:hover { background: rgba(0,0,0,0.9); }
+        .card-item .card-fav-btn.favorited { color: gold; opacity: 1; }
+
+        /* Card context menu */
+        .card-context-menu {
+            position: fixed; background: var(--bg-light); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: var(--space-xs) 0; z-index: 1000;
+            min-width: 150px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .card-context-menu-item {
+            padding: var(--space-sm) var(--space-lg); cursor: pointer; font-size: 0.85rem;
+            color: var(--text); display: flex; align-items: center; gap: var(--space-sm);
+        }
+        .card-context-menu-item:hover { background: var(--bg-lighter); }
+        .card-context-menu-item.danger { color: var(--danger); }
+
+        /* --- Card Editor Workspace --- */
+        .card-editor-workspace { display: none; flex-direction: column; flex: 1 1 0; min-height: 0; }
+        .card-editor-workspace.active { display: flex; }
+
+        /* Menu bar (Notepad style) */
+        .card-menubar {
+            display: flex; align-items: center; gap: 0;
+            padding: 0 var(--space-sm); background: var(--bg-light);
+            border-bottom: 1px solid var(--border); flex-shrink: 0; height: 32px;
+            user-select: none;
+        }
+        .card-menubar-left { display: flex; align-items: center; gap: 0; }
+        .card-menubar-right { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+        .card-back-btn {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            font-size: 1rem; padding: 4px 8px; transition: var(--transition-fast);
+        }
+        .card-back-btn:hover { color: var(--text); background: var(--bg-lighter); }
+        .card-editor-title {
+            font-size: 0.88rem; font-weight: 600; color: var(--text); cursor: pointer;
+            padding: 4px 8px; border: 1px solid transparent; transition: var(--transition-fast);
+            max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .card-editor-title:hover { border-color: var(--border); background: var(--bg); }
+        .card-dirty-indicator { color: var(--accent-gold); font-size: 0.85rem; display: none; margin-right: 4px; }
+        .card-dirty-indicator.visible { display: inline; }
+        .card-menu-sep { width: 1px; height: 16px; background: var(--border); margin: 0 4px; }
+
+        /* Toolbar buttons (right side) */
+        .card-tb-btn {
+            background: none; border: 1px solid transparent; color: var(--text-dim);
+            cursor: pointer; font-size: 0.8rem; padding: 3px 8px; border-radius: var(--radius-sm);
+            transition: var(--transition-fast); white-space: nowrap;
+        }
+        .card-tb-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: var(--border); }
+        .card-tb-btn.active { color: var(--accent); border-color: var(--accent); }
+
+        /* Pane toolbar (per-pane actions below category tabs) */
+        .card-pane-toolbar {
+            display: flex; align-items: center; gap: 2px;
+            padding: 2px var(--space-sm); background: var(--bg);
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .card-pane-toolbar .card-tb-btn { font-size: 0.78rem; padding: 2px 6px; }
+
+        /* Category tabs */
+        .card-category-tabs {
+            display: flex; align-items: center; gap: 2px;
+            padding: var(--space-xs) var(--space-sm); background: var(--bg-light);
+            border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0;
+        }
+        .card-category-tabs::-webkit-scrollbar { height: 3px; }
+        .card-category-tab {
+            padding: var(--space-xs) var(--space-md); border: none; background: transparent;
+            color: var(--text-dim); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            cursor: pointer; font-size: 0.82rem; white-space: nowrap;
+            transition: var(--transition-fast); border-bottom: 2px solid transparent;
+        }
+        .card-category-tab:hover { color: var(--text); background: var(--bg-lighter); }
+        .card-category-tab.active { color: var(--text); border-bottom-color: var(--accent); background: var(--bg); }
+        .card-add-category-btn {
+            padding: var(--space-xs) var(--space-sm); border: none; background: transparent;
+            color: var(--text-dim); cursor: pointer; font-size: 0.85rem; border-radius: var(--radius-sm);
+        }
+        .card-add-category-btn:hover { color: var(--accent); background: var(--bg-lighter); }
+
+        /* Editor area */
+        .card-editor-area { flex: 1 1 0; display: flex; flex-direction: row; min-height: 0; overflow: hidden; }
+        .card-editor-pane { flex: 1 1 0; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+
+        /* Editor wrapper with line numbers */
+        .card-editor-wrap {
+            flex: 1 1 0; display: flex; min-height: 0; overflow: hidden; position: relative;
+        }
+        .card-line-gutter {
+            flex-shrink: 0; width: 48px; overflow: hidden; background: #0f1720;
+            border-right: 1px solid var(--border);
+            font-family: 'Consolas','Menlo','Monaco',monospace; font-size: 0.85rem;
+            line-height: 1.65; color: #4a5a6e; opacity: 0.7;
+            user-select: none; pointer-events: none;
+        }
+        .card-line-gutter.hidden { display: none; }
+        .card-line-gutter-inner {
+            text-align: right;
+            padding: var(--space-md) 6px var(--space-md) 0;
+            will-change: transform;
+        }
+        .card-line-num { /* height set inline for word-wrap support */ }
+
+        /* contenteditable editor */
+        .card-ce {
+            flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
+            padding: var(--space-md) var(--space-lg);
+            font-family: 'Consolas','Menlo','Monaco',monospace; font-size: 0.85rem;
+            line-height: 1.65; color: #fff; background: #141c26;
+            outline: none; white-space: pre-wrap; word-wrap: break-word; tab-size: 4;
+            caret-color: #fff;
+        }
+        .card-ce:empty::before {
+            content: attr(data-placeholder); color: #4a5a6e; opacity: 0.7;
+        }
+        .card-ce::selection { background: rgba(66,133,244,0.35); }
+        .card-ce *::selection { background: rgba(66,133,244,0.35); }
+
+        /* CE inline elements */
+
+        /* Block-based editor */
+        .card-blocks-container {
+            flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
+            display: flex; flex-direction: column;
+        }
+        .card-block { display: flex; flex-direction: column; flex: none; }
+        .card-block .card-editor-wrap { flex: none; }
+        .card-block .card-ce { overflow-y: hidden; min-height: 22px; padding-top: var(--space-xs); }
+        .card-block .card-line-gutter-inner { padding-top: var(--space-xs); }
+        .card-block-separator {
+            display: flex; align-items: center; gap: 4px;
+            padding: 2px 0 2px 0; background: var(--bg-light);
+            border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+            min-height: 24px; user-select: none; cursor: default;
+        }
+        .card-block-separator:hover { background: var(--bg-lighter); }
+        .card-block-name {
+            flex: 1; font-size: 0.85rem; color: #fff; background: transparent;
+            border: none; outline: none; padding: 1px 4px 1px 0; min-width: 0;
+            font-family: 'Consolas','Menlo','Monaco',monospace;
+        }
+        .card-block-name:empty::before {
+            content: attr(data-placeholder); color: var(--text-dim); opacity: 0.4;
+        }
+        .card-block-name:focus { background: var(--bg); border-radius: 2px; }
+        .card-block-copy-btn {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            font-size: 0.75rem; padding: 0 8px; opacity: 0; transition: opacity 0.15s;
+        }
+        .card-block-delete-btn {
+            width: 48px; flex-shrink: 0; text-align: center;
+            background: none; border: none; border-right: 1px solid var(--border);
+            margin-right: 4px; color: var(--text-dim); cursor: pointer;
+            font-size: 0.75rem; padding: 0; opacity: 0; transition: opacity 0.15s;
+        }
+        .card-block-separator:hover .card-block-copy-btn,
+        .card-block-separator:hover .card-block-delete-btn { opacity: 0.7; }
+        .card-block-copy-btn:hover, .card-block-delete-btn:hover { opacity: 1 !important; color: var(--text); }
+        .card-block-delete-btn:hover { color: var(--danger); }
+
+        /* Split handle */
+        .card-split-handle {
+            width: 6px; cursor: ew-resize; background: var(--border);
+            flex-shrink: 0; transition: background 0.2s; display: none;
+        }
+        .card-split-handle:hover, .card-split-handle.active { background: var(--accent-gold-dim); }
+        .card-split-handle.visible { display: block; }
+
+        /* Status bar */
+        .card-status-bar {
+            display: flex; align-items: center; gap: var(--space-lg);
+            padding: var(--space-xs) var(--space-lg); background: var(--bg-light);
+            border-top: 1px solid var(--border); flex-shrink: 0;
+            font-size: 0.78rem; color: var(--text-dim);
+        }
+        .card-char-count-selected { color: var(--accent); }
+
+        /* Find match highlights */
+        .card-find-match { background: rgba(255,200,0,0.25); border-radius: 2px; }
+        .card-find-match-current { background: rgba(255,200,0,0.65); border-radius: 2px; }
+
+        /* Find/Replace modal */
+        .card-find-modal {
+            display: none; position: fixed; z-index: 2000;
+            top: 80px; right: 40px; width: 340px;
+            background: var(--bg-light); border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+            backdrop-filter: blur(8px);
+        }
+        .card-find-modal.open { display: flex; flex-direction: column; }
+        .card-find-modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 10px 8px 14px; cursor: move; user-select: none;
+        }
+        .card-find-modal-header span {
+            font-size: 0.8rem; font-weight: 600; color: var(--text-dim);
+            letter-spacing: 0.02em; text-transform: uppercase;
+        }
+        .card-find-modal-close {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            font-size: 1rem; padding: 2px 4px; border-radius: var(--radius-sm);
+            line-height: 1; transition: background 0.15s, color 0.15s;
+        }
+        .card-find-modal-close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+        .card-find-modal-body {
+            padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .card-find-row { display: flex; align-items: center; gap: 8px; }
+        .card-find-row input[type="text"] {
+            flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+            padding: 7px 10px; border-radius: var(--radius-sm); font-size: 0.85rem;
+            transition: border-color 0.15s;
+        }
+        .card-find-row input[type="text"]::placeholder { color: var(--text-dim); opacity: 0.5; }
+        .card-find-row input[type="text"]:focus {
+            border-color: var(--accent); outline: none;
+            box-shadow: 0 0 0 2px rgba(74, 122, 184, 0.15);
+        }
+        .card-find-bottom {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 6px; padding-top: 4px;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+        .card-find-bottom-left { display: flex; align-items: center; gap: 4px; }
+        .card-find-bottom-right { display: flex; align-items: center; gap: 4px; }
+        .card-find-nav-btn {
+            background: var(--bg); border: 1px solid var(--border); color: var(--text-dim);
+            cursor: pointer; padding: 5px 8px; border-radius: var(--radius-sm);
+            font-size: 0.78rem; transition: all 0.15s; display: flex; align-items: center; gap: 3px;
+        }
+        .card-find-nav-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: rgba(255,255,255,0.1); }
+        .card-find-replace-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-dim);
+            cursor: pointer; padding: 5px 10px; border-radius: var(--radius-sm);
+            font-size: 0.78rem; transition: all 0.15s;
+        }
+        .card-find-replace-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: rgba(255,255,255,0.1); }
+        .card-find-replace-btn.primary {
+            background: var(--accent-dim); border-color: var(--accent); color: var(--text);
+        }
+        .card-find-replace-btn.primary:hover { background: var(--accent); }
+        .card-find-count {
+            font-size: 0.75rem; color: var(--text-dim); padding: 0 6px;
+            font-variant-numeric: tabular-nums;
+        }
+        .card-find-options {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .card-find-options label {
+            font-size: 0.78rem; color: var(--text-dim); white-space: nowrap;
+            display: flex; align-items: center; gap: 5px; cursor: pointer;
+            padding: 3px 0; border-radius: var(--radius-sm);
+            border: 1px solid transparent; transition: all 0.15s; user-select: none;
+        }
+        .card-find-options label:hover { background: rgba(255,255,255,0.04); }
+        .card-find-options input[type="checkbox"] { flex-shrink: 0; }
+        .card-find-options input[type="checkbox"]:checked + span,
+        .card-find-options label:has(input:checked) {
+            color: var(--text); border-color: var(--border);
+            background: rgba(74, 122, 184, 0.08);
+        }
+
+        /* Macro dropdown */
+        .card-macro-dropdown {
+            position: absolute; background: var(--bg-light); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: var(--space-xs) 0; z-index: 100;
+            max-height: 200px; overflow-y: auto; min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none;
+        }
+        .card-macro-dropdown.active { display: block; }
+        .card-macro-item {
+            padding: var(--space-xs) var(--space-md); cursor: pointer; font-size: 0.82rem;
+            color: var(--text); display: flex; justify-content: space-between; gap: var(--space-md);
+        }
+        .card-macro-item:hover, .card-macro-item.selected { background: var(--bg-lighter); }
+        .card-macro-item-trigger { color: var(--accent); font-family: monospace; }
+        .card-macro-item-text { color: var(--text-dim); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
@@ -8101,6 +8477,8 @@
                     <button type="button" class="mode-btn" id="galleryModeBtn">🖼️ 갤러리</button>
                     <button type="button" class="mode-btn" id="censorModeBtn">🔍 자동검열</button>
                     <button type="button" class="mode-btn" id="utilityModeBtn">🔧 보조 도구</button>
+                    <span class="mode-toggle-sep"></span>
+                    <button type="button" class="mode-btn" id="cardEditorModeBtn">📝 캐릭터 카드</button>
                 </div>
             </div>
 
@@ -8718,6 +9096,126 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 캐릭터 카드 에디터 모드 -->
+            <div class="card-editor-container" id="cardEditorContainer" style="display: none;">
+                <!-- 카드 컬렉션 뷰 -->
+                <div class="card-collection-view" id="cardCollectionView">
+                    <div class="card-collection-toolbar">
+                        <button type="button" class="header-btn" id="cardNewBtn">+ 새 카드</button>
+                        <button type="button" class="header-btn" id="cardOpenFolderBtn" title="카드 폴더 열기">📂</button>
+                        <input type="text" class="toolbar-search" id="cardSearchInput" placeholder="카드 검색...">
+                        <select id="cardSortSelect" class="toolbar-search" style="max-width:140px;flex:none;">
+                            <option value="modified">수정 날짜순</option>
+                            <option value="created">생성 날짜순</option>
+                            <option value="name">이름순</option>
+                        </select>
+                    </div>
+                    <div class="card-collection-grid" id="cardCollectionGrid"></div>
+                </div>
+
+                <!-- 에디터 워크스페이스 -->
+                <div class="card-editor-workspace" id="cardEditorWorkspace">
+                    <!-- 메뉴바 (Notepad 스타일) -->
+                    <div class="card-menubar">
+                        <div class="card-menubar-left">
+                            <button type="button" class="card-back-btn" id="cardBackBtn" title="카드 목록으로 (Esc)">←</button>
+                            <span class="card-editor-title" id="cardEditorTitle" title="클릭하여 이름 변경">새 카드</span>
+                            <span class="card-dirty-indicator" id="cardDirtyIndicator" title="저장되지 않은 변경사항">●</span>
+                        </div>
+                        <div class="card-menubar-right">
+                            <button type="button" class="card-tb-btn" id="cardEditorOpenFolderBtn" title="카드 폴더 열기">📂</button>
+                            <button type="button" class="card-tb-btn" id="cardLineNumBtn" title="줄 번호 토글">#</button>
+                            <button type="button" class="card-tb-btn" id="cardZoomInBtn" title="확대 (Ctrl++)">A+</button>
+                            <button type="button" class="card-tb-btn" id="cardZoomOutBtn" title="축소 (Ctrl+-)">A-</button>
+                            <button type="button" class="card-tb-btn" id="cardSplitBtn" title="분할 보기">⧉</button>
+                            <div class="card-menu-sep"></div>
+                            <button type="button" class="card-tb-btn" id="cardExportBtn" title="텍스트 파일로 내보내기">📤</button>
+                            <button type="button" class="card-tb-btn" id="cardSaveBtn" title="저장 (Ctrl+S)">💾</button>
+                        </div>
+                    </div>
+
+                    <!-- 에디터 영역 -->
+                    <div class="card-editor-area" id="cardEditorArea">
+                        <!-- 좌측 패인 -->
+                        <div class="card-editor-pane" id="cardEditorPaneLeft">
+                            <div class="card-category-tabs" id="cardCategoryTabsLeft">
+                                <button type="button" class="card-add-category-btn" id="cardAddCategoryBtnLeft" title="카테고리 추가">+</button>
+                            </div>
+                            <div class="card-pane-toolbar">
+                                <button type="button" class="card-tb-btn" id="cardDividerBtnLeft" title="구분선 추가 (Ctrl+Shift+Enter)"><span style="display:inline-block;transform:rotate(90deg);font-size:.85em;letter-spacing:1px">][</span></button>
+                                <button type="button" class="card-tb-btn" id="cardFindBtnLeft" title="찾기/바꾸기 (Ctrl+F)">🔍</button>
+                                <span style="flex:1"></span>
+                                <button type="button" class="card-tb-btn" id="cardCopyBtnLeft" title="전체 복사 (Ctrl+Shift+C)">📋</button>
+                            </div>
+                            <div class="card-blocks-container" id="cardBlocksLeft"></div>
+                        </div>
+
+                        <!-- 분할 핸들 -->
+                        <div class="card-split-handle" id="cardSplitHandle"></div>
+
+                        <!-- 우측 패인 (분할 시) -->
+                        <div class="card-editor-pane" id="cardEditorPaneRight" style="display: none;">
+                            <div class="card-category-tabs" id="cardCategoryTabsRight">
+                                <button type="button" class="card-add-category-btn" id="cardAddCategoryBtnRight" title="카테고리 추가">+</button>
+                            </div>
+                            <div class="card-pane-toolbar">
+                                <button type="button" class="card-tb-btn" id="cardDividerBtnRight" title="구분선 추가 (Ctrl+Shift+Enter)"><span style="display:inline-block;transform:rotate(90deg);font-size:.85em;letter-spacing:1px">][</span></button>
+                                <button type="button" class="card-tb-btn" id="cardFindBtnRight" title="찾기/바꾸기 (Ctrl+F)">🔍</button>
+                                <span style="flex:1"></span>
+                                <button type="button" class="card-tb-btn" id="cardCopyBtnRight" title="전체 복사 (Ctrl+Shift+C)">📋</button>
+                            </div>
+                            <div class="card-blocks-container" id="cardBlocksRight"></div>
+                        </div>
+                    </div>
+
+                    <!-- 상태바 -->
+                    <div class="card-status-bar" id="cardStatusBar">
+                        <span id="cardStatusCategory">Main 0자</span>
+                        <span id="cardStatusRight" style="display:none;"></span>
+                        <span class="card-char-count-selected" id="cardStatusSelected" style="display:none;"></span>
+                        <span style="flex:1;"></span>
+                        <span id="cardStatusZoom">100%</span>
+                        <span id="cardStatusTotal">전체: 0자</span>
+                    </div>
+                </div>
+
+                <!-- 매크로 자동완성 드롭다운 -->
+                <div class="card-macro-dropdown" id="cardMacroDropdown"></div>
+            </div>
+
+            <!-- 찾기/바꾸기 모달 -->
+            <div class="card-find-modal" id="cardFindModal">
+                <div class="card-find-modal-header" id="cardFindModalHeader">
+                    <span>찾기 / 바꾸기</span>
+                    <button type="button" class="card-find-modal-close" id="cardFindCloseBtn">&times;</button>
+                </div>
+                <div class="card-find-modal-body">
+                    <div class="card-find-row">
+                        <input type="text" id="cardFindInput" placeholder="찾기...">
+                    </div>
+                    <div class="card-find-row">
+                        <input type="text" id="cardReplaceInput" placeholder="바꾸기...">
+                    </div>
+                    <div class="card-find-options">
+                        <label><input type="checkbox" id="cardFindCaseSensitive"> 대소문자 구분</label>
+                    </div>
+                    <div class="card-find-bottom">
+                        <div class="card-find-bottom-left">
+                            <button type="button" class="card-find-nav-btn" id="cardFindPrevBtn">▲</button>
+                            <button type="button" class="card-find-nav-btn" id="cardFindNextBtn">▼</button>
+                            <span class="card-find-count" id="cardFindCount">0 / 0</span>
+                        </div>
+                        <div class="card-find-bottom-right">
+                            <button type="button" class="card-find-replace-btn" id="cardReplaceBtn">바꾸기</button>
+                            <button type="button" class="card-find-replace-btn primary" id="cardReplaceAllBtn">전체 바꾸기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 컨텍스트 메뉴 -->
+            <div class="card-context-menu" id="cardContextMenu" style="display: none;"></div>
 
             <!-- 검열 편집 모달 -->
             <div class="censor-edit-modal" id="censorEditModal">
@@ -15168,7 +15666,7 @@
                     }
                 }
             }
-            if (isCtrl && e.key === 'Enter') {
+            if (isCtrl && e.key === 'Enter' && currentMode !== 'cardeditor') {
                 addToQueue();
             }
         });
@@ -18267,45 +18765,55 @@
         const galleryModeBtn = document.getElementById('galleryModeBtn');
         const censorModeBtn = document.getElementById('censorModeBtn');
         const utilityModeBtn = document.getElementById('utilityModeBtn');
+        const cardEditorModeBtn = document.getElementById('cardEditorModeBtn');
         const slotsToolbar = document.getElementById('slotsToolbar');
         const galleryContainer = document.getElementById('galleryContainer');
         const censorContainer = document.getElementById('censorContainer');
         const utilityContainer = document.getElementById('utilityContainer');
+        const cardEditorContainer = document.getElementById('cardEditorContainer');
         const galleryGrid = document.getElementById('galleryGrid');
         const galleryEmpty = document.getElementById('galleryEmpty');
         const gallerySubfolders = document.getElementById('gallerySubfolders');
         const galleryRootBtn = document.getElementById('galleryRootBtn');
 
-        let currentMode = 'slot'; // 'slot' | 'gallery' | 'censor' | 'utility'
+        let currentMode = 'slot'; // 'slot' | 'gallery' | 'censor' | 'utility' | 'cardeditor'
         let currentGalleryFolder = ''; // 현재 선택된 폴더 (빈 문자열 = gallery 루트)
         let isVibeMode = false; // vibe cache mode
 
         slotModeBtn.onclick = () => {
             if (currentMode === 'slot') return;
+            const wasCard = currentMode === 'cardeditor';
             currentMode = 'slot';
             slotModeBtn.classList.add('active');
             galleryModeBtn.classList.remove('active');
             censorModeBtn.classList.remove('active');
             utilityModeBtn.classList.remove('active');
+            cardEditorModeBtn.classList.remove('active');
             slotsToolbar.style.display = 'flex';
             slotsWrapper.style.display = 'flex';
             galleryContainer.style.display = 'none';
             censorContainer.style.display = 'none';
             utilityContainer.style.display = 'none';
+            cardEditorContainer.style.display = 'none';
+            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
         };
 
         galleryModeBtn.onclick = () => {
             if (currentMode === 'gallery') return;
+            const wasCard = currentMode === 'cardeditor';
             currentMode = 'gallery';
             galleryModeBtn.classList.add('active');
             slotModeBtn.classList.remove('active');
             censorModeBtn.classList.remove('active');
             utilityModeBtn.classList.remove('active');
+            cardEditorModeBtn.classList.remove('active');
             slotsToolbar.style.display = 'none';
             slotsWrapper.style.display = 'none';
             galleryContainer.style.display = 'flex';
             censorContainer.style.display = 'none';
             utilityContainer.style.display = 'none';
+            cardEditorContainer.style.display = 'none';
+            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
 
             // 갤러리가 이미 로드되어 있으면 스킵 (폴더는 첫 진입 시 로드됨)
             if (!window.galleryInitialized) {
@@ -18317,17 +18825,20 @@
 
         censorModeBtn.onclick = async () => {
             if (currentMode === 'censor') return;
-
+            const wasCard = currentMode === 'cardeditor';
             currentMode = 'censor';
             censorModeBtn.classList.add('active');
             slotModeBtn.classList.remove('active');
             galleryModeBtn.classList.remove('active');
             utilityModeBtn.classList.remove('active');
+            cardEditorModeBtn.classList.remove('active');
             slotsToolbar.style.display = 'none';
             slotsWrapper.style.display = 'none';
             galleryContainer.style.display = 'none';
             censorContainer.style.display = 'flex';
             utilityContainer.style.display = 'none';
+            cardEditorContainer.style.display = 'none';
+            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
 
             // 검열 모드 초기화 (내부에서 캐싱 처리)
             if (typeof initCensorMode === 'function') {
@@ -18338,17 +18849,20 @@
         // 보조 도구 모드
         utilityModeBtn.onclick = () => {
             if (currentMode === 'utility') return;
-
+            const wasCard = currentMode === 'cardeditor';
             currentMode = 'utility';
             utilityModeBtn.classList.add('active');
             slotModeBtn.classList.remove('active');
             galleryModeBtn.classList.remove('active');
             censorModeBtn.classList.remove('active');
+            cardEditorModeBtn.classList.remove('active');
             slotsToolbar.style.display = 'none';
             slotsWrapper.style.display = 'none';
             galleryContainer.style.display = 'none';
             censorContainer.style.display = 'none';
             utilityContainer.style.display = 'flex';
+            cardEditorContainer.style.display = 'none';
+            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
 
             // 보조 도구 모드 초기화
             if (typeof initUtilityMode === 'function') {
@@ -18359,6 +18873,27 @@
             if (utilityState.currentTab === 'filemanager' && utilityState.fileManager.initialized) {
                 fmLoadFolders();
                 fmLoadFiles();
+            }
+        };
+
+        // 캐릭터 카드 에디터 모드
+        cardEditorModeBtn.onclick = () => {
+            if (currentMode === 'cardeditor') return;
+            currentMode = 'cardeditor';
+            cardEditorModeBtn.classList.add('active');
+            slotModeBtn.classList.remove('active');
+            galleryModeBtn.classList.remove('active');
+            censorModeBtn.classList.remove('active');
+            utilityModeBtn.classList.remove('active');
+            slotsToolbar.style.display = 'none';
+            slotsWrapper.style.display = 'none';
+            galleryContainer.style.display = 'none';
+            censorContainer.style.display = 'none';
+            utilityContainer.style.display = 'none';
+            cardEditorContainer.style.display = 'flex';
+
+            if (typeof initCardEditorMode === 'function') {
+                initCardEditorMode();
             }
         };
 
@@ -30730,6 +31265,1928 @@
                 }
             }
         };
+
+        // ============================================================
+        // Character Card Editor (캐릭터 카드 에디터) - contenteditable
+        // ============================================================
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        const cardState = {
+            initialized: false,
+            currentFile: null,
+            isDirty: false,
+            document: null,
+            leftCategory: 'main',
+            rightCategory: 'main',
+            splitView: false,
+            splitRatio: 0.5,
+            zoom: 100,
+            showLineNumbers: true,
+            fileList: [],
+            sortBy: 'modified',
+            findReplace: { open: false, matches: [], currentIdx: -1, pane: 'Left' },
+            macroDropdown: { visible: false, selectedIdx: 0, triggerStart: -1 },
+            sidebarWasCollapsed: false,
+        };
+
+        const DEFAULT_MACROS = [
+            { trigger: '/char', text: '{{char}}' },
+            { trigger: '/user', text: '{{user}}' },
+            { trigger: '/system', text: '<system>\n\n</system>' },
+            { trigger: '/persona', text: '<persona>\n\n</persona>' },
+            { trigger: '/scenario', text: '<scenario>\n\n</scenario>' },
+            { trigger: '/example', text: '<example>\n\n</example>' },
+        ];
+
+        function cardNewDocument(name = '새 카드') {
+            return {
+                version: 1,
+                name: name,
+                description: '',
+                thumbnail: '',
+                created: new Date().toISOString(),
+                modified: new Date().toISOString(),
+                categories: [
+                    { id: 'main', name: 'Main', type: 'builtin', content: '' }
+                ],
+                macros: [],
+                settings: {
+                    lastActiveCategory: 'main',
+                    splitView: false,
+                    splitLeftCategory: 'main',
+                    splitRightCategory: 'main',
+                    splitRatio: 0.5
+                }
+            };
+        }
+
+        // === Marker ↔ HTML 변환 ===
+        // 저장 형식(마커 텍스트) → contenteditable HTML
+        function cardMarkersToHtml(text) {
+            if (!text) return '';
+            let html = '';
+            let i = 0;
+            while (i < text.length) {
+                // 줄바꿈
+                if (text[i] === '\n') {
+                    html += '<br>';
+                    i++;
+                    continue;
+                }
+                // 일반 문자
+                if (text[i] === '<') html += '&lt;';
+                else if (text[i] === '>') html += '&gt;';
+                else if (text[i] === '&') html += '&amp;';
+                else html += text[i];
+                i++;
+            }
+            return html;
+        }
+
+        // contenteditable HTML → 저장 형식(마커 텍스트)
+        // CE HTML → 텍스트: DOM에 연결된 요소는 innerText, 아니면 재귀 파싱
+        function cardHtmlToMarkers(el) {
+            if (el.innerText !== undefined && el.isConnected) return el.innerText.replace(/\r/g, '');
+            return _cardParseNodes(el, false);
+        }
+        function _cardParseNodes(el, inBlock) {
+            let r = '', had = false;
+            for (const n of el.childNodes) {
+                if (n.nodeType === 3) {
+                    if (had) { r += '\n'; had = false; }
+                    r += n.textContent.replace(/\r/g, '');
+                } else if (n.nodeType === 1) {
+                    const t = n.tagName.toLowerCase();
+                    if (t === 'br') {
+                        if (inBlock && n === el.lastChild) continue;
+                        if (had) { r += '\n'; had = false; }
+                        r += '\n';
+                    } else if (t === 'div' || t === 'p') {
+                        const inner = _cardParseNodes(n, true);
+                        if (r.length > 0 || had) r += '\n';
+                        r += inner;
+                        had = true;
+                    } else {
+                        r += _cardParseNodes(n, inBlock);
+                    }
+                }
+            }
+            return r;
+        }
+
+        // 서식 마커 제거 (복사용)
+        function cardStripAnnotations(text) {
+            if (!text) return '';
+            // 블록 구분선 ---name → 이름만 남기기, 이름 없는 --- 제거
+            text = text.replace(/^---(.+)$/gm, (m, name) => name);
+            text = text.replace(/^---$/gm, '');
+            text = text.replace(/\n{3,}/g, '\n\n');
+            return text.trim();
+        }
+
+        // === 사이드바 숨김/복원 ===
+        function cardHideSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            if (!sidebar) return;
+            cardState.sidebarWasCollapsed = sidebar.classList.contains('collapsed');
+            sidebar.style.display = 'none';
+            if (toggleBtn) toggleBtn.style.display = 'none';
+        }
+
+        function cardRestoreSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            if (!sidebar) return;
+            sidebar.style.display = '';
+            if (toggleBtn) toggleBtn.style.display = '';
+        }
+
+        // === 초기화 ===
+        function initCardEditorMode() {
+            if (cardState.initialized) {
+                cardHideSidebar();
+                return;
+            }
+            cardState.initialized = true;
+
+            // 사이드바 숨기기
+            cardHideSidebar();
+
+            // 브라우저 뒤로가기 → 에디터 열려있으면 컬렉션으로
+            window.addEventListener('popstate', (e) => {
+                const ws = document.getElementById('cardEditorWorkspace');
+                if (ws && ws.classList.contains('active')) {
+                    cardBackToCollection();
+                }
+            });
+
+            // 컬렉션 뷰 이벤트
+            document.getElementById('cardNewBtn').onclick = () => cardCreateNew();
+            document.getElementById('cardOpenFolderBtn').onclick = () => {
+                fetch(`${API_BASE}/api/cards/open-folder`, { method: 'POST' });
+            };
+            document.getElementById('cardSearchInput').oninput = (e) => cardFilterCollection(e.target.value);
+            document.getElementById('cardSortSelect').onchange = (e) => {
+                cardState.sortBy = e.target.value;
+                cardRenderCollection(document.getElementById('cardSearchInput').value);
+            };
+
+            // 에디터 툴바 버튼 (전역)
+            document.getElementById('cardBackBtn').onclick = () => cardBackToCollection();
+            document.getElementById('cardSaveBtn').onclick = () => cardSave();
+            document.getElementById('cardExportBtn').onclick = () => cardShowExportModal();
+            document.getElementById('cardSplitBtn').onclick = () => cardToggleSplit();
+            document.getElementById('cardZoomInBtn').onclick = () => cardZoom(10);
+            document.getElementById('cardZoomOutBtn').onclick = () => cardZoom(-10);
+            document.getElementById('cardEditorOpenFolderBtn').onclick = () => {
+                fetch(`${API_BASE}/api/cards/open-folder`, { method: 'POST' });
+            };
+            document.getElementById('cardLineNumBtn').onclick = () => {
+                cardState.showLineNumbers = !cardState.showLineNumbers;
+                cardUpdateLineNumberVisibility();
+            };
+
+            // 패인별 툴바 버튼
+            for (const pane of ['Left', 'Right']) {
+                document.getElementById(`cardDividerBtn${pane}`).onclick = () => cardSplitBlockAtCursor(pane);
+                document.getElementById(`cardFindBtn${pane}`).onclick = () => cardToggleFindModal(true, pane);
+                document.getElementById(`cardCopyBtn${pane}`).onclick = () => cardCopyCategory(pane);
+            }
+
+            // 에디터 제목 클릭 → 이름 변경
+            document.getElementById('cardEditorTitle').onclick = () => {
+                if (!cardState.document) return;
+                showInputModal('카드 이름 변경', '새 이름을 입력하세요', (newName) => {
+                    if (newName && newName.trim()) {
+                        cardState.document.name = newName.trim();
+                        document.getElementById('cardEditorTitle').textContent = newName.trim();
+                        cardMarkDirty();
+                    }
+                }, '변경', cardState.document.name);
+            };
+
+            // 줄 번호 버튼 active 상태
+            if (cardState.showLineNumbers) document.getElementById('cardLineNumBtn').classList.add('active');
+
+            // 찾기/바꾸기 모달
+            document.getElementById('cardFindInput').oninput = () => cardDoFind();
+            document.getElementById('cardFindInput').onkeydown = (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); cardFindNav(e.shiftKey ? -1 : 1); }
+            };
+            document.getElementById('cardFindNextBtn').onclick = () => cardFindNav(1);
+            document.getElementById('cardFindPrevBtn').onclick = () => cardFindNav(-1);
+            document.getElementById('cardReplaceBtn').onclick = () => cardReplaceCurrent();
+            document.getElementById('cardReplaceAllBtn').onclick = () => cardReplaceAll();
+            document.getElementById('cardFindCloseBtn').onclick = () => cardToggleFindModal(false);
+            document.getElementById('cardFindCaseSensitive').onchange = () => cardDoFind();
+            cardSetupFindModalDrag();
+
+            // 카테고리 추가 버튼
+            document.getElementById('cardAddCategoryBtnLeft').onclick = () => cardAddCategory('left');
+            document.getElementById('cardAddCategoryBtnRight').onclick = () => cardAddCategory('right');
+
+            // 블록 기반 에디터는 cardLoadCategoryContent에서 동적으로 생성됨
+
+            // 분할 핸들 드래그
+            cardSetupSplitResize();
+
+            // 키보드 단축키
+            cardSetupKeyboard();
+
+            // 컨텍스트 메뉴 닫기
+            document.addEventListener('click', () => {
+                document.getElementById('cardContextMenu').style.display = 'none';
+            });
+
+            // 줄 번호 초기 상태
+            cardUpdateLineNumberVisibility();
+
+            // 컬렉션 로드
+            cardLoadCollection();
+        }
+
+        // (메뉴바 드롭다운 제거됨 - 모든 기능이 툴바 직접 버튼으로 이동)
+
+        // === 블록 기반 편집 ===
+        // 반환: [{content, name}] — 첫 블록 name은 항상 ''
+        function cardSplitContentToBlocks(content) {
+            if (!content) return [{ content: '', name: '' }];
+            const lines = content.split('\n');
+            const blocks = [{ content: '', name: '' }];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (/^---(.*)$/.test(line)) {
+                    // 첫 줄이 ---이면 첫 블록의 이름으로 처리
+                    if (i === 0 && blocks.length === 1 && !blocks[0].content) {
+                        blocks[0].name = RegExp.$1.trim();
+                    } else {
+                        blocks.push({ content: '', name: RegExp.$1.trim() });
+                    }
+                } else {
+                    const last = blocks[blocks.length - 1];
+                    last.content = last.content ? last.content + '\n' + line : line;
+                }
+            }
+            return blocks;
+        }
+
+        function cardJoinBlocksToContent(blocks) {
+            if (!blocks || blocks.length === 0) return '';
+            let result = '';
+            // 첫 블록에 이름이 있으면 맨 앞에 ---name 추가
+            if (blocks[0].name) {
+                result = '---' + blocks[0].name + '\n' + blocks[0].content;
+            } else {
+                result = blocks[0].content;
+            }
+            for (let i = 1; i < blocks.length; i++) {
+                const sep = blocks[i].name ? '---' + blocks[i].name : '---';
+                result += '\n' + sep + '\n' + blocks[i].content;
+            }
+            return result;
+        }
+
+        // === 블록 DOM 생성 ===
+        function cardCreateBlockElement(pane, blockIdx, blockHtml, blockName, rawContent) {
+            const block = document.createElement('div');
+            block.className = 'card-block';
+            block.dataset.blockIdx = blockIdx;
+            block.dataset.pane = pane;
+
+            // 상단 구분바 (첫 블록도 포함, 단 삭제 불가)
+            {
+                const sep = document.createElement('div');
+                sep.className = 'card-block-separator';
+                const nameEl = document.createElement('span');
+                nameEl.className = 'card-block-name';
+                nameEl.contentEditable = 'true';
+                nameEl.spellcheck = false;
+                nameEl.setAttribute('data-placeholder', '');
+                nameEl.textContent = blockName || '';
+                if (blockName) sep.classList.add('has-name');
+                nameEl.addEventListener('input', () => {
+                    sep.classList.toggle('has-name', nameEl.textContent.trim().length > 0);
+                    cardMarkDirty();
+                    // 분할뷰에서 같은 카테고리면 반대쪽 동기화
+                    if (cardState.splitView) {
+                        const otherPane = pane === 'Left' ? 'Right' : 'Left';
+                        const myCat = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        if (myCat === otherCat) {
+                            cardSyncContentFromCE(pane);
+                            cardLoadCategoryContent(otherPane);
+                        }
+                    }
+                    cardUpdateCharCount();
+                });
+                nameEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        const ce = block.querySelector('.card-ce');
+                        if (ce) {
+                            ce.focus({ preventScroll: true });
+                            const s = window.getSelection();
+                            const r = document.createRange();
+                            r.selectNodeContents(ce);
+                            r.collapse(true);
+                            s.removeAllRanges();
+                            s.addRange(r);
+                        }
+                    }
+                });
+                nameEl.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const text = (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\n/g, ' ');
+                    document.execCommand('insertText', false, text);
+                });
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'card-block-copy-btn';
+                copyBtn.textContent = '📋';
+                copyBtn.title = '이 블록 복사';
+                copyBtn.onclick = () => cardCopyBlock(pane, block);
+                if (blockIdx > 0) {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'card-block-delete-btn';
+                    deleteBtn.textContent = '✕';
+                    deleteBtn.title = '구분선 삭제 (이전 블록에 병합)';
+                    deleteBtn.onclick = () => cardMergeBlockUp(pane, block);
+                    sep.appendChild(deleteBtn);
+                } else {
+                    const spacer = document.createElement('div');
+                    spacer.className = 'card-block-delete-btn';
+                    spacer.style.visibility = 'hidden';
+                    sep.appendChild(spacer);
+                }
+                sep.appendChild(nameEl);
+                sep.appendChild(copyBtn);
+                block.appendChild(sep);
+            }
+
+            const wrap = document.createElement('div');
+            wrap.className = 'card-editor-wrap';
+
+            const gutter = document.createElement('div');
+            gutter.className = 'card-line-gutter';
+            if (!cardState.showLineNumbers) gutter.classList.add('hidden');
+            const gutterInner = document.createElement('div');
+            gutterInner.className = 'card-line-gutter-inner';
+            gutter.appendChild(gutterInner);
+
+            const ce = document.createElement('div');
+            ce.className = 'card-ce';
+            ce.contentEditable = 'true';
+            ce.spellcheck = false;
+            ce.setAttribute('data-placeholder', '');
+            ce.innerHTML = blockHtml;
+            ce._rawContent = rawContent ?? '';
+
+            wrap.appendChild(gutter);
+            wrap.appendChild(ce);
+            block.appendChild(wrap);
+
+            cardSetupBlockCE(pane, block, ce, gutter);
+
+            return block;
+        }
+
+        // === 블록별 CE 이벤트 셋업 ===
+        function cardSetupBlockCE(pane, blockEl, ce, gutter) {
+            let inputRAF = null;
+            ce.addEventListener('input', () => {
+                ce._modified = true;
+                cardMarkDirty();
+                if (inputRAF) cancelAnimationFrame(inputRAF);
+                inputRAF = requestAnimationFrame(() => {
+                    inputRAF = null;
+                    cardUpdateBlockLineNumbers(blockEl);
+                    cardUpdateCharCount();
+                    cardCheckMacroTrigger(ce);
+                    // 분할뷰에서 같은 카테고리면 반대쪽 즉시 동기화
+                    if (cardState.splitView) {
+                        const otherPane = pane === 'Left' ? 'Right' : 'Left';
+                        const myCat = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        if (myCat === otherCat) cardSyncPaneDirect(pane, otherPane);
+                    }
+                });
+            });
+
+            document.addEventListener('selectionchange', () => {
+                if (document.activeElement === ce) cardUpdateCharCount();
+            });
+
+            ce.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\r/g, '');
+                document.execCommand('insertText', false, text);
+            });
+
+            if (typeof ResizeObserver !== 'undefined') {
+                let resizeRAF = null;
+                new ResizeObserver(() => {
+                    if (resizeRAF) cancelAnimationFrame(resizeRAF);
+                    resizeRAF = requestAnimationFrame(() => {
+                        resizeRAF = null;
+                        cardUpdateBlockLineNumbers(blockEl);
+                    });
+                }).observe(ce);
+            }
+
+            ce.addEventListener('keydown', (e) => {
+                if (cardState.macroDropdown.visible) {
+                    if (e.key === 'Tab' || e.key === 'Enter') { e.preventDefault(); cardApplyMacro(cardState.macroDropdown.selectedIdx); return; }
+                    if (e.key === 'ArrowDown') { e.preventDefault(); cardMoveMacroSelection(1); return; }
+                    if (e.key === 'ArrowUp') { e.preventDefault(); cardMoveMacroSelection(-1); return; }
+                    if (e.key === 'Escape') { cardHideMacroDropdown(); return; }
+                }
+                if (e.key === 'Tab') { e.preventDefault(); document.execCommand('insertText', false, '\t'); }
+
+                // ArrowUp/Down: 브라우저 키 처리 후 커서가 안 움직였으면 CE 경계 → 이웃 블록
+                if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey) {
+                    const dir = e.key === 'ArrowUp' ? -1 : 1;
+                    const sel = window.getSelection();
+                    if (!sel || sel.rangeCount === 0) return;
+                    const bNode = sel.getRangeAt(0).startContainer;
+                    const bOff = sel.getRangeAt(0).startOffset;
+                    const bY = sel.getRangeAt(0).getBoundingClientRect().top;
+                    const justLanded = ce._cardJustLanded;
+                    delete ce._cardJustLanded;
+                    setTimeout(() => {
+                        const s = window.getSelection();
+                        if (!s || s.rangeCount === 0) return;
+                        const ar = s.getRangeAt(0);
+                        const moved = ar.startContainer !== bNode || ar.startOffset !== bOff;
+                        if (moved) {
+                            if (!justLanded) return; // 정상 이동 → 점프 안 함
+                            // 점프 직후 첫 키: 정규화로 node만 바뀌고 줄은 안 바뀐 경우 구분
+                            const aY = ar.getBoundingClientRect().top;
+                            const lineH = parseFloat(getComputedStyle(ce).lineHeight) || 22;
+                            if (bY !== 0 && aY !== 0 && Math.abs(aY - bY) > lineH * 0.3) return;
+                            // Y 변화 없음(또는 0) → 정규화일 뿐 → 경계로 처리
+                        }
+                        const targetBlock = dir === -1
+                            ? blockEl.previousElementSibling
+                            : blockEl.nextElementSibling;
+                        if (targetBlock && targetBlock.classList.contains('card-block')) {
+                            const targetCe = targetBlock.querySelector('.card-ce');
+                            if (targetCe) {
+                                targetCe.focus({ preventScroll: true });
+                                targetCe._cardJustLanded = true;
+                                const nr = document.createRange();
+                                nr.selectNodeContents(targetCe);
+                                nr.collapse(dir === -1 ? false : true);
+                                s.removeAllRanges();
+                                s.addRange(nr);
+                                const cr = s.getRangeAt(0).getBoundingClientRect();
+                                const cont = ce.closest('.card-blocks-container');
+                                if (cont && cr.top !== 0) {
+                                    const cr2 = cont.getBoundingClientRect();
+                                    if (cr.top < cr2.top) cont.scrollTop -= (cr2.top - cr.top + 8);
+                                    else if (cr.bottom > cr2.bottom) cont.scrollTop += (cr.bottom - cr2.bottom + 8);
+                                }
+                            }
+                        }
+                    }, 0);
+                }
+            });
+        }
+
+        // === 블록 구조 Undo (텍스트 편집은 브라우저 네이티브 undo 사용) ===
+        // === 블록 조작 ===
+
+        // 구분선 삭제 → 이전 블록에 내용 병합 (내용 손실 없음)
+        function cardMergeBlockUp(pane, blockEl) {
+            const container = document.getElementById(`cardBlocks${pane}`);
+            const blocks = Array.from(container.querySelectorAll('.card-block'));
+            const idx = blocks.indexOf(blockEl);
+            if (idx <= 0) return;
+
+            const prevBlock = blocks[idx - 1];
+            const prevCe = prevBlock.querySelector('.card-ce');
+            const curCe = blockEl.querySelector('.card-ce');
+            const prevText = cardHtmlToMarkers(prevCe);
+            const curText = cardHtmlToMarkers(curCe);
+            // DOM 노드 직접 이동 (innerHTML 대신 — undo 스택 보존)
+            if (curCe.childNodes.length > 0) {
+                prevCe.appendChild(document.createElement('br'));
+                while (curCe.firstChild) {
+                    prevCe.appendChild(curCe.firstChild);
+                }
+            }
+            prevCe.normalize();
+            const merged = prevText && curText ? prevText + '\n' + curText : prevText || curText;
+            prevCe._rawContent = merged || '';
+            prevCe._modified = false;
+            blockEl.remove();
+            cardReindexBlocks(pane);
+            prevCe.focus({ preventScroll: true });
+            cardUpdateBlockLineNumbers(prevBlock);
+            cardSyncContentFromCE(pane);
+            cardMarkDirty();
+            cardUpdateCharCount();
+            // 분할뷰 동기화
+            if (cardState.splitView) {
+                const otherPane = pane === 'Left' ? 'Right' : 'Left';
+                const myCat = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                if (myCat === otherCat) cardSyncPaneDirect(pane, otherPane);
+            }
+        }
+
+        function cardCopyBlock(pane, blockEl) {
+            const ce = blockEl.querySelector('.card-ce');
+            const nameEl = blockEl.querySelector('.card-block-name');
+            const text = cardHtmlToMarkers(ce);
+            const clean = cardStripAnnotations(text);
+            const name = nameEl ? nameEl.textContent.trim() : '';
+            const result = name ? `${name}\n${clean}` : clean;
+            navigator.clipboard.writeText(result).then(() => showToast('블록 복사됨', 'success'));
+        }
+
+        function cardSplitBlockAtCursor(pane) {
+            // 실제 CE에 포커스 또는 Selection이 있는지 확인 (폴백 제외)
+            const active = document.activeElement;
+            let ce = null;
+            if (active && active.classList.contains('card-ce')) {
+                ce = active;
+            } else {
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount > 0) {
+                    const node = sel.getRangeAt(0).startContainer;
+                    ce = (node.nodeType === 1 ? node : node.parentElement)?.closest('.card-ce') || null;
+                }
+            }
+            if (!ce) { showToast('블록을 분할할 위치에 커서를 놓아주세요', 'warning'); return; }
+            const blockEl = ce.closest('.card-block');
+            if (!blockEl) { showToast('블록을 분할할 위치에 커서를 놓아주세요', 'warning'); return; }
+
+            const container = document.getElementById(`cardBlocks${pane}`);
+            const fullText = cardHtmlToMarkers(ce);
+
+            // 커서 줄 인덱스 계산
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0);
+            const preRange = document.createRange();
+            preRange.selectNodeContents(ce);
+            preRange.setEnd(range.startContainer, range.startOffset);
+            const preText = cardHtmlToMarkers(preRange.cloneContents());
+            const cursorLineIdx = (preText.match(/\n/g) || []).length;
+
+            // 줄 단위로 분할
+            const markerLines = fullText.split('\n');
+            const safeIdx = Math.min(cursorLineIdx, markerLines.length - 1);
+            const beforeText = markerLines.slice(0, safeIdx + 1).join('\n');
+            const afterText = markerLines.slice(safeIdx + 1).join('\n');
+
+            // 분할 지점 이후 내용 제거 (Range.deleteContents — undo 스택 보존)
+            const brs = ce.querySelectorAll('br');
+            if (safeIdx < brs.length) {
+                const delRange = document.createRange();
+                delRange.setStartBefore(brs[safeIdx]);
+                delRange.setEndAfter(ce.lastChild);
+                delRange.deleteContents();
+            }
+            ce.normalize();
+            ce._rawContent = beforeText;
+            ce._modified = false;
+
+            // 새 블록 = 커서 다음 줄부터
+            const blocks = Array.from(container.querySelectorAll('.card-block'));
+            const idx = blocks.indexOf(blockEl);
+            const newBlockEl = cardCreateBlockElement(pane, idx + 1, cardMarkersToHtml(afterText), '', afterText);
+            blockEl.after(newBlockEl);
+            cardReindexBlocks(pane);
+
+            // 새 블록의 이름란에 포커스
+            const newNameEl = newBlockEl.querySelector('.card-block-name');
+            newNameEl.focus({ preventScroll: true });
+
+            cardUpdateBlockLineNumbers(blockEl);
+            cardUpdateBlockLineNumbers(newBlockEl);
+            cardSyncContentFromCE(pane);
+            cardMarkDirty();
+            // 분할뷰 동기화
+            if (cardState.splitView) {
+                const otherPane = pane === 'Left' ? 'Right' : 'Left';
+                const myCat = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                if (myCat === otherCat) cardSyncPaneDirect(pane, otherPane);
+            }
+        }
+
+        function cardReindexBlocks(pane) {
+            const container = document.getElementById(`cardBlocks${pane}`);
+            container.querySelectorAll('.card-block').forEach((b, i) => { b.dataset.blockIdx = i; });
+        }
+
+        function cardGetActiveCE() {
+            // 1) 현재 포커스가 CE에 있으면 그대로
+            const active = document.activeElement;
+            if (active && active.classList.contains('card-ce')) return active;
+            // 2) 툴바 버튼 클릭 등으로 포커스가 빠져도 Selection은 CE 안에 남아있음
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0) {
+                const node = sel.getRangeAt(0).startContainer;
+                const ce = (node.nodeType === 1 ? node : node.parentElement)?.closest('.card-ce');
+                if (ce) return ce;
+            }
+            // 3) 최종 폴백: 왼쪽 첫 번째 CE
+            const container = document.getElementById('cardBlocksLeft');
+            return container?.querySelector('.card-ce') || null;
+        }
+
+        function cardGetActivePane() {
+            const ce = cardGetActiveCE();
+            if (ce) {
+                const container = ce.closest('.card-blocks-container');
+                if (container?.id === 'cardBlocksRight') return 'Right';
+            }
+            return 'Left';
+        }
+
+        // === 키보드 단축키 ===
+        function cardSetupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (currentMode !== 'cardeditor') return;
+                const workspace = document.getElementById('cardEditorWorkspace');
+                if (!workspace.classList.contains('active')) return;
+
+                const isCtrl = e.ctrlKey || e.metaKey;
+
+                if (isCtrl && e.key === 's') {
+                    e.preventDefault();
+                    cardSave();
+                }
+                if (isCtrl && e.key === 'f') {
+                    e.preventDefault();
+                    cardToggleFindModal(true, cardGetActivePane());
+                    document.getElementById('cardFindInput').focus();
+                }
+                if (isCtrl && e.key === 'h') {
+                    e.preventDefault();
+                    cardToggleFindModal(true, cardGetActivePane());
+                    document.getElementById('cardReplaceInput').focus();
+                }
+                // Ctrl+= 또는 Ctrl++ → 확대
+                if (isCtrl && (e.key === '=' || e.key === '+')) {
+                    e.preventDefault();
+                    cardZoom(10);
+                }
+                // Ctrl+- → 축소
+                if (isCtrl && e.key === '-') {
+                    e.preventDefault();
+                    cardZoom(-10);
+                }
+                // Ctrl+0 → 원래 크기
+                if (isCtrl && e.key === '0') {
+                    e.preventDefault();
+                    cardZoomReset();
+                }
+                // Ctrl+Shift+C → 현재 카테고리 복사
+                if (isCtrl && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    cardCopyCategory();
+                }
+                // Ctrl+Shift+Enter → 블록 분할
+                if (isCtrl && e.shiftKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    cardSplitBlockAtCursor(cardGetActivePane());
+                }
+                if (e.key === 'Escape') {
+                    if (cardState.macroDropdown.visible) {
+                        cardHideMacroDropdown();
+                    } else if (cardState.findReplace.open) {
+                        cardToggleFindModal(false);
+                    }
+                }
+            });
+        }
+
+        // === 줄 번호 (블록 단위) ===
+        // scrollHeight 기반 줄 수 측정 — DOM 파싱 없이 실제 렌더링 높이로 계산
+        function cardUpdateBlockLineNumbers(blockEl) {
+            if (!cardState.showLineNumbers) return;
+            const ce = blockEl.querySelector('.card-ce');
+            const gutter = blockEl.querySelector('.card-line-gutter');
+            const gutterInner = gutter?.querySelector('.card-line-gutter-inner');
+            if (!gutterInner || !ce) return;
+            // 기존 gutter 높이가 CE를 flex-stretch로 늘릴 수 있으므로 먼저 비운다
+            gutterInner.innerHTML = '';
+            const style = getComputedStyle(ce);
+            const baseH = parseFloat(style.lineHeight) || 22;
+            const padTop = parseFloat(style.paddingTop) || 0;
+            const padBot = parseFloat(style.paddingBottom) || 0;
+            const contentHeight = ce.scrollHeight - padTop - padBot;
+            const lineCount = Math.max(1, Math.round(contentHeight / baseH));
+            let html = '';
+            for (let i = 0; i < lineCount; i++) {
+                html += `<div class="card-line-num" style="height:${baseH}px;line-height:${baseH}px">${i + 1}</div>`;
+            }
+            gutterInner.innerHTML = html;
+        }
+
+        function cardUpdateAllLineNumbers(pane) {
+            if (!cardState.showLineNumbers) return;
+            const container = document.getElementById(`cardBlocks${pane}`);
+            if (!container) return;
+            container.querySelectorAll('.card-block').forEach(b => cardUpdateBlockLineNumbers(b));
+        }
+
+        function cardUpdateLineNumberVisibility() {
+            const btn = document.getElementById('cardLineNumBtn');
+            document.querySelectorAll('.card-line-gutter').forEach(g => {
+                g.classList.toggle('hidden', !cardState.showLineNumbers);
+            });
+            if (cardState.showLineNumbers) {
+                btn?.classList.add('active');
+                cardUpdateAllLineNumbers('Left');
+                if (cardState.splitView) cardUpdateAllLineNumbers('Right');
+            } else {
+                btn?.classList.remove('active');
+            }
+        }
+
+        // === 확대/축소 ===
+        function cardZoom(delta) {
+            cardState.zoom = Math.max(50, Math.min(200, cardState.zoom + delta));
+            cardApplyZoom();
+        }
+
+        function cardZoomReset() {
+            cardState.zoom = 100;
+            cardApplyZoom();
+        }
+
+        function cardApplyZoom() {
+            const fontSize = (0.85 * cardState.zoom / 100) + 'rem';
+            document.querySelectorAll('.card-ce').forEach(el => { el.style.fontSize = fontSize; });
+            document.querySelectorAll('.card-line-gutter').forEach(el => { el.style.fontSize = fontSize; });
+            document.getElementById('cardStatusZoom').textContent = cardState.zoom + '%';
+            cardUpdateAllLineNumbers('Left');
+            if (cardState.splitView) cardUpdateAllLineNumbers('Right');
+        }
+
+        // === 컬렉션 뷰 ===
+        async function cardLoadCollection() {
+            try {
+                const res = await fetch(`${API_BASE}/api/cards`);
+                const data = await res.json();
+                cardState.fileList = data.cards || [];
+                cardRenderCollection();
+            } catch (e) {
+                console.error('카드 목록 로드 실패:', e);
+            }
+        }
+
+        function cardGetFavorites() {
+            try { return JSON.parse(localStorage.getItem('cardFavorites') || '[]'); } catch { return []; }
+        }
+        function cardSetFavorites(favs) {
+            localStorage.setItem('cardFavorites', JSON.stringify(favs));
+        }
+        function cardToggleFavorite(filename) {
+            const favs = cardGetFavorites();
+            const idx = favs.indexOf(filename);
+            if (idx >= 0) favs.splice(idx, 1); else favs.push(filename);
+            cardSetFavorites(favs);
+            cardRenderCollection(document.getElementById('cardSearchInput')?.value || '');
+        }
+
+        function cardRenderCollection(filter = '') {
+            const grid = document.getElementById('cardCollectionGrid');
+            const favs = cardGetFavorites();
+            const filterLower = filter.toLowerCase();
+            let filtered = filter
+                ? cardState.fileList.filter(c => c.name.toLowerCase().includes(filterLower) || (c.description || '').toLowerCase().includes(filterLower))
+                : [...cardState.fileList];
+            const sort = cardState.sortBy;
+            if (sort === 'name') {
+                filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+            } else if (sort === 'created') {
+                filtered.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+            } else {
+                filtered.sort((a, b) => (b.modified || '').localeCompare(a.modified || ''));
+            }
+            // 즐겨찾기 최상위 (기존 정렬 유지하면서 앞으로)
+            filtered.sort((a, b) => {
+                const aFav = favs.includes(a.filename) ? 0 : 1;
+                const bFav = favs.includes(b.filename) ? 0 : 1;
+                return aFav - bFav;
+            });
+
+            let html = '';
+            for (const card of filtered) {
+                const date = card.modified ? new Date(card.modified).toLocaleDateString('ko-KR') : '';
+                const desc = card.description || '';
+                const isFav = favs.includes(card.filename);
+                const thumbInner = card.thumbnail
+                    ? `<img src="data:image/jpeg;base64,${card.thumbnail}">`
+                    : '';
+                html += `<div class="card-item" data-filename="${card.filename}" oncontextmenu="cardShowContextMenu(event, '${card.filename}')">
+                    <div class="card-item-thumbnail-wrap" data-thumb-file="${card.filename}">${thumbInner}<div class="thumb-add">+</div></div>
+                    <button type="button" class="card-fav-btn${isFav ? ' favorited' : ''}" data-fav-file="${card.filename}">${isFav ? '★' : '☆'}</button>
+                    <div class="card-item-info">
+                        <div class="card-item-name">${escapeHtml(card.name)}</div>
+                        ${desc ? `<div class="card-item-desc">${escapeHtml(desc)}</div>` : ''}
+                        <div class="card-item-meta">${date} · ${card.categoryCount || 0}개 카테고리</div>
+                    </div>
+                </div>`;
+            }
+            html += `<div class="card-item card-item-new" id="cardNewCardItem">
+                <div class="card-item-new-icon">+</div>
+                <div class="card-item-new-label">새 카드</div>
+            </div>`;
+
+            grid.innerHTML = html;
+
+            grid.querySelectorAll('.card-item:not(.card-item-new)').forEach(el => {
+                el.onclick = () => cardOpenFile(el.dataset.filename);
+            });
+            grid.querySelectorAll('.thumb-add').forEach(el => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    const filename = el.closest('.card-item-thumbnail-wrap').dataset.thumbFile;
+                    cardSetThumbnailFromCollection(filename);
+                };
+            });
+            grid.querySelectorAll('.card-fav-btn').forEach(el => {
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    cardToggleFavorite(el.dataset.favFile);
+                };
+            });
+            document.getElementById('cardNewCardItem').onclick = () => cardCreateNew();
+        }
+
+        function cardFilterCollection(query) {
+            cardRenderCollection(query);
+        }
+
+        async function cardCreateNew() {
+            showInputModal('새 카드', '카드 이름을 입력하세요', async (name) => {
+                if (!name || !name.trim()) return;
+                try {
+                    const doc = cardNewDocument(name.trim());
+                    const res = await fetch(`${API_BASE}/api/cards`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: name.trim(), document: doc })
+                    });
+                    await res.json();
+                    showToast('카드 생성됨', 'success');
+                    cardLoadCollection();
+                } catch (e) {
+                    showToast('카드 생성 실패', 'error');
+                }
+            }, '생성', '새 캐릭터');
+        }
+
+        async function cardOpenFile(filename) {
+            try {
+                const res = await fetch(`${API_BASE}/api/cards/${filename}`);
+                const data = await res.json();
+                cardState.currentFile = { filename, name: data.name };
+                cardState.document = data;
+                cardState.isDirty = false;
+                cardState.leftCategory = data.settings?.lastActiveCategory || data.categories[0]?.id || 'main';
+                cardState.rightCategory = data.settings?.splitRightCategory || (data.categories[1]?.id || data.categories[0]?.id || 'main');
+                cardShowWorkspace();
+            } catch (e) {
+                showToast('카드 로드 실패', 'error');
+            }
+        }
+
+        function cardShowWorkspace() {
+            const doc = cardState.document;
+            document.getElementById('cardCollectionView').style.display = 'none';
+            const ws = document.getElementById('cardEditorWorkspace');
+            ws.classList.add('active');
+            history.pushState({ cardEditor: true }, '');
+            document.getElementById('cardEditorTitle').textContent = doc.name;
+            document.getElementById('cardDirtyIndicator').classList.toggle('visible', cardState.isDirty);
+
+            cardRenderCategoryTabs('Left', cardState.leftCategory);
+            cardLoadCategoryContent('Left');
+            if (cardState.splitView) {
+                cardRenderCategoryTabs('Right', cardState.rightCategory);
+                cardLoadCategoryContent('Right');
+            }
+            cardUpdateCharCount();
+        }
+
+        function cardBackToCollection() {
+            if (cardState.isDirty) {
+                const modal = document.getElementById('confirmModal');
+                document.getElementById('confirmModalTitle').textContent = '저장되지 않은 변경';
+                document.getElementById('confirmModalMessage').textContent = '변경사항이 있습니다. 어떻게 하시겠습니까?';
+                document.getElementById('confirmModalCheckboxWrapper').style.display = 'none';
+
+                const okBtn = document.getElementById('confirmModalOk');
+                const cancelBtn = document.getElementById('confirmModalCancel');
+                const actionsDiv = okBtn.parentNode;
+
+                // 기존 버튼 교체 (이벤트 정리)
+                const newOk = okBtn.cloneNode(true);
+                const newCancel = cancelBtn.cloneNode(true);
+                actionsDiv.replaceChild(newOk, okBtn);
+                actionsDiv.replaceChild(newCancel, cancelBtn);
+
+                // 저장하고 돌아가기 버튼 추가
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'btn';
+                saveBtn.textContent = '저장하고 돌아가기';
+                actionsDiv.appendChild(saveBtn);
+
+                newOk.textContent = '저장하지 않고 돌아가기';
+                newOk.className = 'btn btn-danger';
+                newOk.style.background = 'var(--error)';
+                newCancel.textContent = '취소';
+
+                const close = () => { modal.classList.remove('active'); saveBtn.remove(); };
+                saveBtn.onclick = async () => { close(); await cardSave(); cardDoBackToCollection(); };
+                newOk.onclick = () => { close(); cardDoBackToCollection(); };
+                newCancel.onclick = () => { close(); };
+
+                modal.classList.add('active');
+                return;
+            }
+            cardDoBackToCollection();
+        }
+
+        function cardDoBackToCollection() {
+            document.getElementById('cardEditorWorkspace').classList.remove('active');
+            document.getElementById('cardCollectionView').style.display = '';
+            cardState.isDirty = false;
+            // 찾기 모달 닫기
+            cardToggleFindModal(false);
+            cardLoadCollection();
+        }
+
+        // === 카테고리 관리 ===
+        function cardRenderCategoryTabs(pane, activeId) {
+            const doc = cardState.document;
+            if (!doc) return;
+            const tabsEl = document.getElementById(`cardCategoryTabs${pane}`);
+            const addBtn = document.getElementById(`cardAddCategoryBtn${pane}`);
+
+            while (tabsEl.firstChild !== addBtn) {
+                tabsEl.removeChild(tabsEl.firstChild);
+            }
+
+            doc.categories.forEach(cat => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = 'card-category-tab' + (cat.id === activeId ? ' active' : '');
+                tab.textContent = cat.name;
+                tab.dataset.catId = cat.id;
+                tab.onclick = () => {
+                    cardSyncContentFromCE(pane);
+                    const otherPane = pane === 'Left' ? 'Right' : 'Left';
+                    // 반대쪽이 같은 카테고리를 보고 있으면 먼저 sync
+                    if (cardState.splitView) {
+                        const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        const myCat = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        if (otherCat === myCat) {
+                            cardSyncContentFromCE(otherPane);
+                        }
+                    }
+                    if (pane === 'Left') {
+                        cardState.leftCategory = cat.id;
+                    } else {
+                        cardState.rightCategory = cat.id;
+                    }
+                    cardRenderCategoryTabs(pane, cat.id);
+                    cardLoadCategoryContent(pane);
+                    // 반대쪽이 같은 카테고리면 갱신
+                    if (cardState.splitView) {
+                        const otherCat = otherPane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+                        if (otherCat === cat.id) {
+                            cardLoadCategoryContent(otherPane);
+                        }
+                    }
+                    cardUpdateCharCount();
+                };
+                tab.ondblclick = (e) => {
+                    e.stopPropagation();
+                    showInputModal('카테고리 이름 변경', '새 이름:', (newName) => {
+                        if (newName && newName.trim()) {
+                            cat.name = newName.trim();
+                            cardMarkDirty();
+                            cardRenderCategoryTabs(pane, pane === 'Left' ? cardState.leftCategory : cardState.rightCategory);
+                        }
+                    }, '변경', cat.name);
+                };
+                tab.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    cardShowCategoryMenu(e, cat, pane);
+                };
+                tabsEl.insertBefore(tab, addBtn);
+            });
+        }
+
+        function cardShowCategoryMenu(e, category, pane) {
+            const menu = document.getElementById('cardContextMenu');
+            let html = `<div class="card-context-menu-item" data-action="rename">✏️ 이름 변경</div>`;
+            html += `<div class="card-context-menu-item" data-action="duplicate">📋 복제</div>`;
+            if (category.type !== 'builtin') {
+                html += `<div class="card-context-menu-item danger" data-action="delete">🗑️ 삭제</div>`;
+            }
+            menu.innerHTML = html;
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.style.display = 'block';
+
+            menu.querySelectorAll('.card-context-menu-item').forEach(item => {
+                item.onclick = (ev) => {
+                    ev.stopPropagation();
+                    menu.style.display = 'none';
+                    const action = item.dataset.action;
+                    if (action === 'rename') {
+                        showInputModal('카테고리 이름 변경', '새 이름:', (newName) => {
+                            if (newName && newName.trim()) {
+                                category.name = newName.trim();
+                                cardMarkDirty();
+                                cardRenderCategoryTabs('Left', cardState.leftCategory);
+                                if (cardState.splitView) cardRenderCategoryTabs('Right', cardState.rightCategory);
+                            }
+                        }, '변경', category.name);
+                    } else if (action === 'duplicate') {
+                        const newCat = {
+                            id: 'custom_' + Date.now(),
+                            name: category.name + ' (복사)',
+                            type: 'custom',
+                            content: category.content
+                        };
+                        cardState.document.categories.push(newCat);
+                        cardMarkDirty();
+                        cardRenderCategoryTabs('Left', cardState.leftCategory);
+                        if (cardState.splitView) cardRenderCategoryTabs('Right', cardState.rightCategory);
+                    } else if (action === 'delete') {
+                        showConfirmModal('카테고리 삭제', `"${category.name}" 카테고리를 삭제하시겠습니까?`, () => {
+                            const idx = cardState.document.categories.findIndex(c => c.id === category.id);
+                            if (idx !== -1) {
+                                cardState.document.categories.splice(idx, 1);
+                                if (cardState.leftCategory === category.id) {
+                                    cardState.leftCategory = cardState.document.categories[0]?.id || 'main';
+                                    cardLoadCategoryContent('Left');
+                                }
+                                if (cardState.rightCategory === category.id) {
+                                    cardState.rightCategory = cardState.document.categories[0]?.id || 'main';
+                                    cardLoadCategoryContent('Right');
+                                }
+                                cardMarkDirty();
+                                cardRenderCategoryTabs('Left', cardState.leftCategory);
+                                if (cardState.splitView) cardRenderCategoryTabs('Right', cardState.rightCategory);
+                            }
+                        }, '삭제', true);
+                    }
+                };
+            });
+        }
+
+        function cardAddCategory(pane) {
+            showInputModal('새 카테고리', '카테고리 이름을 입력하세요', (name) => {
+                if (!name || !name.trim()) return;
+                const newCat = {
+                    id: 'custom_' + Date.now(),
+                    name: name.trim(),
+                    type: 'custom',
+                    content: ''
+                };
+                cardState.document.categories.push(newCat);
+                cardMarkDirty();
+                const paneCap = pane === 'right' ? 'Right' : 'Left';
+                cardSyncContentFromCE(paneCap);
+                if (pane === 'left') {
+                    cardState.leftCategory = newCat.id;
+                    cardRenderCategoryTabs('Left', newCat.id);
+                    cardLoadCategoryContent('Left');
+                    if (cardState.splitView) cardRenderCategoryTabs('Right', cardState.rightCategory);
+                } else {
+                    cardState.rightCategory = newCat.id;
+                    cardRenderCategoryTabs('Right', newCat.id);
+                    cardLoadCategoryContent('Right');
+                    cardRenderCategoryTabs('Left', cardState.leftCategory);
+                }
+            }, '추가', '');
+        }
+
+        // === 에디터 코어 (contenteditable) ===
+        function cardGetCategory(catId) {
+            return cardState.document?.categories.find(c => c.id === catId);
+        }
+
+        function cardLoadCategoryContent(pane) {
+            const catId = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+            const cat = cardGetCategory(catId);
+            const container = document.getElementById(`cardBlocks${pane}`);
+            container.innerHTML = '';
+
+            const blocks = cardSplitContentToBlocks(cat?.content || '');
+            blocks.forEach((b, idx) => {
+                const blockHtml = cardMarkersToHtml(b.content);
+                const blockEl = cardCreateBlockElement(pane, idx, blockHtml, b.name, b.content);
+                container.appendChild(blockEl);
+            });
+
+            cardUpdateAllLineNumbers(pane);
+            if (pane === 'Left') {
+                document.getElementById('cardStatusCategory').textContent = cat?.name || '';
+            }
+        }
+
+        // 분할뷰: innerHTML 직접 복사로 줄바꿈 형식 유지
+        function cardSyncPaneDirect(fromPane, toPane) {
+            const fromContainer = document.getElementById(`cardBlocks${fromPane}`);
+            const toContainer = document.getElementById(`cardBlocks${toPane}`);
+            const fromBlocks = fromContainer.querySelectorAll('.card-block');
+            const toBlocks = toContainer.querySelectorAll('.card-block');
+
+            if (fromBlocks.length !== toBlocks.length) {
+                // 블록 구조 변경 — 전체 리빌드
+                cardSyncContentFromCE(fromPane);
+                cardLoadCategoryContent(toPane);
+                return;
+            }
+
+            fromBlocks.forEach((fromBlock, i) => {
+                const fromCe = fromBlock.querySelector('.card-ce');
+                const toCe = toBlocks[i].querySelector('.card-ce');
+                if (fromCe && toCe && fromCe.innerHTML !== toCe.innerHTML) {
+                    toCe.innerHTML = fromCe.innerHTML;
+                    toCe._modified = fromCe._modified;
+                    toCe._rawContent = fromCe._rawContent;
+                }
+                const fromName = fromBlock.querySelector('.card-block-name');
+                const toName = toBlocks[i].querySelector('.card-block-name');
+                if (fromName && toName && fromName.textContent !== toName.textContent) {
+                    toName.textContent = fromName.textContent;
+                }
+            });
+
+            cardUpdateAllLineNumbers(toPane);
+            cardSyncContentFromCE(fromPane);
+        }
+
+        function cardSyncContentFromCE(pane) {
+            const catId = pane === 'Left' ? cardState.leftCategory : cardState.rightCategory;
+            const cat = cardGetCategory(catId);
+            if (!cat) return;
+            const container = document.getElementById(`cardBlocks${pane}`);
+            const blocks = [];
+            container.querySelectorAll('.card-block').forEach(blockEl => {
+                const ce = blockEl.querySelector('.card-ce');
+                const nameEl = blockEl.querySelector('.card-block-name');
+                const content = ce._modified ? cardHtmlToMarkers(ce) : (ce._rawContent ?? cardHtmlToMarkers(ce));
+                blocks.push({ content, name: nameEl ? nameEl.textContent.trim() : '' });
+            });
+            cat.content = cardJoinBlocksToContent(blocks);
+        }
+
+        function cardMarkDirty() {
+            cardState.isDirty = true;
+            document.getElementById('cardDirtyIndicator').classList.add('visible');
+        }
+
+        function cardUpdateCharCount() {
+            const doc = cardState.document;
+            if (!doc) return;
+
+            function countPaneDOM(containerId) {
+                const container = document.getElementById(containerId);
+                if (!container) return 0;
+                let len = 0;
+                container.querySelectorAll('.card-block').forEach(block => {
+                    const ce = block.querySelector('.card-ce');
+                    if (ce) len += ce.innerText.length;
+                    const nameEl = block.querySelector('.card-block-name');
+                    if (nameEl) len += nameEl.textContent.trim().length;
+                });
+                return len;
+            }
+
+            // 왼쪽 패널
+            const leftCat = cardGetCategory(cardState.leftCategory);
+            const leftLen = countPaneDOM('cardBlocksLeft');
+            document.getElementById('cardStatusCategory').textContent = `${leftCat?.name || ''} ${leftLen}자`;
+
+            // 오른쪽 패널 (듀얼뷰일 때만)
+            const rightEl = document.getElementById('cardStatusRight');
+            if (cardState.splitView) {
+                const rightCat = cardGetCategory(cardState.rightCategory);
+                const rightLen = countPaneDOM('cardBlocksRight');
+                rightEl.textContent = `│ ${rightCat?.name || ''} ${rightLen}자`;
+                rightEl.style.display = '';
+            } else {
+                rightEl.style.display = 'none';
+            }
+
+            // 선택 영역
+            const sel = window.getSelection();
+            const selText = sel ? sel.toString() : '';
+            const selEl = document.getElementById('cardStatusSelected');
+            if (selText.length > 0) {
+                selEl.textContent = `(선택: ${selText.length}자)`;
+                selEl.style.display = '';
+            } else {
+                selEl.style.display = 'none';
+            }
+
+            // 전체 글자수: 열린 패널은 DOM에서, 나머지는 저장된 content에서
+            const liveCatIds = new Set([cardState.leftCategory]);
+            let total = leftLen;
+            if (cardState.splitView) {
+                const rightLen2 = (cardState.rightCategory === cardState.leftCategory) ? 0 : countPaneDOM('cardBlocksRight');
+                if (cardState.rightCategory !== cardState.leftCategory) {
+                    liveCatIds.add(cardState.rightCategory);
+                    total += rightLen2;
+                }
+            }
+            for (const c of doc.categories) {
+                if (liveCatIds.has(c.id)) continue;
+                const blocks = cardSplitContentToBlocks(c.content || '');
+                blocks.forEach(b => {
+                    total += cardStripAnnotations(b.content).length;
+                    total += b.name.length;
+                });
+            }
+            document.getElementById('cardStatusTotal').textContent = `전체: ${total}자`;
+        }
+
+        // === 복사 ===
+        function cardCopyCategory(pane) {
+            pane = pane || cardGetActivePane();
+            const catId = pane === 'Right' ? cardState.rightCategory : cardState.leftCategory;
+            cardSyncContentFromCE(pane);
+            const cat = cardGetCategory(catId);
+            if (!cat) return;
+            const blocks = cardSplitContentToBlocks(cat.content);
+            const cleanBlocks = blocks.map(b => {
+                const content = cardStripAnnotations(b.content);
+                return b.name ? `${b.name}\n${content}` : content;
+            }).filter(t => t);
+            const clean = cleanBlocks.join('\n\n');
+            navigator.clipboard.writeText(clean).then(() => {
+                showToast(`"${cat.name}" 복사됨`, 'success');
+            });
+        }
+
+        function cardCopyAll() {
+            if (!cardState.document) return;
+            cardSyncContentFromCE('Left');
+            if (cardState.splitView) cardSyncContentFromCE('Right');
+            const parts = cardState.document.categories.map(c => {
+                const blocks = cardSplitContentToBlocks(c.content);
+                return blocks.map(b => {
+                    const content = cardStripAnnotations(b.content);
+                    return b.name ? `${b.name}\n${content}` : content;
+                }).filter(t => t).join('\n\n');
+            }).filter(t => t);
+            const fullText = parts.join('\n\n');
+            navigator.clipboard.writeText(fullText).then(() => {
+                showToast('전체 복사됨', 'success');
+            });
+        }
+
+        // === 저장/로드 ===
+        async function cardSave() {
+            if (!cardState.document || !cardState.currentFile) return;
+            cardSyncContentFromCE('Left');
+            if (cardState.splitView) cardSyncContentFromCE('Right');
+
+            cardState.document.settings = {
+                lastActiveCategory: cardState.leftCategory,
+                splitView: cardState.splitView,
+                splitLeftCategory: cardState.leftCategory,
+                splitRightCategory: cardState.rightCategory,
+                splitRatio: cardState.splitRatio
+            };
+
+            try {
+                await fetch(`${API_BASE}/api/cards/${cardState.currentFile.filename}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(cardState.document)
+                });
+                cardState.isDirty = false;
+                document.getElementById('cardDirtyIndicator').classList.remove('visible');
+                showToast('저장됨', 'success');
+            } catch (e) {
+                showToast('저장 실패', 'error');
+            }
+        }
+
+        // === 썸네일 설정 ===
+        function cardPickAndResizeImage() {
+            return new Promise((resolve) => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.style.display = 'none';
+                document.body.appendChild(input);
+                input.onchange = () => {
+                    const file = input.files[0];
+                    document.body.removeChild(input);
+                    if (!file) { resolve(null); return; }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const MAX = 400;
+                            let w = img.width, h = img.height;
+                            if (w > MAX || h > MAX) {
+                                const scale = MAX / Math.max(w, h);
+                                w = Math.round(w * scale);
+                                h = Math.round(h * scale);
+                            }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = w; canvas.height = h;
+                            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                            const base64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                            resolve(base64);
+                        };
+                        img.src = reader.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+                input.click();
+            });
+        }
+
+        // 컬렉션에서 직접 썸네일 설정
+        async function cardSetThumbnailFromCollection(filename) {
+            const base64 = await cardPickAndResizeImage();
+            if (!base64) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/cards/${filename}`);
+                const doc = await res.json();
+                doc.thumbnail = base64;
+                await fetch(`${API_BASE}/api/cards/${filename}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(doc)
+                });
+                // 현재 열린 카드라면 document에도 반영
+                if (cardState.currentFile?.filename === filename && cardState.document) {
+                    cardState.document.thumbnail = base64;
+                }
+                cardLoadCollection();
+                showToast('썸네일 설정됨', 'success');
+            } catch (e) {
+                showToast('썸네일 설정 실패', 'error');
+            }
+        }
+
+        // === 익스포트 ===
+        function cardShowExportModal() {
+            const doc = cardState.document;
+            if (!doc) { showToast('열린 카드가 없습니다', 'warning'); return; }
+
+            // 현재 에디터 내용 sync
+            cardSyncContentFromCE('Left');
+            if (cardState.splitView) cardSyncContentFromCE('Right');
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay active';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;';
+
+            const cats = doc.categories;
+            const catListHtml = cats.map((cat, i) => `
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;">
+                    <input type="checkbox" checked data-cat-idx="${i}">
+                    <span style="flex:1;color:var(--text);font-size:0.9rem;">${cat.name}</span>
+                    <span style="color:var(--text-dim);font-size:0.75rem;">${(cat.content || '').length}자</span>
+                </label>
+            `).join('');
+
+            overlay.innerHTML = `
+                <div style="background:var(--bg-light);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;min-width:360px;max-width:460px;max-height:80vh;display:flex;flex-direction:column;gap:16px;">
+                    <div style="font-size:1rem;font-weight:700;color:var(--text);">텍스트 파일로 내보내기</div>
+                    <div style="font-size:0.8rem;color:var(--text-dim);">내보낼 카테고리를 선택하세요</div>
+                    <div style="display:flex;gap:8px;margin-bottom:4px;">
+                        <button type="button" class="header-btn" id="cardExportSelectAll">전체 선택</button>
+                        <button type="button" class="header-btn" id="cardExportDeselectAll">전체 해제</button>
+                    </div>
+                    <div style="overflow-y:auto;max-height:300px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;" id="cardExportCatList">
+                        ${catListHtml}
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="cardExportMode" value="single" checked>
+                            <span style="color:var(--text);font-size:0.85rem;">단일 파일</span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="radio" name="cardExportMode" value="split">
+                            <span style="color:var(--text);font-size:0.85rem;">카테고리별 분할</span>
+                        </label>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:8px;">
+                        <button type="button" class="btn" id="cardExportCancel" style="background:var(--bg-lighter);color:var(--text-dim);">취소</button>
+                        <button type="button" class="btn" id="cardExportOk" style="background:var(--accent);color:white;">내보내기</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            overlay.querySelector('#cardExportSelectAll').onclick = () => {
+                overlay.querySelectorAll('#cardExportCatList input[type="checkbox"]').forEach(cb => cb.checked = true);
+            };
+            overlay.querySelector('#cardExportDeselectAll').onclick = () => {
+                overlay.querySelectorAll('#cardExportCatList input[type="checkbox"]').forEach(cb => cb.checked = false);
+            };
+            overlay.querySelector('#cardExportCancel').onclick = () => overlay.remove();
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+            overlay.querySelector('#cardExportOk').onclick = () => {
+                const checked = Array.from(overlay.querySelectorAll('#cardExportCatList input[type="checkbox"]:checked'));
+                if (checked.length === 0) { showToast('카테고리를 선택하세요', 'warning'); return; }
+                const selectedCats = checked.map(cb => cats[parseInt(cb.dataset.catIdx)]);
+                const mode = overlay.querySelector('input[name="cardExportMode"]:checked').value;
+                const baseName = doc.name || 'card';
+
+                if (mode === 'single') {
+                    const text = selectedCats.map(cat => {
+                        const content = cardStripAnnotations(cat.content || '');
+                        return `[${cat.name}]\n${content}`;
+                    }).join('\n\n');
+                    cardDownloadTextFile(`${baseName}.txt`, text);
+                } else {
+                    selectedCats.forEach(cat => {
+                        const content = cardStripAnnotations(cat.content || '');
+                        cardDownloadTextFile(`${baseName}_${cat.name}.txt`, content);
+                    });
+                }
+                showToast(`${selectedCats.length}개 카테고리 내보내기 완료`, 'success');
+                overlay.remove();
+            };
+        }
+
+        function cardDownloadTextFile(filename, text) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // === 찾기/바꾸기 모달 ===
+        function cardToggleFindModal(forceOpen, pane) {
+            const modal = document.getElementById('cardFindModal');
+            const open = forceOpen !== undefined ? forceOpen : !cardState.findReplace.open;
+            cardState.findReplace.open = open;
+            modal.classList.toggle('open', open);
+            if (open) {
+                if (pane) cardState.findReplace.pane = pane;
+                else cardState.findReplace.pane = cardGetActivePane();
+                // 뷰포트 밖으로 나간 경우 위치 보정
+                requestAnimationFrame(() => {
+                    const rect = modal.getBoundingClientRect();
+                    let needFix = false, l = rect.left, t = rect.top;
+                    if (rect.right > window.innerWidth) { l = window.innerWidth - rect.width; needFix = true; }
+                    if (rect.bottom > window.innerHeight) { t = window.innerHeight - rect.height; needFix = true; }
+                    if (l < 0) { l = 0; needFix = true; }
+                    if (t < 0) { t = 0; needFix = true; }
+                    if (needFix) { modal.style.left = l + 'px'; modal.style.top = t + 'px'; modal.style.right = 'auto'; }
+                });
+                document.getElementById('cardFindInput').focus();
+                // 선택 텍스트를 찾기 입력에 채우기
+                const sel = window.getSelection();
+                const selText = sel ? sel.toString() : '';
+                if (selText && selText.length < 200) {
+                    document.getElementById('cardFindInput').value = selText;
+                }
+                cardDoFind();
+            } else {
+                cardClearFindHighlights();
+                cardState.findReplace.matches = [];
+                cardState.findReplace.currentIdx = -1;
+            }
+        }
+
+        function cardSetupFindModalDrag() {
+            const header = document.getElementById('cardFindModalHeader');
+            const modal = document.getElementById('cardFindModal');
+            let dragging = false, startX, startY, startLeft, startTop;
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                dragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = modal.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                const rect = modal.getBoundingClientRect();
+                let newLeft = startLeft + e.clientX - startX;
+                let newTop = startTop + e.clientY - startY;
+                const maxLeft = window.innerWidth - rect.width;
+                const maxTop = window.innerHeight - rect.height;
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                newTop = Math.max(0, Math.min(newTop, maxTop));
+                modal.style.left = newLeft + 'px';
+                modal.style.top = newTop + 'px';
+                modal.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => { dragging = false; });
+        }
+
+        function cardClearFindHighlights() {
+            // Remove all find match mark elements, restoring original text
+            document.querySelectorAll('.card-ce .card-find-match').forEach(mark => {
+                const parent = mark.parentNode;
+                while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+                parent.removeChild(mark);
+                parent.normalize();
+            });
+        }
+
+        function cardApplyFindHighlights(container, query, caseSensitive) {
+            // Walk all text nodes in all CEs within container, wrap matches with <mark>
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            const matches = [];
+
+            container.querySelectorAll('.card-block').forEach((blockEl, blockIdx) => {
+                const ce = blockEl.querySelector('.card-ce');
+                const walker = document.createTreeWalker(ce, NodeFilter.SHOW_TEXT, null, false);
+                const textNodes = [];
+                while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+                // Process text nodes in reverse to preserve offsets
+                for (let i = textNodes.length - 1; i >= 0; i--) {
+                    const textNode = textNodes[i];
+                    const text = textNode.textContent;
+                    const regex = new RegExp(escaped, flags);
+                    const nodeMatches = [];
+                    let m;
+                    while ((m = regex.exec(text)) !== null) {
+                        nodeMatches.push({ start: m.index, end: m.index + m[0].length, text: m[0] });
+                    }
+                    if (nodeMatches.length === 0) continue;
+
+                    // Split text node and wrap matches
+                    const parent = textNode.parentNode;
+                    const frag = document.createDocumentFragment();
+                    let lastIdx = 0;
+                    for (const nm of nodeMatches) {
+                        if (nm.start > lastIdx) {
+                            frag.appendChild(document.createTextNode(text.substring(lastIdx, nm.start)));
+                        }
+                        const mark = document.createElement('mark');
+                        mark.className = 'card-find-match';
+                        mark.textContent = nm.text;
+                        frag.appendChild(mark);
+                        lastIdx = nm.end;
+                    }
+                    if (lastIdx < text.length) {
+                        frag.appendChild(document.createTextNode(text.substring(lastIdx)));
+                    }
+                    parent.replaceChild(frag, textNode);
+                }
+
+                // Collect all marks in this block for match tracking
+                ce.querySelectorAll('.card-find-match').forEach(mark => {
+                    matches.push({ blockIdx, blockEl, ce, markEl: mark });
+                });
+            });
+
+            return matches;
+        }
+
+        function cardDoFind() {
+            const query = document.getElementById('cardFindInput').value;
+            const pane = cardState.findReplace.pane || 'Left';
+            const container = document.getElementById(`cardBlocks${pane}`);
+            const caseSensitive = document.getElementById('cardFindCaseSensitive').checked;
+
+            // Clear previous highlights
+            cardClearFindHighlights();
+
+            if (!query) {
+                cardState.findReplace.matches = [];
+                cardState.findReplace.currentIdx = -1;
+                document.getElementById('cardFindCount').textContent = '0 / 0';
+                return;
+            }
+
+            // Apply highlights and collect matches
+            const matches = cardApplyFindHighlights(container, query, caseSensitive);
+            cardState.findReplace.matches = matches;
+            cardState.findReplace.currentIdx = -1;
+            document.getElementById('cardFindCount').textContent =
+                matches.length > 0 ? `0 / ${matches.length}` : '0 / 0';
+        }
+
+        function cardFindNav(dir) {
+            const { matches, currentIdx } = cardState.findReplace;
+            if (!matches.length) return;
+
+            // Remove current highlight class from previous
+            if (currentIdx >= 0 && currentIdx < matches.length) {
+                matches[currentIdx].markEl.classList.remove('card-find-match-current');
+            }
+
+            let idx = currentIdx + dir;
+            if (idx < 0) idx = matches.length - 1;
+            if (idx >= matches.length) idx = 0;
+            cardState.findReplace.currentIdx = idx;
+
+            // Add current highlight class
+            const match = matches[idx];
+            match.markEl.classList.add('card-find-match-current');
+            match.markEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+            document.getElementById('cardFindCount').textContent = `${idx + 1} / ${matches.length}`;
+        }
+
+        function cardReplaceCurrent() {
+            const { matches, currentIdx } = cardState.findReplace;
+            if (currentIdx < 0 || !matches.length) return;
+            const match = matches[currentIdx];
+            const replacement = document.getElementById('cardReplaceInput').value;
+            // Replace the mark element's text content
+            match.markEl.textContent = replacement;
+            // Unwrap the mark
+            const parent = match.markEl.parentNode;
+            while (match.markEl.firstChild) parent.insertBefore(match.markEl.firstChild, match.markEl);
+            parent.removeChild(match.markEl);
+            parent.normalize();
+            match.ce.dispatchEvent(new Event('input', { bubbles: true }));
+            const nextIdx = currentIdx;
+            setTimeout(() => {
+                cardDoFind();
+                if (cardState.findReplace.matches.length) {
+                    cardState.findReplace.currentIdx = Math.min(nextIdx, cardState.findReplace.matches.length - 1);
+                    cardFindNav(0);
+                }
+            }, 10);
+        }
+
+        function cardReplaceAll() {
+            const query = document.getElementById('cardFindInput').value;
+            const replacement = document.getElementById('cardReplaceInput').value;
+            if (!query) return;
+            const pane = cardState.findReplace.pane || 'Left';
+            const container = document.getElementById(`cardBlocks${pane}`);
+            const caseSensitive = document.getElementById('cardFindCaseSensitive').checked;
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const flags = caseSensitive ? 'g' : 'gi';
+            // Clear highlights first so cardHtmlToMarkers doesn't see <mark> elements
+            cardClearFindHighlights();
+            let totalCount = 0;
+            container.querySelectorAll('.card-block').forEach(blockEl => {
+                const ce = blockEl.querySelector('.card-ce');
+                const text = cardHtmlToMarkers(ce);
+                const count = (text.match(new RegExp(escaped, flags)) || []).length;
+                if (count > 0) {
+                    const newText = text.replace(new RegExp(escaped, flags), replacement);
+                    ce.innerHTML = cardMarkersToHtml(newText);
+                    ce.dispatchEvent(new Event('input', { bubbles: true }));
+                    totalCount += count;
+                }
+            });
+            cardDoFind();
+            if (totalCount > 0) showToast(`${totalCount}개 바꿈`, 'success');
+        }
+
+        // === 분할 뷰 ===
+        function cardToggleSplit() {
+            cardState.splitView = !cardState.splitView;
+            const rightPane = document.getElementById('cardEditorPaneRight');
+            const handle = document.getElementById('cardSplitHandle');
+            const btn = document.getElementById('cardSplitBtn');
+
+            if (cardState.splitView) {
+                const r = cardState.splitRatio;
+                const leftPane = document.getElementById('cardEditorPaneLeft');
+                leftPane.style.flex = `${r} 1 0`;
+                rightPane.style.flex = `${1 - r} 1 0`;
+                rightPane.style.display = 'flex';
+                handle.classList.add('visible');
+                btn.classList.add('active');
+                cardRenderCategoryTabs('Right', cardState.rightCategory);
+                cardLoadCategoryContent('Right');
+            } else {
+                cardSyncContentFromCE('Right');
+                rightPane.style.display = 'none';
+                handle.classList.remove('visible');
+                btn.classList.remove('active');
+                document.getElementById('cardEditorPaneLeft').style.flex = '';
+                rightPane.style.flex = '';
+            }
+            cardUpdateCharCount();
+        }
+
+        function cardSetupSplitResize() {
+            const handle = document.getElementById('cardSplitHandle');
+            const area = document.getElementById('cardEditorArea');
+            const leftPane = document.getElementById('cardEditorPaneLeft');
+            const rightPane = document.getElementById('cardEditorPaneRight');
+
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                handle.classList.add('active');
+                const startX = e.clientX;
+                const areaRect = area.getBoundingClientRect();
+                const startRatio = cardState.splitRatio;
+
+                function onMove(e) {
+                    const delta = e.clientX - startX;
+                    const newRatio = Math.max(0.2, Math.min(0.8, startRatio + delta / areaRect.width));
+                    cardState.splitRatio = newRatio;
+                    leftPane.style.flex = `${newRatio} 1 0`;
+                    rightPane.style.flex = `${1 - newRatio} 1 0`;
+                }
+                function onUp() {
+                    handle.classList.remove('active');
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+
+        // === 매크로 자동완성 ===
+        function cardGetMacros() {
+            const custom = cardState.document?.macros || [];
+            return [...DEFAULT_MACROS, ...custom];
+        }
+
+        function cardCheckMacroTrigger(ce) {
+            // contenteditable에서 커서 앞 텍스트 추출
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0);
+            if (!range.collapsed) { cardHideMacroDropdown(); return; }
+
+            const node = sel.anchorNode;
+            if (!node || node.nodeType !== Node.TEXT_NODE) { cardHideMacroDropdown(); return; }
+
+            const text = node.textContent;
+            const pos = sel.anchorOffset;
+            let start = pos - 1;
+            while (start >= 0 && text[start] !== ' ' && text[start] !== '\n' && text[start] !== '\t') {
+                start--;
+            }
+            start++;
+            const word = text.substring(start, pos);
+
+            if (word.startsWith('/') && word.length >= 2) {
+                const macros = cardGetMacros();
+                const filtered = macros.filter(m => m.trigger.startsWith(word));
+                if (filtered.length > 0) {
+                    cardShowMacroDropdown(ce, node, start, pos, filtered);
+                    return;
+                }
+            }
+            cardHideMacroDropdown();
+        }
+
+        function cardShowMacroDropdown(ce, textNode, triggerStart, cursorPos, macros) {
+            const dropdown = document.getElementById('cardMacroDropdown');
+            cardState.macroDropdown.visible = true;
+            cardState.macroDropdown.selectedIdx = 0;
+            cardState.macroDropdown.macros = macros;
+            cardState.macroDropdown.ce = ce;
+            cardState.macroDropdown.textNode = textNode;
+            cardState.macroDropdown.triggerStart = triggerStart;
+            cardState.macroDropdown.cursorPos = cursorPos;
+
+            let html = '';
+            macros.forEach((m, i) => {
+                html += `<div class="card-macro-item${i === 0 ? ' selected' : ''}" data-idx="${i}">
+                    <span class="card-macro-item-trigger">${escapeHtml(m.trigger)}</span>
+                    <span class="card-macro-item-text">${escapeHtml(m.text.substring(0, 30))}</span>
+                </div>`;
+            });
+            dropdown.innerHTML = html;
+
+            // 위치 계산
+            const rect = ce.getBoundingClientRect();
+            dropdown.style.left = (rect.left + 20) + 'px';
+            dropdown.style.bottom = (window.innerHeight - rect.bottom + 20) + 'px';
+            dropdown.style.top = 'auto';
+            dropdown.classList.add('active');
+
+            dropdown.querySelectorAll('.card-macro-item').forEach(item => {
+                item.onclick = () => cardApplyMacro(parseInt(item.dataset.idx));
+                item.onmouseenter = () => {
+                    dropdown.querySelector('.card-macro-item.selected')?.classList.remove('selected');
+                    item.classList.add('selected');
+                    cardState.macroDropdown.selectedIdx = parseInt(item.dataset.idx);
+                };
+            });
+        }
+
+        function cardMoveMacroSelection(dir) {
+            const { macros, selectedIdx } = cardState.macroDropdown;
+            let newIdx = selectedIdx + dir;
+            if (newIdx < 0) newIdx = macros.length - 1;
+            if (newIdx >= macros.length) newIdx = 0;
+            cardState.macroDropdown.selectedIdx = newIdx;
+            const dropdown = document.getElementById('cardMacroDropdown');
+            dropdown.querySelector('.card-macro-item.selected')?.classList.remove('selected');
+            dropdown.querySelectorAll('.card-macro-item')[newIdx]?.classList.add('selected');
+        }
+
+        function cardApplyMacro(idx) {
+            const { macros, ce, textNode, triggerStart, cursorPos } = cardState.macroDropdown;
+            if (!macros || idx < 0 || idx >= macros.length || !textNode) return;
+            const macro = macros[idx];
+
+            // 텍스트 노드에서 트리거 부분을 매크로 텍스트로 교체
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.setStart(textNode, triggerStart);
+            range.setEnd(textNode, cursorPos);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            document.execCommand('insertText', false, macro.text);
+
+            if (ce) ce.dispatchEvent(new Event('input', { bubbles: true }));
+            cardHideMacroDropdown();
+        }
+
+        function cardHideMacroDropdown() {
+            cardState.macroDropdown.visible = false;
+            document.getElementById('cardMacroDropdown').classList.remove('active');
+        }
+
+        // === 컬렉션 뷰 컨텍스트 메뉴 ===
+        function cardShowContextMenu(e, filename) {
+            e.preventDefault();
+            e.stopPropagation();
+            const card = cardState.fileList.find(c => c.filename === filename);
+            if (!card) return;
+
+            const menu = document.getElementById('cardContextMenu');
+            menu.innerHTML = `
+                <div class="card-context-menu-item" data-action="open">📂 열기</div>
+                <div class="card-context-menu-item" data-action="rename">✏️ 이름 변경</div>
+                <div class="card-context-menu-item" data-action="duplicate">📋 복제</div>
+                <div class="card-context-menu-item danger" data-action="delete">🗑️ 삭제</div>
+            `;
+            menu.style.left = e.clientX + 'px';
+            menu.style.top = e.clientY + 'px';
+            menu.style.display = 'block';
+
+            menu.querySelectorAll('.card-context-menu-item').forEach(item => {
+                item.onclick = async (ev) => {
+                    ev.stopPropagation();
+                    menu.style.display = 'none';
+                    const action = item.dataset.action;
+                    if (action === 'open') {
+                        cardOpenFile(filename);
+                    } else if (action === 'rename') {
+                        showInputModal('카드 이름 변경', '새 이름:', async (newName) => {
+                            if (!newName || !newName.trim()) return;
+                            try {
+                                await fetch(`${API_BASE}/api/cards/${filename}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ name: newName.trim() })
+                                });
+                                cardLoadCollection();
+                                showToast('이름 변경됨', 'success');
+                            } catch (e) { showToast('이름 변경 실패', 'error'); }
+                        }, '변경', card.name);
+                    } else if (action === 'duplicate') {
+                        try {
+                            await fetch(`${API_BASE}/api/cards/${filename}/duplicate`, { method: 'POST' });
+                            cardLoadCollection();
+                            showToast('복제됨', 'success');
+                        } catch (e) { showToast('복제 실패', 'error'); }
+                    } else if (action === 'delete') {
+                        showConfirmModal('카드 삭제', `"${card.name}" 카드를 삭제하시겠습니까?`, async () => {
+                            try {
+                                await fetch(`${API_BASE}/api/cards/${filename}`, { method: 'DELETE' });
+                                cardLoadCollection();
+                                showToast('삭제됨', 'success');
+                            } catch (e) { showToast('삭제 실패', 'error'); }
+                        }, '삭제', true);
+                    }
+                };
+            });
+        }
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', () => {

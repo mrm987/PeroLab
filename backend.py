@@ -52,6 +52,7 @@ CENSOR_MODELS_DIR = MODELS_DIR / "censor"  # 검열 모델 (YOLO)
 CENSORING_DIR = APP_DIR / "censoring"  # 검열 작업 폴더 (레거시, 더 이상 사용 안함)
 UNCENSORED_DIR = CENSORING_DIR / "uncensored"  # 검열 전 이미지 (레거시, 더 이상 사용 안함)
 CENSORED_DIR = OUTPUT_DIR / "censored"  # 검열 후 이미지 (새 경로: outputs/censored)
+CARDS_DIR = APP_DIR / "cards"  # 캐릭터 카드 문서
 
 # 생성 취소 예외
 class GenerationCancelled(Exception):
@@ -157,7 +158,7 @@ def get_next_image_number(category: str, save_dir: Path = None, ext: str = 'png'
     return next_num
 
 # 디렉토리 생성
-for d in [CHECKPOINTS_DIR, LORA_DIR, EMBEDDINGS_DIR, UPSCALE_DIR, OUTPUT_DIR, PRESETS_DIR, DATA_DIR, CENSOR_MODELS_DIR, CENSORED_DIR]:
+for d in [CHECKPOINTS_DIR, LORA_DIR, EMBEDDINGS_DIR, UPSCALE_DIR, OUTPUT_DIR, PRESETS_DIR, DATA_DIR, CENSOR_MODELS_DIR, CENSORED_DIR, CARDS_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 # Prompts 하위 폴더 생성
@@ -5217,6 +5218,181 @@ async def delete_preset(filename: str):
     
     filepath.unlink()
     return {"deleted": filename}
+
+
+# ============================================================
+# Character Card Document API (캐릭터 카드 에디터)
+# ============================================================
+
+@app.get("/api/cards")
+async def list_cards():
+    """카드 문서 목록"""
+    cards = []
+    if CARDS_DIR.exists():
+        for f in sorted(CARDS_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+            if f.suffix == ".cardoc":
+                try:
+                    data = json.loads(f.read_text(encoding='utf-8'))
+                    cards.append({
+                        "name": data.get("name", f.stem),
+                        "description": data.get("description", ""),
+                        "thumbnail": data.get("thumbnail", ""),
+                        "filename": f.name,
+                        "created": data.get("created", ""),
+                        "modified": data.get("modified", ""),
+                        "categoryCount": len(data.get("categories", []))
+                    })
+                except:
+                    pass
+    return {"cards": cards}
+
+@app.get("/api/cards/{filename}")
+async def get_card(filename: str):
+    """카드 문서 로드"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    filepath = CARDS_DIR / filename
+    if not filepath.exists() or filepath.suffix != ".cardoc":
+        raise HTTPException(status_code=404, detail="Card not found")
+    data = json.loads(filepath.read_text(encoding='utf-8'))
+    return data
+
+@app.post("/api/cards")
+async def create_card(request: Request):
+    """새 카드 생성"""
+    body = await request.json()
+    name = body.get("name", "새 카드")
+    document = body.get("document", {})
+
+    safe_name = "".join(c for c in name if c.isalnum() or c in " _-" or ('\uAC00' <= c <= '\uD7A3')).strip()
+    if not safe_name:
+        safe_name = "card"
+
+    filename = f"{safe_name}.cardoc"
+    filepath = CARDS_DIR / filename
+    counter = 1
+    while filepath.exists():
+        filename = f"{safe_name}_{counter}.cardoc"
+        filepath = CARDS_DIR / filename
+        counter += 1
+
+    document["name"] = name
+    now = datetime.datetime.now().isoformat()
+    document.setdefault("created", now)
+    document["modified"] = now
+
+    filepath.write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding='utf-8')
+    return {"filename": filename, "name": name}
+
+@app.put("/api/cards/{filename}")
+async def update_card(filename: str, request: Request):
+    """카드 저장 (덮어쓰기)"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    filepath = CARDS_DIR / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    data = await request.json()
+    data["modified"] = datetime.datetime.now().isoformat()
+    filepath.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    return {"filename": filename}
+
+@app.delete("/api/cards/{filename}")
+async def delete_card(filename: str):
+    """카드 삭제"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    filepath = CARDS_DIR / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Card not found")
+    filepath.unlink()
+    return {"deleted": filename}
+
+@app.patch("/api/cards/{filename}")
+async def rename_card(filename: str, request: Request):
+    """카드 이름 변경"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    body = await request.json()
+    new_name = body.get("name", "")
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    old_path = CARDS_DIR / filename
+    if not old_path.exists():
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # 파일 내용 업데이트
+    content = json.loads(old_path.read_text(encoding='utf-8'))
+    content["name"] = new_name
+    content["modified"] = datetime.datetime.now().isoformat()
+
+    # 새 파일명 생성
+    safe_name = "".join(c for c in new_name if c.isalnum() or c in " _-" or ('\uAC00' <= c <= '\uD7A3')).strip()
+    if not safe_name:
+        safe_name = "card"
+    new_filename = f"{safe_name}.cardoc"
+    new_path = CARDS_DIR / new_filename
+
+    if old_path == new_path:
+        old_path.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding='utf-8')
+        return {"filename": filename, "name": new_name}
+
+    counter = 1
+    while new_path.exists():
+        new_filename = f"{safe_name}_{counter}.cardoc"
+        new_path = CARDS_DIR / new_filename
+        counter += 1
+
+    new_path.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding='utf-8')
+    old_path.unlink()
+    return {"filename": new_filename, "name": new_name}
+
+@app.post("/api/cards/{filename}/duplicate")
+async def duplicate_card(filename: str):
+    """카드 복제"""
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    filepath = CARDS_DIR / filename
+    if not filepath.exists():
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    data = json.loads(filepath.read_text(encoding='utf-8'))
+    new_name = data.get("name", "card") + " (복사)"
+    now = datetime.datetime.now().isoformat()
+    data["name"] = new_name
+    data["created"] = now
+    data["modified"] = now
+
+    safe_name = "".join(c for c in new_name if c.isalnum() or c in " _-" or ('\uAC00' <= c <= '\uD7A3')).strip()
+    if not safe_name:
+        safe_name = "card"
+    new_filename = f"{safe_name}.cardoc"
+    new_path = CARDS_DIR / new_filename
+    counter = 1
+    while new_path.exists():
+        new_filename = f"{safe_name}_{counter}.cardoc"
+        new_path = CARDS_DIR / new_filename
+        counter += 1
+
+    new_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    return {"filename": new_filename, "name": new_name}
+
+@app.post("/api/cards/open-folder")
+async def open_cards_folder():
+    """카드 폴더 탐색기 열기"""
+    try:
+        folder_path = str(CARDS_DIR.absolute())
+        if sys.platform == 'win32':
+            os.startfile(folder_path)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', folder_path])
+        else:
+            subprocess.Popen(['xdg-open', folder_path])
+        return {"opened": folder_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # === Character List Presets API (구체적인 경로가 먼저 와야 함) ===
