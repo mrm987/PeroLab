@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PeroPix</title>
+    <script>if(localStorage.getItem('peropix_theme')==='light')document.documentElement.setAttribute('data-theme','light');</script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
@@ -25,6 +26,8 @@
             --text-dim: #7A8BA0;
             /* Border */
             --border: #243044;
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            --border-light: rgba(255, 255, 255, 0.1);
             /* Semantic */
             --success: #4CAF82;
             --error: #E57373;
@@ -55,6 +58,262 @@
             /* Transition */
             --transition-fast: 0.15s ease;
             --transition-normal: 0.2s ease;
+
+            /* Semantic aliases for theme-aware colors */
+            --danger: var(--error);
+        }
+
+        /* ========================================
+           Light Theme
+           Ref: Maise(사이드바=白), Boards(카드 float)
+           사이드바=순백 패널 / 메인=쿨그레이 / 슬롯=白카드
+           ======================================== */
+        [data-theme="light"] {
+            /* Surface: bg(앱바탕) < bg-light(사이드바/카드) < bg-lighter(hover) */
+            --bg: #EDF0F5;
+            --bg-light: #FFFFFF;
+            --bg-lighter: #F5F7FA;
+            /* Accent - Blue */
+            --accent: #2E7DD1;
+            --accent-hover: #1A65B5;
+            --accent-dim: #D4E4F5;
+            /* Accent - Gold */
+            --accent-gold: #D4960A;
+            --accent-gold-hover: #B87F00;
+            --accent-gold-dim: #FBF0D4;
+            /* Text */
+            --text: #1A2233;
+            --text-dim: #6B7A8D;
+            /* Border - 얇고 눈에 안 띄게 */
+            --border: #E2E6EC;
+            --border-subtle: rgba(0, 0, 0, 0.04);
+            --border-light: rgba(0, 0, 0, 0.07);
+            /* Semantic */
+            --success: #2E8B57;
+            --error: #D14040;
+            --warning: #D4960A;
+            --success-hover: #247048;
+            --warning-hover: #B87F00;
+            --danger: var(--error);
+            /* Shadow - 자연스러운 이중 레이어 */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.04);
+            --shadow-md: 0 2px 4px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.06);
+            --shadow-lg: 0 4px 6px rgba(0,0,0,0.04), 0 10px 20px rgba(0,0,0,0.08);
+        }
+
+        /* ===== Light Theme - Element Overrides ===== */
+
+        /* --- Surface Differentiation --- */
+        /* 사이드바: 순백 패널 (Maise 스타일) */
+        [data-theme="light"] .sidebar {
+            background: var(--bg-light);
+            box-shadow: 1px 0 0 var(--border);
+            border-right: none;
+        }
+        [data-theme="light"] .sidebar-header {
+            border-bottom: 1px solid var(--border);
+        }
+        /* 우측: 쿨그레이 바탕 → 슬롯 카드가 떠 보임 */
+        [data-theme="light"] .main {
+            background: var(--bg);
+        }
+        /* 모드 헤더/툴바: 흰색 + 아래 border */
+        [data-theme="light"] .mode-header {
+            background: var(--bg-light);
+        }
+        [data-theme="light"] .slots-toolbar {
+            background: var(--bg-light);
+        }
+        /* 슬롯 카드: 흰색 + 부드러운 shadow (Boards 스타일) */
+        [data-theme="light"] .slot {
+            background: var(--bg-light);
+            border-color: var(--border);
+            box-shadow: var(--shadow-md);
+        }
+        /* 사이드바 footer */
+        [data-theme="light"] .sidebar-footer {
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- 사이드바 섹션: 카드 중첩 X, 깔끔한 구분선 --- */
+        /* section은 border-bottom divider만 (이미 기본 스타일에 있음) */
+        /* 탭 (NAI/Local) 컨트롤 */
+        [data-theme="light"] .tabs {
+            background: var(--bg);
+            border-color: var(--border);
+        }
+        [data-theme="light"] .mode-toggle {
+            background: var(--bg);
+            border-color: var(--border);
+        }
+        /* 모달 */
+        [data-theme="light"] .modal {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        [data-theme="light"] .modal-content,
+        [data-theme="light"] .drop-modal-content {
+            background: var(--bg-light);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* --- Input Fields --- */
+        [data-theme="light"] input,
+        [data-theme="light"] select,
+        [data-theme="light"] textarea {
+            background: var(--bg-light);
+            border-color: var(--border);
+        }
+        [data-theme="light"] input:focus,
+        [data-theme="light"] select:focus,
+        [data-theme="light"] textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(46, 125, 209, 0.1);
+        }
+        /* Prompt highlight overlay */
+        [data-theme="light"] .prompt-highlight-overlay,
+        [data-theme="light"] .character-item .prompt-highlight-overlay {
+            background: var(--bg-light);
+        }
+        /* Section title hover */
+        [data-theme="light"] .section-title:hover {
+            background: var(--bg-lighter);
+        }
+        /* Settings button */
+        [data-theme="light"] .settings-btn {
+            background: var(--bg-lighter);
+            border-color: var(--border);
+        }
+        [data-theme="light"] .settings-btn:hover {
+            background: var(--bg);
+            border-color: var(--accent);
+        }
+
+        /* --- Slot prompt area --- */
+        [data-theme="light"] .slot-prompt-header {
+            background: var(--bg-lighter);
+        }
+        [data-theme="light"] .slot-number {
+            background: var(--bg);
+        }
+
+        /* --- Tag autocomplete badges --- */
+        [data-theme="light"] .tag-autocomplete-item-badge.artist {
+            background: #FFF0E0; color: #A0621A;
+        }
+        [data-theme="light"] .tag-autocomplete-item-badge.character {
+            background: #E0F5EC; color: #1A7A4A;
+        }
+        [data-theme="light"] .tag-autocomplete-item-badge.copyright {
+            background: #EDE4F8; color: #6B3FA0;
+        }
+        [data-theme="light"] .tag-autocomplete-item-badge.meta {
+            background: #E0EBF5; color: #2D5A8A;
+        }
+
+        /* --- Misc element fixes --- */
+        [data-theme="light"] .char-item,
+        [data-theme="light"] .char-coord-btn,
+        [data-theme="light"] .char-skip-slot-btn {
+            border-color: var(--border);
+        }
+        [data-theme="light"] .char-item.selected {
+            border-color: var(--accent);
+        }
+        /* Card editor */
+        [data-theme="light"] .card-item-thumbnail-wrap {
+            background: var(--bg);
+        }
+        [data-theme="light"] .card-ce {
+            color: #000000; background: var(--bg-light);
+            caret-color: #000000;
+        }
+        [data-theme="light"] .card-line-gutter {
+            background: var(--bg-lighter); color: #9CA3AF;
+            border-right-color: var(--border);
+        }
+        [data-theme="light"] .card-ce:empty::before {
+            color: var(--text-dim);
+        }
+        /* Lightbox - 항상 어두운 오버레이이므로 흰색 텍스트 강제 */
+        [data-theme="light"] .lightbox-btn {
+            color: #FFFFFF;
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(255,255,255,0.2);
+        }
+        [data-theme="light"] .lightbox-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.4);
+        }
+        [data-theme="light"] .lightbox-counter {
+            color: rgba(255,255,255,0.6);
+        }
+        [data-theme="light"] .lightbox-adj-sidebar {
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+        }
+        /* Subtle dividers */
+        [data-theme="light"] .tag-autocomplete-item,
+        [data-theme="light"] .vibe-item,
+        [data-theme="light"] .char-ref-item {
+            border-bottom-color: var(--border);
+        }
+        /* Card find modal */
+        [data-theme="light"] .card-find-modal {
+            background: var(--bg-light);
+            box-shadow: var(--shadow-lg);
+        }
+        [data-theme="light"] .card-find-nav-btn:hover,
+        [data-theme="light"] .card-find-replace-btn:hover {
+            border-color: var(--border);
+        }
+        /* Block editor highlight btn */
+        [data-theme="light"] .pm-toolbar-btn.highlight {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 2px rgba(212, 150, 10, 0.15);
+        }
+        [data-theme="light"] .pm-toolbar-btn.highlight:hover {
+            border-color: var(--accent-gold-hover);
+            box-shadow: 0 0 0 3px rgba(212, 150, 10, 0.2);
+        }
+        /* Range slider thumb */
+        [data-theme="light"] input[type="range"]::-webkit-slider-thumb {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+        }
+        /* Hover backgrounds */
+        [data-theme="light"] .preset-item.selected .edit-btn:hover,
+        [data-theme="light"] .preset-item.selected .delete-btn:hover,
+        [data-theme="light"] .card-find-modal-close:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        [data-theme="light"] .card-find-options label:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+        /* Scrollbar */
+        [data-theme="light"] *::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.12);
+        }
+        [data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        [data-theme="light"] * {
+            scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+        }
+        /* Toggle slider */
+        [data-theme="light"] .toggle-slider {
+            background-color: #CDD3DA;
+        }
+        [data-theme="light"] .toggle-slider:before {
+            background-color: #FFFFFF;
+        }
+        /* Btn - subtle lift */
+        [data-theme="light"] .btn {
+            box-shadow: var(--shadow-sm);
+        }
+        [data-theme="light"] .btn-gold {
+            box-shadow: var(--shadow-sm);
+        }
+        /* Prompt label row hover */
+        [data-theme="light"] .prompt-label-row:hover {
+            background: var(--bg-lighter);
         }
 
         /* Global Scrollbar Styles */
@@ -826,7 +1085,7 @@
             width: 80px;
             flex: none;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             border-radius: 3px;
             margin: 0;
             font-size: 11px;
@@ -842,7 +1101,7 @@
 
         .character-item .char-name:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.25);
+            border-color: var(--border);
         }
 
         .character-item .prompt-preset-dropdown {
@@ -860,7 +1119,7 @@
             align-items: center;
             justify-content: center;
             background: var(--bg-light);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             color: var(--text-dim);
             cursor: pointer;
             font-size: 11px;
@@ -891,7 +1150,7 @@
             align-items: center;
             justify-content: center;
             background: var(--bg-light);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             color: var(--text-dim);
             cursor: pointer;
             font-size: 11px;
@@ -1312,7 +1571,7 @@
         
         .prompt-preset-item {
             padding: var(--space-sm) var(--space-md);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-subtle);
             transition: background var(--transition-fast);
         }
 
@@ -1455,7 +1714,7 @@
             align-items: center;
             gap: var(--space-xs);
             padding: var(--space-sm) var(--space-sm);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-subtle);
             cursor: pointer;
         }
 
@@ -2370,7 +2629,7 @@
             height: 36px;
             border-radius: 50%;
             background: rgba(60, 60, 70, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             color: rgba(255, 255, 255, 0.4);
             font-size: 1rem;
             cursor: pointer;
@@ -2395,7 +2654,7 @@
 
         .pip-float.expanded {
             background: var(--bg);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
             min-width: 200px;
@@ -2568,7 +2827,7 @@
             cursor: pointer;
             transition: background var(--transition-fast);
             gap: var(--space-sm);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .preset-item:last-child {
@@ -2704,7 +2963,7 @@
             gap: var(--space-sm);
             font-size: 0.85rem;
             color: var(--text);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .folder-item:last-child {
@@ -3374,7 +3633,7 @@
         .lightbox-thumb-empty {
             width: 100%;
             aspect-ratio: 1;
-            border: 1px dashed rgba(255,255,255,0.15);
+            border: 1px dashed var(--border-light);
             border-radius: var(--radius-xs);
         }
 
@@ -3431,7 +3690,7 @@
         .lightbox-actions.active { display: flex; }
 
         .lightbox-btn {
-            background: rgba(255,255,255,0.1);
+            background: var(--border-light);
             border: 1px solid rgba(255,255,255,0.2);
             color: var(--text);
             padding: 6px 14px;
@@ -7223,7 +7482,7 @@
             width: 80px;
             flex: none;
             background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-light);
             border-radius: var(--radius-xs);
             padding: 4px 6px;
             margin: 0;
@@ -7235,7 +7494,7 @@
         }
         .pm-item-name:focus {
             outline: none;
-            border-color: rgba(255, 255, 255, 0.25);
+            border-color: var(--border);
         }
 
         /* 좌표 선택 버튼 및 팝업 */
@@ -7348,7 +7607,7 @@
         }
         .app-loading-spinner {
             width: 40px; height: 40px;
-            border: 3px solid rgba(255,255,255,0.1);
+            border: 3px solid var(--border-light);
             border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -7594,7 +7853,7 @@
         /* Card thumbnail */
         .card-item-thumbnail-wrap {
             position: relative; width: 100%; aspect-ratio: 1/1;
-            overflow: hidden; background: #111; flex-shrink: 0;
+            overflow: hidden; background: var(--bg-lighter); flex-shrink: 0;
         }
         .card-item-thumbnail-wrap img {
             width: 100%; height: 100%; object-fit: cover; display: block;
@@ -7727,12 +7986,12 @@
             flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
             padding: var(--space-md) var(--space-lg);
             font-family: 'Consolas','Menlo','Monaco',monospace; font-size: 0.85rem;
-            line-height: 1.65; color: #fff; background: #141c26;
+            line-height: 1.65; color: var(--text); background: var(--bg);
             outline: none; white-space: pre-wrap; word-wrap: break-word; tab-size: 4;
-            caret-color: #fff;
+            caret-color: var(--text);
         }
         .card-ce:empty::before {
-            content: attr(data-placeholder); color: #4a5a6e; opacity: 0.7;
+            content: attr(data-placeholder); color: var(--text-dim); opacity: 0.7;
         }
         .card-ce::selection { background: rgba(66,133,244,0.35); }
         .card-ce *::selection { background: rgba(66,133,244,0.35); }
@@ -7851,13 +8110,13 @@
             cursor: pointer; padding: 5px 8px; border-radius: var(--radius-sm);
             font-size: 0.78rem; transition: all 0.15s; display: flex; align-items: center; gap: 3px;
         }
-        .card-find-nav-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: rgba(255,255,255,0.1); }
+        .card-find-nav-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: var(--border-light); }
         .card-find-replace-btn {
             background: none; border: 1px solid var(--border); color: var(--text-dim);
             cursor: pointer; padding: 5px 10px; border-radius: var(--radius-sm);
             font-size: 0.78rem; transition: all 0.15s;
         }
-        .card-find-replace-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: rgba(255,255,255,0.1); }
+        .card-find-replace-btn:hover { color: var(--text); background: var(--bg-lighter); border-color: var(--border-light); }
         .card-find-replace-btn.primary {
             background: var(--accent-dim); border-color: var(--accent); color: var(--text);
         }
@@ -7910,7 +8169,7 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="logo"><img src="assets/icon.png" alt=""> PeroPix</div>
+                <div class="logo"><img src="assets/icon.png" alt="" onclick="toggleTheme(document.documentElement.getAttribute('data-theme')!=='light')" style="cursor:pointer"> PeroPix</div>
                 <button class="settings-btn" onclick="openSettings()">
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -9473,12 +9732,7 @@
                     <input type="checkbox" id="tagAutocompleteToggle" checked>
                     <span class="toggle-slider"></span>
                 </label>
-                <div class="settings-toggle-body">
-                    <div class="settings-toggle-title">태그 자동 완성</div>
-                    <small class="section-hint" style="line-height: 1.4;">
-                        댄부루 태그 데이터베이스 기반 자동완성 제안 (Base/Negative/Character 프롬프트)
-                    </small>
-                </div>
+                <div class="settings-toggle-title">태그 자동 완성</div>
             </div>
 
             <div class="settings-toggle-row">
@@ -9486,12 +9740,15 @@
                     <input type="checkbox" id="promptHighlightToggle" checked>
                     <span class="toggle-slider"></span>
                 </label>
-                <div class="settings-toggle-body">
-                    <div class="settings-toggle-title">프롬프트 가중치 강조</div>
-                    <small class="section-hint" style="line-height: 1.4;">
-                        가중치 문법 색상 표시 (NAI: {강화} [약화], Local: (강화) [약화])
-                    </small>
-                </div>
+                <div class="settings-toggle-title">프롬프트 가중치 강조</div>
+            </div>
+
+            <div class="settings-toggle-row">
+                <label class="toggle-switch" style="flex-shrink: 0; margin-top: 2px;">
+                    <input type="checkbox" id="themeToggle" onchange="toggleTheme(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+                <div class="settings-toggle-title">라이트 테마</div>
             </div>
 
             <hr class="divider">
@@ -14066,12 +14323,25 @@
             document.getElementById('settingsModal').classList.add('active');
             // Sync tag autocomplete checkbox with current state
             document.getElementById('tagAutocompleteToggle').checked = tagAutocompleteEnabled;
+            // Sync theme toggle
+            document.getElementById('themeToggle').checked = document.documentElement.getAttribute('data-theme') === 'light';
             checkLocalEnvStatus();
             loadAppVersion();
         }
 
         function closeSettings() {
             document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        // Theme toggle
+        function toggleTheme(isLight) {
+            if (isLight) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('peropix_theme', 'light');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('peropix_theme', 'dark');
+            }
         }
 
         // 버전 정보 로드
@@ -16462,17 +16732,24 @@
                 return 'transparent';
             }
 
-            const goldColor = '#F5B942'; // --accent-gold
-            const blueColor = '#4A7AB8'; // --accent
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
             if (clampedLevel > 0) {
                 // 강화: 골드 (투명도로 강도 표현)
-                const opacity = 0.2 + (clampedLevel / 2) * 0.3; // 0.2 ~ 0.5
-                return `rgba(245, 185, 66, ${opacity})`;
+                const opacity = isLight
+                    ? 0.15 + (clampedLevel / 2) * 0.25 // light: 0.15 ~ 0.4
+                    : 0.2 + (clampedLevel / 2) * 0.3;  // dark: 0.2 ~ 0.5
+                return isLight
+                    ? `rgba(212, 150, 10, ${opacity})`
+                    : `rgba(245, 185, 66, ${opacity})`;
             } else {
                 // 약화: 블루 (투명도로 강도 표현)
-                const opacity = 0.2 + (Math.abs(clampedLevel) / 2) * 0.3; // 0.2 ~ 0.5
-                return `rgba(74, 122, 184, ${opacity})`;
+                const opacity = isLight
+                    ? 0.15 + (Math.abs(clampedLevel) / 2) * 0.25
+                    : 0.2 + (Math.abs(clampedLevel) / 2) * 0.3;
+                return isLight
+                    ? `rgba(46, 125, 209, ${opacity})`
+                    : `rgba(74, 122, 184, ${opacity})`;
             }
         }
 
