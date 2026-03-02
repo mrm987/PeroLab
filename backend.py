@@ -4011,19 +4011,58 @@ async def open_folder(request: dict):
 async def update_config(update: ConfigUpdate):
     global CONFIG
     if update.nai_token is not None:
-        # 토큰 정리: 앞뒤 공백 제거
-        token = update.nai_token.strip()
-        # ASCII 문자만 허용 (JWT 토큰은 base64로 ASCII만 포함)
-        try:
-            token.encode('ascii')
-        except UnicodeEncodeError:
-            return {"success": False, "error": "NAI 토큰에 유효하지 않은 문자가 포함되어 있습니다. 토큰을 다시 복사해주세요."}
-        CONFIG["nai_token"] = token
+        token = update.nai_token
+
+        # 빈 문자열 = 토큰 삭제 요청
+        if token == "":
+            CONFIG["nai_token"] = ""
+        else:
+            # 공백 문자 포함 여부 검사 (유니코드 공백 포함)
+            import re
+            if re.search(r'\s', token):
+                return {"success": False, "error": "토큰에 공백이 포함되어 있습니다. 공백 없이 토큰만 정확히 복사해주세요."}
+
+            # ASCII 문자만 허용 (JWT 토큰은 base64로 ASCII만 포함)
+            try:
+                token.encode('ascii')
+            except UnicodeEncodeError:
+                return {"success": False, "error": "토큰에 유효하지 않은 문자가 포함되어 있습니다. 토큰을 다시 복사해주세요."}
+
+            # pst- 접두사 검사
+            if not token.startswith("pst-"):
+                return {"success": False, "error": "올바른 Persistent API Token이 아닙니다. 'pst-'로 시작하는 토큰을 입력해주세요.\n(Account Settings → Get Persistent API Token)"}
+
+            # NAI API로 토큰 유효성 검증
+            import httpx
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(
+                        "https://api.novelai.net/user/subscription",
+                        headers={"Authorization": f"Bearer {token}"}
+                    )
+                    if resp.status_code == 401:
+                        return {"success": False, "error": "토큰이 만료되었거나 유효하지 않습니다. 새 토큰을 발급해주세요."}
+                    elif resp.status_code == 403:
+                        return {"success": False, "error": "토큰 권한이 없습니다. Persistent API Token인지 확인해주세요."}
+                    elif resp.status_code != 200:
+                        return {"success": False, "error": f"NAI 서버 응답 오류 ({resp.status_code}). 잠시 후 다시 시도해주세요."}
+            except httpx.TimeoutException:
+                return {"success": False, "error": "NAI 서버 연결 시간 초과. 인터넷 연결을 확인하고 다시 시도해주세요."}
+            except Exception as e:
+                return {"success": False, "error": f"NAI 서버 연결 실패: {e}"}
+
+            CONFIG["nai_token"] = token
+
     if update.checkpoints_dir is not None:
         CONFIG["checkpoints_dir"] = update.checkpoints_dir
     if update.lora_dir is not None:
         CONFIG["lora_dir"] = update.lora_dir
-    save_config(CONFIG)
+
+    try:
+        save_config(CONFIG)
+    except Exception as e:
+        return {"success": False, "error": f"설정 파일 저장 실패: {e}"}
+
     return {"success": True}
 
 

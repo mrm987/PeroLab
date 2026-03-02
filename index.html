@@ -9708,13 +9708,21 @@
             
             <div class="input-group">
                 <label>NAI API Token</label>
-                <input type="password" id="naiToken" placeholder="NAI 토큰 입력">
-                <small>Get from novelai.net → Account → API</small>
-            </div>
-            
-            <div class="input-group">
-                <label>Status</label>
-                <span class="status-badge" id="naiStatus">Checking...</span>
+                <div id="naiTokenDisplay" style="display:none; align-items: center; gap: 8px;">
+                    <span style="flex: 1; font-size: 13px; color: var(--text-dim); font-family: monospace;">pst-****</span>
+                    <span class="status-badge success" style="margin: 0; font-size: 11px;">Connected</span>
+                    <button class="btn" onclick="showNaiTokenChange()" style="padding: 4px 10px; font-size: 12px; background: var(--bg-lighter);">변경</button>
+                    <button class="btn" onclick="deleteNaiToken()" style="padding: 4px 10px; font-size: 12px; background: var(--bg-lighter); color: var(--error, #ff6b6b);">삭제</button>
+                </div>
+                <div id="naiTokenInputWrap">
+                    <input type="password" id="naiToken" placeholder="pst-로 시작하는 토큰 붙여넣기">
+                    <small>novelai.net → Account Settings → <strong>Get Persistent API Token</strong></small>
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button class="btn" id="naiTokenSaveBtn" onclick="saveNaiTokenFromSettings()" style="padding: 4px 14px; font-size: 12px;">토큰 저장</button>
+                        <button class="btn" id="naiTokenCancelBtn" onclick="cancelNaiTokenChange()" style="display:none; padding: 4px 10px; font-size: 12px; background: var(--bg-lighter);">취소</button>
+                    </div>
+                </div>
+                <div id="naiTokenSettingsError" style="display:none; color: var(--error, #ff6b6b); font-size: 12px; margin-top: 6px; line-height: 1.5; white-space: pre-line;"></div>
             </div>
             
             <div class="input-group">
@@ -9863,23 +9871,27 @@
     <div class="modal" id="naiTokenModal">
         <div class="modal-content modal-md">
             <div class="modal-header">
-                <h2>🔑 NovelAI API 토큰</h2>
+                <h2>NovelAI API 토큰</h2>
                 <button class="modal-close" onclick="closeNaiTokenModal()">&times;</button>
             </div>
-            
+
             <p class="modal-desc">
-                NAI 생성을 사용하려면 API 토큰이 필요합니다.
+                NAI 생성을 사용하려면 Persistent API Token이 필요합니다.
             </p>
 
             <div class="input-group">
                 <label>API 토큰</label>
-                <input type="password" id="naiTokenModalInput" placeholder="토큰 붙여넣기">
-                <small><a href="https://novelai.net/image" target="_blank" style="color: var(--accent);">novelai.net</a> → Account Settings → Get Persistent API Token</small>
+                <input type="password" id="naiTokenModalInput" placeholder="pst-로 시작하는 토큰 붙여넣기">
+                <small style="line-height: 1.5;">
+                    <a href="https://novelai.net/image" target="_blank" style="color: var(--accent);">novelai.net</a> → Account Settings → <strong>Get Persistent API Token</strong><br>
+                    토큰 전체를 빈틈 없이 복사해주세요 (pst-XXXX... 형태)
+                </small>
+                <div id="naiTokenModalError" style="display:none; color: var(--error, #ff6b6b); font-size: 12px; margin-top: 6px; line-height: 1.5; white-space: pre-line;"></div>
             </div>
 
             <div class="modal-btn-row">
                 <button class="btn" id="naiTokenModalBtn" onclick="saveNaiTokenFromModal()" style="flex: 2;">
-                    💾 저장
+                    저장
                 </button>
                 <button class="btn" onclick="closeNaiTokenModal()" style="flex: 1; background: var(--bg-lighter);">
                     취소
@@ -13572,13 +13584,101 @@
         
         function updateNaiStatus(hasToken) {
             naiTokenSet = hasToken;
-            const badge = document.getElementById('naiStatus');
+            const display = document.getElementById('naiTokenDisplay');
+            const inputWrap = document.getElementById('naiTokenInputWrap');
             if (hasToken) {
-                badge.textContent = 'Connected';
-                badge.className = 'status-badge success';
+                display.style.display = 'flex';
+                inputWrap.style.display = 'none';
             } else {
-                badge.textContent = 'Token not set';
-                badge.className = 'status-badge warning';
+                display.style.display = 'none';
+                inputWrap.style.display = 'block';
+            }
+        }
+
+        function showNaiTokenChange() {
+            document.getElementById('naiTokenDisplay').style.display = 'none';
+            document.getElementById('naiTokenInputWrap').style.display = 'block';
+            document.getElementById('naiTokenCancelBtn').style.display = '';
+            document.getElementById('naiToken').value = '';
+            document.getElementById('naiToken').focus();
+        }
+
+        async function deleteNaiToken() {
+            if (!confirm('NAI 토큰을 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nai_token: '' })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast('토큰 삭제됨', 'info');
+                    naiTokenSet = false;
+                    updateNaiStatus(false);
+                    document.getElementById('naiToken').value = '';
+                    fetchAnlasBalance();
+                } else {
+                    showToast(data.error || '삭제 실패', 'error');
+                }
+            } catch (e) {
+                showToast('삭제 실패', 'error');
+            }
+        }
+
+        async function saveNaiTokenFromSettings() {
+            showSettingsTokenError('');
+            const token = document.getElementById('naiToken').value;
+            if (!token || !token.trim()) {
+                showSettingsTokenError('토큰을 입력하세요.');
+                return;
+            }
+
+            const btn = document.getElementById('naiTokenSaveBtn');
+            btn.textContent = '검증 중...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/config`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nai_token: token })
+                });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    showToast('토큰 검증 완료', 'success');
+                    naiTokenSet = true;
+                    updateNaiStatus(true);
+                    await fetchAnlasBalance();
+                } else {
+                    showSettingsTokenError(data.error || '토큰 저장 실패');
+                }
+            } catch (e) {
+                showSettingsTokenError(`서버 연결 실패: ${e.message}`);
+            }
+
+            btn.textContent = '토큰 저장';
+            btn.disabled = false;
+        }
+
+        function cancelNaiTokenChange() {
+            showSettingsTokenError('');
+            document.getElementById('naiToken').value = '';
+            document.getElementById('naiTokenCancelBtn').style.display = 'none';
+            if (naiTokenSet) {
+                updateNaiStatus(true);
+            }
+        }
+
+        function showSettingsTokenError(msg) {
+            const el = document.getElementById('naiTokenSettingsError');
+            if (msg) {
+                el.textContent = msg;
+                el.style.display = 'block';
+            } else {
+                el.textContent = '';
+                el.style.display = 'none';
             }
         }
         
@@ -13590,62 +13690,64 @@
         
         function closeNaiTokenModal() {
             document.getElementById('naiTokenModal').classList.remove('active');
+            document.getElementById('naiTokenModalInput').value = '';
+            showTokenModalError('');
         }
         
+        function showTokenModalError(msg) {
+            const el = document.getElementById('naiTokenModalError');
+            if (msg) {
+                el.textContent = msg;
+                el.style.display = 'block';
+            } else {
+                el.textContent = '';
+                el.style.display = 'none';
+            }
+        }
+
         async function saveNaiTokenFromModal() {
-            const token = document.getElementById('naiTokenModalInput').value.trim();
-            if (!token) {
-                showToast('토큰을 입력하세요', 'error');
+            showTokenModalError('');
+            const token = document.getElementById('naiTokenModalInput').value;
+            if (!token || !token.trim()) {
+                showTokenModalError('토큰을 입력하세요.');
                 return;
             }
-            
+
             const btn = document.getElementById('naiTokenModalBtn');
-            btn.textContent = '⏳ 저장 중...';
+            btn.textContent = '검증 중...';
             btn.disabled = true;
-            
+
             try {
                 const res = await fetch(`${API_BASE}/api/config`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ nai_token: token })
                 });
-                
-                console.log('[Token Save] Response status:', res.status);
-                const text = await res.text();
-                console.log('[Token Save] Response body:', text);
-                
+
                 let data;
                 try {
-                    data = JSON.parse(text);
+                    data = await res.json();
                 } catch (parseErr) {
-                    console.error('[Token Save] JSON parse error:', parseErr);
-                    showToast('서버 응답 파싱 실패', 'error');
+                    showTokenModalError('서버 응답 파싱 실패. 백엔드 상태를 확인해주세요.');
                     return;
                 }
 
                 if (res.ok && data.success) {
-                    showToast('토큰 저장됨. Anlas 정보를 불러오는 중...', 'success');
+                    showToast('토큰 검증 완료', 'success');
                     naiTokenSet = true;
                     closeNaiTokenModal();
 
-                    // Settings 모달의 토큰 필드도 업데이트
-                    document.getElementById('naiToken').value = token;
-
-                    // Anlas 정보 갱신 후 UI 업데이트
+                    document.getElementById('naiToken').value = '********';
                     await fetchAnlasBalance();
                     updateNaiStatus(true);
-                    
-                    showToast('준비 완료. 다시 Queue를 눌러주세요.', 'info');
                 } else {
-                    console.error('[Token Save] Failed:', data);
-                    showToast(data.error || '토큰 저장 실패', 'error');
+                    showTokenModalError(data.error || '토큰 저장 실패');
                 }
             } catch (e) {
-                console.error('[Token Save Error]', e);
-                showToast(`토큰 저장 실패: ${e.message}`, 'error');
+                showTokenModalError(`서버 연결 실패: ${e.message}`);
             }
-            
-            btn.textContent = '💾 저장';
+
+            btn.textContent = '저장';
             btn.disabled = false;
         }
         
@@ -14566,7 +14668,6 @@
         
         async function saveSettings() {
             const config = {
-                nai_token: document.getElementById('naiToken').value || null,
                 checkpoints_dir: document.getElementById('checkpointsDir').value || null,
                 lora_dir: document.getElementById('loraDir').value || null,
             };
@@ -14581,12 +14682,6 @@
 
                 if (res.ok && data.success) {
                     showToast('설정 저장됨', 'success');
-                    // NAI 토큰이 입력되었으면 상태 및 Anlas 업데이트
-                    const tokenValue = document.getElementById('naiToken').value;
-                    if (tokenValue) {
-                        updateNaiStatus(true);
-                        fetchAnlasBalance();
-                    }
                     closeSettings();
                 } else {
                     showToast(data.error || '저장 실패', 'error');
