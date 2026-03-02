@@ -3153,6 +3153,30 @@
             border-radius: var(--radius-md);
             flex-shrink: 0;
         }
+
+        .drag-compact .slot:not(.dragging) {
+            width: 150px !important;
+            min-width: 150px !important;
+            transition: width 0.15s ease;
+        }
+
+        .drag-compact .slot:not(.dragging) .slot-images {
+            display: none;
+        }
+
+        .drag-compact .slot:not(.dragging) .slot-tags {
+            max-height: 60px;
+        }
+
+        .drag-compact .slot:not(.dragging) .slot-prompt-header {
+            overflow: hidden;
+        }
+
+        .drag-compact .slot:not(.dragging) .slot-duplicate,
+        .drag-compact .slot:not(.dragging) .slot-drag,
+        .drag-compact .slot:not(.dragging) .slot-delete {
+            display: none;
+        }
         
         .slot-prompt {
             flex-shrink: 0;
@@ -3165,6 +3189,7 @@
             background: var(--bg-lighter);
             padding: 6px 8px;
             gap: 6px;
+            overflow: hidden;
         }
         
         .slot-number {
@@ -3249,7 +3274,30 @@
         .slot-drag:active {
             cursor: grabbing;
         }
-        
+
+        .slot-duplicate {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px 4px;
+            line-height: 1;
+            border-radius: var(--radius-xs);
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .slot-duplicate svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .slot-duplicate:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
         .slot-delete {
             background: none;
             border: none;
@@ -9723,8 +9771,9 @@
                     </div>
                 </div>
                 <div id="naiTokenSettingsError" style="display:none; color: var(--error, #ff6b6b); font-size: 12px; margin-top: 6px; line-height: 1.5; white-space: pre-line;"></div>
+                <small style="color: var(--warning, #f0ad4e); line-height: 1.5; margin-top: 4px;">⚠ 수 시간 이상 연속으로 대량 생성하면 NAI 측에서 계정이 제한될 수 있습니다.</small>
             </div>
-            
+
             <div class="input-group">
                 <label>Checkpoints Directory</label>
                 <input type="text" id="checkpointsDir" placeholder="./models/checkpoints">
@@ -9888,6 +9937,10 @@
                 </small>
                 <div id="naiTokenModalError" style="display:none; color: var(--error, #ff6b6b); font-size: 12px; margin-top: 6px; line-height: 1.5; white-space: pre-line;"></div>
             </div>
+
+            <p style="font-size: 11px; color: var(--warning, #f0ad4e); line-height: 1.5; margin: 4px 0 0;">
+                ⚠ 수 시간 이상 연속으로 대량 생성하면 NAI 측에서 계정이 제한될 수 있습니다.
+            </p>
 
             <div class="modal-btn-row">
                 <button class="btn" id="naiTokenModalBtn" onclick="saveNaiTokenFromModal()" style="flex: 2;">
@@ -10590,6 +10643,7 @@
                         <input type="text" placeholder="이름 (선택)" value="${name}" class="slot-name">
                         <button type="button" class="slot-lock" title="락 (생성 제외)" tabindex="-1">🔓</button>
                         <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
+                        <button type="button" class="slot-duplicate" title="슬롯 복제" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="8" height="10" rx="1.5"/><path d="M7 3V2.5A1.5 1.5 0 0 1 8.5 1H13a1.5 1.5 0 0 1 1.5 1.5V11a1.5 1.5 0 0 1-1.5 1.5h-.5"/></svg></button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
                     </div>
                     <textarea placeholder="이 슬롯에만 적용할 태그" class="slot-tags">${content}</textarea>
@@ -10666,59 +10720,97 @@
                 e.preventDefault();
                 startSlotDrag(slot, e);
             });
-            
+
+            // 복제 버튼
+            slot.querySelector('.slot-duplicate').onclick = () => {
+                duplicateSlot(slot);
+            };
+
             return slot;
         }
         
         // 슬롯 드래그 앤 드롭
         let draggedSlot = null;
-        let dragStartX = 0;
-        let slotStartX = 0;
+        let dragOffsetX = 0;
         let placeholder = null;
-        
+        let dragScrollRAF = null;
+        let dragMouseX = 0;
+        const DRAG_SCROLL_ZONE = 80;
+        const DRAG_SCROLL_SPEED = 12;
+
         function startSlotDrag(slot, e) {
             draggedSlot = slot;
-            dragStartX = e.clientX;
-            
+
             const rect = slot.getBoundingClientRect();
-            slotStartX = rect.left;
-            
-            // 플레이스홀더 생성
+            const DRAG_WIDTH = 200;
+            // 클릭 위치 비율을 축소 너비에 맞게 환산
+            dragOffsetX = ((e.clientX - rect.left) / rect.width) * DRAG_WIDTH;
+            dragMouseX = e.clientX;
+
+            // 다른 슬롯들 축소
+            slotsContainer.classList.add('drag-compact');
+
+            // 플레이스홀더 생성 (축소 크기에 맞춤)
             placeholder = document.createElement('div');
             placeholder.className = 'slot-placeholder';
-            placeholder.style.width = rect.width + 'px';
-            placeholder.style.height = rect.height + 'px';
-            
+            placeholder.style.width = '150px';
+            placeholder.style.height = '100%';
+
             // 드래그 중 스타일
             slot.classList.add('dragging');
             slot.style.position = 'fixed';
-            slot.style.left = rect.left + 'px';
+            slot.style.left = (e.clientX - dragOffsetX) + 'px';
             slot.style.top = rect.top + 'px';
-            slot.style.width = rect.width + 'px';
+            slot.style.width = '200px';
             slot.style.zIndex = '1000';
-            
+
             slot.parentNode.insertBefore(placeholder, slot);
             document.body.appendChild(slot);
-            
+
+            // 자동 스크롤 루프 시작
+            startDragAutoScroll();
+
             document.addEventListener('mousemove', onSlotDrag);
             document.addEventListener('mouseup', endSlotDrag);
         }
-        
+
+        function startDragAutoScroll() {
+            function scrollLoop() {
+                if (!draggedSlot) return;
+                const wrapper = document.getElementById('slotsWrapper');
+                const wrapperRect = wrapper.getBoundingClientRect();
+                const relX = dragMouseX - wrapperRect.left;
+                const relRight = wrapperRect.right - dragMouseX;
+
+                if (relX < DRAG_SCROLL_ZONE) {
+                    // 영역 밖(relX < 0)이면 최대 속도, 안쪽이면 비례 속도
+                    const speed = relX <= 0 ? DRAG_SCROLL_SPEED : DRAG_SCROLL_SPEED * (1 - relX / DRAG_SCROLL_ZONE);
+                    slotsContainer.scrollLeft -= speed;
+                } else if (relRight < DRAG_SCROLL_ZONE) {
+                    const speed = relRight <= 0 ? DRAG_SCROLL_SPEED : DRAG_SCROLL_SPEED * (1 - relRight / DRAG_SCROLL_ZONE);
+                    slotsContainer.scrollLeft += speed;
+                }
+                dragScrollRAF = requestAnimationFrame(scrollLoop);
+            }
+            dragScrollRAF = requestAnimationFrame(scrollLoop);
+        }
+
         function onSlotDrag(e) {
             if (!draggedSlot) return;
-            
-            const dx = e.clientX - dragStartX;
-            draggedSlot.style.left = (slotStartX + dx) + 'px';
-            
+            dragMouseX = e.clientX;
+
+            // 커서 기준으로 위치 계산 — 축소와 무관
+            draggedSlot.style.left = (e.clientX - dragOffsetX) + 'px';
+
             // 플레이스홀더 위치 업데이트
             const slots = [...slotsContainer.querySelectorAll('.slot:not(.dragging)')];
             const draggedRect = draggedSlot.getBoundingClientRect();
             const draggedCenter = draggedRect.left + draggedRect.width / 2;
-            
+
             for (let i = 0; i < slots.length; i++) {
                 const slotRect = slots[i].getBoundingClientRect();
                 const slotCenter = slotRect.left + slotRect.width / 2;
-                
+
                 if (draggedCenter < slotCenter) {
                     slotsContainer.insertBefore(placeholder, slots[i]);
                     return;
@@ -10726,10 +10818,19 @@
             }
             slotsContainer.appendChild(placeholder);
         }
-        
+
         function endSlotDrag() {
             if (!draggedSlot) return;
-            
+
+            // 자동 스크롤 중지
+            if (dragScrollRAF) {
+                cancelAnimationFrame(dragScrollRAF);
+                dragScrollRAF = null;
+            }
+
+            // 축소 해제
+            slotsContainer.classList.remove('drag-compact');
+
             // 플레이스홀더 위치에 슬롯 삽입
             draggedSlot.classList.remove('dragging');
             draggedSlot.style.position = '';
@@ -10737,13 +10838,13 @@
             draggedSlot.style.top = '';
             draggedSlot.style.width = '';
             draggedSlot.style.zIndex = '';
-            
+
             slotsContainer.insertBefore(draggedSlot, placeholder);
             placeholder.remove();
-            
+
             draggedSlot = null;
             placeholder = null;
-            
+
             document.removeEventListener('mousemove', onSlotDrag);
             document.removeEventListener('mouseup', endSlotDrag);
 
@@ -10766,7 +10867,31 @@
             updateQueueButton();
             updateAnlasCost();
         }
-        
+
+        function duplicateSlot(sourceSlot) {
+            const name = sourceSlot.querySelector('.slot-name').value;
+            const content = sourceSlot.querySelector('.slot-tags').value;
+            const locked = sourceSlot.classList.contains('locked');
+
+            const newSlot = createSlot(name, content);
+            if (locked) {
+                newSlot.classList.add('locked');
+                const lockBtn = newSlot.querySelector('.slot-lock');
+                lockBtn.classList.add('locked');
+                lockBtn.textContent = '🔒';
+                lockBtn.title = '락 해제';
+            }
+
+            // 원본 바로 오른쪽에 삽입
+            sourceSlot.after(newSlot);
+            setupSlotImageScroll(newSlot);
+            updateSlotNumbers();
+            updateQueueButton();
+            updateAnlasCost();
+            updateLockAllBtnState();
+            autoSaveSettings();
+        }
+
         function getSlotList() {
             const slots = slotsContainer.querySelectorAll('.slot');
             const list = [];
