@@ -1539,18 +1539,12 @@ async def call_nai_api(req: GenerateRequest):
             params["legacy_v3_extend"] = False
             params["noise"] = 0  # 삭제가 아니라 0으로 설정
 
-            # 인페인트는 바이브/캐릭터레퍼런스 미지원 (NAI 웹 확인)
+            # 인페인트는 바이브 미지원, 프리사이즈 레퍼런스는 지원
             params_to_delete = [
                 # Vibe Transfer
                 "reference_image_multiple",
                 "reference_information_extracted_multiple",
                 "reference_strength_multiple",
-                # Precise Reference / Character Reference
-                "director_reference_images",
-                "director_reference_information_extracted",
-                "director_reference_strength_values",
-                "director_reference_secondary_strength_values",
-                "director_reference_descriptions"
             ]
             for param in params_to_delete:
                 if param in params:
