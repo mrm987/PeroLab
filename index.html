@@ -9042,6 +9042,20 @@
                                 </label>
                                 <input type="range" id="steamOpacity" min="0" max="100" value="30">
                             </div>
+                            <div class="side-setting-row" id="steamBrightnessRow">
+                                <label style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>스팀 밝기</span>
+                                    <span id="steamBrightnessValue" style="font-weight: 500;">100%</span>
+                                </label>
+                                <input type="range" id="steamBrightness" min="0" max="100" value="100">
+                            </div>
+                            <div class="side-setting-row" id="steamAlphaRow">
+                                <label style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>스팀 불투명도</span>
+                                    <span id="steamAlphaValue" style="font-weight: 500;">100%</span>
+                                </label>
+                                <input type="range" id="steamAlpha" min="0" max="100" value="100">
+                            </div>
                         </div>
 
                         <!-- 검열중/후 탭: 도구 섹션 -->
@@ -24840,6 +24854,8 @@
             expandPixels: 0,           // 박스 확장 픽셀
             feather: 0,                // 그라데이션 테두리 픽셀
             steamOpacity: 30,          // 조작시 투명도 (%)
+            steamBrightness: 100,      // 스팀 밝기 (0~100, 100=흰색)
+            steamAlpha: 100,           // 스팀 불투명도 (0~100)
             // 초기화 플래그
             eventsInitialized: false  // 이벤트 리스너 초기화 여부
         };
@@ -25253,7 +25269,9 @@
                     .map(cb => cb.dataset.class),
                 expandPixels: censorState.expandPixels,
                 feather: censorState.feather,
-                steamOpacity: censorState.steamOpacity
+                steamOpacity: censorState.steamOpacity,
+                steamBrightness: censorState.steamBrightness,
+                steamAlpha: censorState.steamAlpha
             };
             localStorage.setItem('censorSettings', JSON.stringify(settings));
         }
@@ -25351,6 +25369,11 @@
                     if (savedSettings?.censorMethod && methodSelect) {
                         methodSelect.value = savedSettings.censorMethod;
                     }
+                    // 스팀 전용 설정 표시/숨김
+                    const isSteamMethod = (methodSelect?.value || 'steam') === 'steam';
+                    document.getElementById('steamOpacityRow').style.display = isSteamMethod ? '' : 'none';
+                    document.getElementById('steamBrightnessRow').style.display = isSteamMethod ? '' : 'none';
+                    document.getElementById('steamAlphaRow').style.display = isSteamMethod ? '' : 'none';
 
                     // 저장된 확장/부드럽게 값 복원
                     if (savedSettings?.expandPixels !== undefined) {
@@ -25373,6 +25396,20 @@
                         steamOpacityEl.value = savedSettings.steamOpacity;
                         document.getElementById('steamOpacityValue').textContent = savedSettings.steamOpacity + '%';
                         updateSliderFill(steamOpacityEl);
+                    }
+                    if (savedSettings?.steamBrightness !== undefined) {
+                        censorState.steamBrightness = savedSettings.steamBrightness;
+                        const steamBrightnessEl = document.getElementById('steamBrightness');
+                        steamBrightnessEl.value = savedSettings.steamBrightness;
+                        document.getElementById('steamBrightnessValue').textContent = savedSettings.steamBrightness + '%';
+                        updateSliderFill(steamBrightnessEl);
+                    }
+                    if (savedSettings?.steamAlpha !== undefined) {
+                        censorState.steamAlpha = savedSettings.steamAlpha;
+                        const steamAlphaEl = document.getElementById('steamAlpha');
+                        steamAlphaEl.value = savedSettings.steamAlpha;
+                        document.getElementById('steamAlphaValue').textContent = savedSettings.steamAlpha + '%';
+                        updateSliderFill(steamAlphaEl);
                     }
 
                     // 선택된 모델의 클래스 로드
@@ -26312,8 +26349,13 @@
         // 스팀 텍스처 캐시 (박스별로 미리 렌더링)
         const steamTextureCache = new Map();
 
-        // 스팀 검열용 가상 박스 확대 비율 (테스트: 2배)
-        const STEAM_BOX_SCALE = 2.0;
+        // 스팀 검열용 동적 확대 비율 (박스 클수록 배율 증가)
+        function getSteamBoxScale(origBoxW, origBoxH) {
+            const boxSize = Math.min(origBoxW, origBoxH);
+            // log 커브: 작은 박스 ~1.1x, 큰 박스 ~1.5x
+            const scale = 1 + 0.04 * Math.log2(Math.max(boxSize, 2));
+            return Math.max(1.05, Math.min(scale, 1.5));
+        }
 
         // 스팀 텍스처 생성 (캐시 키 기반)
         function generateSteamTexture(w, h, seed) {
@@ -26395,11 +26437,15 @@
                     }
 
                     const idx = (py * tw + px) * 4;
-                    const brightness = Math.floor(230 + brightNoise * 25);  // 230~255 범위
+                    const bPct = (censorState.steamBrightness ?? 100) / 100;
+                    const baseB = Math.floor(bPct * 230);
+                    const rangeB = Math.floor(bPct * 25);
+                    const brightness = baseB + Math.floor(brightNoise * rangeB);
                     data[idx] = brightness;
                     data[idx + 1] = brightness;
                     data[idx + 2] = brightness;
-                    data[idx + 3] = alpha;
+                    const alphaPct = (censorState.steamAlpha ?? 100) / 100;
+                    data[idx + 3] = Math.floor(alpha * alphaPct);
                 }
             }
 
@@ -26411,7 +26457,9 @@
         function getSteamCacheKey(w, h, seed) {
             const expand = censorState.expandPixels || 0;
             const feather = censorState.feather || 0;
-            return `${Math.round(w)}_${Math.round(h)}_${seed}_e${expand}_f${feather}`;
+            const bright = censorState.steamBrightness ?? 100;
+            const alpha = censorState.steamAlpha ?? 100;
+            return `${Math.round(w)}_${Math.round(h)}_${seed}_e${expand}_f${feather}_b${bright}_a${alpha}`;
         }
 
         // 스팀 텍스처 캐시 프리로드 (박스 목록 기반, cleanupOld: 오래된 캐시 정리 여부)
@@ -26423,11 +26471,14 @@
                 if ((det.method || 'black') !== 'steam') return;
 
                 const [x1, y1, x2, y2] = det.box;
-                // 스팀용 가상 박스 확대 (30%) + 사용자 확장 적용
-                const baseW = (x2 - x1) * scale;
-                const baseH = (y2 - y1) * scale;
-                const w = baseW * STEAM_BOX_SCALE + expandPx * 2;
-                const h = baseH * STEAM_BOX_SCALE + expandPx * 2;
+                // 스팀용 동적 확대 (박스 클수록 배율↑) + 사용자 확장 적용
+                const origW = x2 - x1;
+                const origH = y2 - y1;
+                const baseW = origW * scale;
+                const baseH = origH * scale;
+                const steamScale = getSteamBoxScale(origW, origH);
+                const w = baseW * steamScale + expandPx * 2;
+                const h = baseH * steamScale + expandPx * 2;
                 const seed = Math.floor(x1 * 1000 + y1);
                 const key = getSteamCacheKey(w, h, seed);
 
@@ -26457,19 +26508,19 @@
         // 스팀/구름 효과 적용 (캐시 사용)
         function applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale) {
             const expandPx = (censorState.expandPixels || 0) * (scale || 1);
-            // 스팀용 가상 박스 확대 (30%) + 사용자 확장 적용
-            const scaledW = w * STEAM_BOX_SCALE;
-            const scaledH = h * STEAM_BOX_SCALE;
+            // 스팀용 동적 확대 (박스 클수록 배율↑) + 사용자 확장 적용
+            const origBoxW = w / (scale || 1);
+            const origBoxH = h / (scale || 1);
+            const steamScale = getSteamBoxScale(origBoxW, origBoxH);
+            const scaledW = w * steamScale;
+            const scaledH = h * steamScale;
             const expandedW = scaledW + expandPx * 2;
             const expandedH = scaledH + expandPx * 2;
             const seed = Math.floor(origX * 1000 + origY);
             const key = getSteamCacheKey(expandedW, expandedH, seed);
 
-            console.log('[STEAM] 원본 w,h:', w, h, '→ 확장 후:', expandedW, expandedH, 'SCALE:', STEAM_BOX_SCALE);
-
             let texture = steamTextureCache.get(key);
             if (!texture) {
-                console.log('[STEAM] 새 텍스처 생성:', expandedW, expandedH);
                 texture = generateSteamTexture(expandedW, expandedH, seed);
                 steamTextureCache.set(key, texture);
             }
@@ -26484,7 +26535,7 @@
         }
 
         // 프론트엔드에서 검열 이미지 렌더링 (스팀 포함 - 저장용)
-        async function renderCensoredImageOnCanvas(imgSrc, boxes, method) {
+        async function renderCensoredImageOnCanvas(imgSrc, boxes, method, filename) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
@@ -26525,8 +26576,11 @@
                         }
                     });
 
-                    // PNG base64로 변환
-                    const base64 = canvas.toDataURL('image/png').split(',')[1];
+                    // 원본 파일 확장자에 맞춰 포맷 결정 (jpg→JPEG, 그 외→PNG)
+                    const isJpeg = /\.(jpe?g)$/i.test(filename || imgSrc);
+                    const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+                    const quality = isJpeg ? 0.95 : undefined;
+                    const base64 = canvas.toDataURL(mimeType, quality).split(',')[1];
                     resolve(base64);
                 };
                 img.onerror = () => reject(new Error('이미지 로드 실패'));
@@ -27684,7 +27738,7 @@
                         }
 
                         try {
-                            const renderedBase64 = await renderCensoredImageOnCanvas(imgSrc, boxes, method);
+                            const renderedBase64 = await renderCensoredImageOnCanvas(imgSrc, boxes, method, imgInfo?.filename);
                             saveBody.rendered_base64 = renderedBase64;  // 이미 렌더링된 이미지
                             console.log('Frontend rendering complete');
                         } catch (renderErr) {
@@ -28141,6 +28195,34 @@
                 saveCensorSettings();
             };
 
+            // 스팀 밝기 슬라이더
+            const steamBrightnessSlider = document.getElementById('steamBrightness');
+            steamBrightnessSlider.oninput = function() {
+                censorState.steamBrightness = parseInt(this.value);
+                document.getElementById('steamBrightnessValue').textContent = this.value + '%';
+                steamTextureCache.clear();
+                if (censorState.currentTab === 'processing') {
+                    redrawProcessingPreview();
+                } else if (censorState.currentTab === 'after') {
+                    redrawAfterPreview();
+                }
+                saveCensorSettings();
+            };
+
+            // 스팀 불투명도 슬라이더
+            const steamAlphaSlider = document.getElementById('steamAlpha');
+            steamAlphaSlider.oninput = function() {
+                censorState.steamAlpha = parseInt(this.value);
+                document.getElementById('steamAlphaValue').textContent = this.value + '%';
+                steamTextureCache.clear();
+                if (censorState.currentTab === 'processing') {
+                    redrawProcessingPreview();
+                } else if (censorState.currentTab === 'after') {
+                    redrawAfterPreview();
+                }
+                saveCensorSettings();
+            };
+
             // 검열 후 탭 폴더 드롭다운 버튼 클릭 이벤트 (검열 전 폴더 드롭다운은 제거됨)
             const censoredFolderBtn = document.getElementById('censorCensoredFolderBtn');
             if (censoredFolderBtn) {
@@ -28389,6 +28471,11 @@
             document.getElementById('censorMethod').onchange = function() {
                 censorState.processingMethod = this.value;
                 const newMethod = this.value;
+                // 스팀 전용 설정 표시/숨김
+                const isSteam = newMethod === 'steam';
+                document.getElementById('steamOpacityRow').style.display = isSteam ? '' : 'none';
+                document.getElementById('steamBrightnessRow').style.display = isSteam ? '' : 'none';
+                document.getElementById('steamAlphaRow').style.display = isSteam ? '' : 'none';
 
                 if (censorState.currentTab === 'processing') {
                     // 검열중 탭: 모든 이미지의 박스 방식 변경
