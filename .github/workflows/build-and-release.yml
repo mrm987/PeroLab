@@ -255,14 +255,14 @@ jobs:
         run: |
           mkdir -p dist/PeroPix/python
           curl -L -o python.tar.gz "https://github.com/indygreg/python-build-standalone/releases/download/20240415/cpython-3.11.9+20240415-aarch64-apple-darwin-install_only.tar.gz"
-          tar -xzf python.tar.gz -C dist/PeroPix/python --strip-components=1
+          tar -xzf python.tar.gz -C dist/PeroPix/python
       - name: Install Dependencies
         run: |
-          dist/PeroPix/python/bin/python3 -m pip install --upgrade pip
-          dist/PeroPix/python/bin/python3 -m pip install -r requirements-core.txt
+          dist/PeroPix/python/python/bin/python3 -m pip install --upgrade pip
+          dist/PeroPix/python/python/bin/python3 -m pip install -r requirements-core.txt
       - name: Fix OpenCV Config
         run: |
-          CV2_DIR="dist/PeroPix/python/lib/python3.11/site-packages/cv2"
+          CV2_DIR="dist/PeroPix/python/python/lib/python3.11/site-packages/cv2"
           if [ -d "$CV2_DIR" ]; then
             cat > "$CV2_DIR/config.py" << 'PYEOF'
           import os
@@ -315,7 +315,7 @@ jobs:
           cd "$(dirname "$0")"
           echo "Starting PeroPix..."
           open "http://127.0.0.1:8765"
-          ./python/bin/python3 backend.py
+          ./python/python/bin/python3 backend.py
           EOF
           chmod +x dist/PeroPix/PeroPix.command
       - name: Create ZIP Archive
