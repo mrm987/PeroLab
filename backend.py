@@ -503,13 +503,14 @@ def open_folder_in_explorer(path: str) -> bool:
 # EXIF 메타데이터 헬퍼 함수
 # ============================================================
 
-def save_metadata_to_exif(image_bytes: bytes, metadata_dict: dict, image_format: str = 'PNG') -> bytes:
+def save_metadata_to_exif(image_bytes: bytes, metadata_dict: dict, image_format: str = 'PNG', quality: int = 95) -> bytes:
     """이미지에 EXIF UserComment로 메타데이터 저장
 
     Args:
         image_bytes: 원본 이미지 바이트
         metadata_dict: 저장할 메타데이터 딕셔너리
         image_format: 이미지 포맷 (PNG, JPEG, WEBP)
+        quality: JPEG/WebP 품질 (1-100)
 
     Returns:
         메타데이터가 포함된 이미지 바이트
@@ -553,10 +554,10 @@ def save_metadata_to_exif(image_bytes: bytes, metadata_dict: dict, image_format:
             # JPEG: EXIF 직접 지원
             if img.mode in ('RGBA', 'P'):
                 img = img.convert('RGB')
-            img.save(output, format='JPEG', exif=exif_bytes, quality=95)
+            img.save(output, format='JPEG', exif=exif_bytes, quality=quality)
         elif image_format.upper() == 'WEBP':
             # WebP: EXIF 직접 지원
-            img.save(output, format='WEBP', exif=exif_bytes, quality=95)
+            img.save(output, format='WEBP', exif=exif_bytes, quality=quality)
         else:
             # 기타 포맷은 메타데이터 없이 저장
             img.save(output, format=image_format)
@@ -667,14 +668,45 @@ def read_metadata_from_image(image_bytes: bytes) -> dict:
                 # UserComment는 EXIF IFD에 있으므로 get_ifd로 접근
                 exif_ifd = exif.get_ifd(0x8769)  # ExifIFD
                 if exif_ifd and 0x9286 in exif_ifd:  # UserComment tag
-                    user_comment_bytes = exif_ifd[0x9286]
-                    user_comment = piexif.helper.UserComment.load(user_comment_bytes)
+                    user_comment_raw = exif_ifd[0x9286]
+                    user_comment = None
+                    # Pillow 버전에 따라 str 또는 bytes 반환 가능
+                    if isinstance(user_comment_raw, str):
+                        user_comment = user_comment_raw
+                    elif isinstance(user_comment_raw, bytes):
+                        # piexif UserComment.load 시도 (charset prefix 포함된 형식)
+                        try:
+                            user_comment = piexif.helper.UserComment.load(user_comment_raw)
+                        except Exception:
+                            # charset prefix 없는 raw UTF-8 bytes일 수 있음
+                            try:
+                                user_comment = user_comment_raw.decode('utf-8')
+                            except Exception:
+                                pass
+                    if user_comment:
+                        metadata = json.loads(user_comment)
+                        return metadata
+        except json.JSONDecodeError as e:
+            print(f"[EXIF] UserComment JSON parse error: {e}")
+        except Exception as e:
+            pass
+
+        # 4. EXIF raw bytes에서 직접 읽기 (WebP/JPEG - piexif.load는 JPEG만 지원)
+        try:
+            # WebP: img.info['exif']에서 raw EXIF bytes 추출 → piexif로 파싱
+            raw_exif = None
+            if hasattr(img, 'info') and 'exif' in img.info:
+                raw_exif = img.info['exif']
+            if raw_exif:
+                exif_dict = piexif.load(raw_exif)
+                if "Exif" in exif_dict and piexif.ExifIFD.UserComment in exif_dict["Exif"]:
+                    user_comment = piexif.helper.UserComment.load(exif_dict["Exif"][piexif.ExifIFD.UserComment])
                     metadata = json.loads(user_comment)
                     return metadata
         except Exception as e:
             pass
 
-        # 4. piexif로 직접 읽기 시도 (JPEG 호환)
+        # 5. piexif로 직접 읽기 시도 (JPEG 전용 - image_bytes에서 직접)
         try:
             exif_dict = piexif.load(image_bytes)
             if "Exif" in exif_dict and piexif.ExifIFD.UserComment in exif_dict["Exif"]:
@@ -2661,7 +2693,7 @@ async def process_job(job):
                     clean_image.save(img_buffer, format=pil_format)
 
                 image_bytes = img_buffer.getvalue()
-                image_bytes = save_metadata_to_exif(image_bytes, unified_metadata, pil_format)
+                image_bytes = save_metadata_to_exif(image_bytes, unified_metadata, pil_format, quality=jpg_quality)
 
             # auto_save 여부에 따라 파일 저장 또는 미리보기만
             auto_save = getattr(req, 'auto_save', True)
@@ -3335,7 +3367,7 @@ async def convert_image(request: dict):
 
             # 메타데이터가 있으면 추가
             if original_metadata:
-                output_bytes = save_metadata_to_exif(output_bytes, original_metadata, pil_format)
+                output_bytes = save_metadata_to_exif(output_bytes, original_metadata, pil_format, quality=quality)
 
             # 파일에 쓰기
             with open(save_path, 'wb') as f:

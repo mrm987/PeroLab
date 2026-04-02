@@ -10654,18 +10654,21 @@
                 <div class="slot-prompt">
                     <div class="slot-prompt-header">
                         <span class="slot-number">001</span>
-                        <input type="text" placeholder="이름 (선택)" value="${name}" class="slot-name">
+                        <input type="text" placeholder="이름 (선택)" class="slot-name">
                         <button type="button" class="slot-lock" title="락 (생성 제외)" tabindex="-1">🔓</button>
                         <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
                         <button type="button" class="slot-duplicate" title="슬롯 복제" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="8" height="10" rx="1.5"/><path d="M7 3V2.5A1.5 1.5 0 0 1 8.5 1H13a1.5 1.5 0 0 1 1.5 1.5V11a1.5 1.5 0 0 1-1.5 1.5h-.5"/></svg></button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
                     </div>
-                    <textarea placeholder="이 슬롯에만 적용할 태그" class="slot-tags">${content}</textarea>
+                    <textarea placeholder="이 슬롯에만 적용할 태그" class="slot-tags"></textarea>
                 </div>
                 <div class="slot-images">
                     <div class="slot-empty">이미지가 여기에 표시됩니다</div>
                 </div>
             `;
+            // DOM API로 값 설정 (innerHTML 대신) - HTML 특수문자(<, >, " 등) 안전하게 처리
+            slot.querySelector('.slot-name').value = name;
+            slot.querySelector('.slot-tags').value = content;
 
             slot.querySelector('.slot-delete').onclick = () => {
                 if (slotsContainer.querySelectorAll('.slot').length > 1) {
@@ -18544,7 +18547,15 @@
                 fmConvertOpenFolder: utilityState.fileManager?.convertPanel?.openFolder ?? true,
             };
 
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            } catch (e) {
+                console.error('[Settings] localStorage save failed:', e);
+                // QuotaExceededError 등 - 사용자에게 알림
+                if (typeof showToast === 'function') {
+                    showToast('설정 저장 실패: 저장 공간 부족', 'error');
+                }
+            }
         }
         
         function loadAppSettings() {
@@ -19258,9 +19269,18 @@
             }
         });
         
+        // 탭 숨김/비활성 시 즉시 저장 (beforeunload보다 신뢰성 높음)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
+                saveAppSettings();
+            }
+        });
+
         // 페이지 떠날 때 저장 및 경고
         window.isIntentionalClose = false;  // 재시작 등 의도적 종료 플래그 (전역)
         window.addEventListener('beforeunload', (e) => {
+            if (saveTimeout) { clearTimeout(saveTimeout); saveTimeout = null; }
             saveAppSettings();
             // 의도적 종료가 아닌 경우에만 경고 표시
             if (!window.isIntentionalClose) {
