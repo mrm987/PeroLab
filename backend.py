@@ -2663,10 +2663,13 @@ async def process_job(job):
                 import numpy as np
                 img_array = np.array(save_image)
 
-                # Alpha 채널이 있으면 (RGBA) LSB를 255로 정규화하여 스테가노그래피 제거
+                # Alpha 채널이 있으면 (RGBA) LSB 스테가노그래피 데이터 제거
                 if img_array.ndim == 3 and img_array.shape[2] == 4:
-                    # Alpha 채널을 255로 설정하여 LSB 데이터 완전 제거
-                    img_array[:, :, 3] = 255
+                    alpha = img_array[:, :, 3]
+                    if alpha.min() >= 254:
+                        # 불투명 이미지 - NAI 스테가노그래피 LSB 제거
+                        img_array[:, :, 3] = 255
+                    # else: 실제 투명도가 있는 이미지 - 스테가노그래피 없으므로 alpha 유지
 
                 clean_image = Image.fromarray(img_array)
 
@@ -3335,13 +3338,19 @@ async def convert_image(request: dict):
             import numpy as np
             img_array = np.array(image)
 
-            # Alpha 채널이 있으면 (RGBA) LSB를 255로 정규화하여 스테가노그래피 제거
+            # Alpha 채널이 있으면 (RGBA) LSB 스테가노그래피 데이터 제거
             if img_array.ndim == 3 and img_array.shape[2] == 4:
-                img_array[:, :, 3] = 255
+                alpha = img_array[:, :, 3]
+                if alpha.min() >= 254:
+                    # 불투명 이미지 - NAI 스테가노그래피 LSB 제거
+                    img_array[:, :, 3] = 255
+                # else: 실제 투명도가 있는 이미지 - 스테가노그래피 없으므로 alpha 유지
 
             clean_image = Image.fromarray(img_array)
 
             if format_type == 'jpg':
+                if clean_image.mode in ('RGBA', 'P', 'LA'):
+                    clean_image = clean_image.convert('RGB')
                 clean_image.save(save_path, format=pil_format, quality=quality, exif=b'')
             elif format_type == 'webp':
                 clean_image.save(save_path, format=pil_format, quality=quality, exif=b'')
