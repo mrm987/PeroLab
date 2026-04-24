@@ -21896,6 +21896,13 @@
             fileList.ondrop = (e) => {
                 e.preventDefault();
                 fileList.classList.remove('drag-over');
+                // 내부 순서 변경 드래그를 빈 영역에 드롭한 경우 → 맨 끝으로 이동
+                if (e.dataTransfer.types.includes('application/x-peropix-reorder')) {
+                    const fileItems = document.getElementById('convertFileItems');
+                    const draggedEl = fileItems.querySelector('.file-item.dragging');
+                    if (draggedEl) fileItems.appendChild(draggedEl);
+                    return;
+                }
                 const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
                 addConvertFiles(files);
             };
@@ -21972,6 +21979,28 @@
                 updateRenamePreview();
                 updateConvertFileList();
             };
+
+            // 컨테이너 레벨 dragend 리스너: 한 번만 부착 (재부착 시 리스너 누적으로 브라우저 프리즈)
+            const fileItems = document.getElementById('convertFileItems');
+            fileItems.addEventListener('dragend', () => {
+                fileItems.querySelectorAll('.file-item').forEach(el => {
+                    el.classList.remove('drop-indicator', 'drop-indicator-top', 'dragging');
+                });
+                // DOM 순서 기반으로 배열 재정렬
+                const newFiles = [];
+                fileItems.querySelectorAll('.file-item').forEach(item => {
+                    const idx = parseInt(item.dataset.index);
+                    if (!isNaN(idx) && utilityState.convertFiles[idx]) {
+                        newFiles.push(utilityState.convertFiles[idx]);
+                    }
+                });
+                if (newFiles.length !== utilityState.convertFiles.length) return;
+                const changed = newFiles.some((f, i) => f !== utilityState.convertFiles[i]);
+                if (!changed) return;
+                utilityState.convertFiles = newFiles;
+                updateConvertFileList();
+                updateRenamePreview();
+            });
         }
 
         // 파일 추가
@@ -22101,6 +22130,8 @@
                     isDraggingReorder = true;
                     item.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
+                    // 내부 순서 변경 드래그임을 표시 (외부 파일 드롭과 구분)
+                    e.dataTransfer.setData('application/x-peropix-reorder', '1');
                 });
 
                 item.addEventListener('dragend', () => {
@@ -22154,21 +22185,6 @@
                         el.classList.remove('drop-indicator', 'drop-indicator-top');
                     });
                 });
-            });
-
-            fileItems.addEventListener('dragend', () => {
-                fileItems.querySelectorAll('.file-item').forEach(el => {
-                    el.classList.remove('drop-indicator', 'drop-indicator-top', 'dragging');
-                });
-                // DOM 순서 기반으로 배열 재정렬
-                const newFiles = [];
-                fileItems.querySelectorAll('.file-item').forEach(item => {
-                    const idx = parseInt(item.dataset.index);
-                    newFiles.push(utilityState.convertFiles[idx]);
-                });
-                utilityState.convertFiles = newFiles;
-                updateConvertFileList();
-                updateRenamePreview();
             });
         }
 
