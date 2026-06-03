@@ -5646,6 +5646,10 @@ def _check_ultralytics_installed():
     """ultralytics 설치 여부 실제 확인"""
     return (_get_site_packages_dir() / "ultralytics").exists()
 
+def _check_cv2_installed():
+    """cv2(opencv-python) 설치 여부 실제 확인 (import 없이 폴더만 체크 - 빠름)"""
+    return (_get_site_packages_dir() / "cv2").exists()
+
 def _detect_gpu_compute_capability():
     """nvidia-smi로 GPU compute capability 감지 (torch 설치 전에도 사용 가능)
 
@@ -6031,6 +6035,12 @@ def _run_uv_install(uv_exe, python_exe, packages, index_url=None, progress_base=
     return proc.returncode
 
 
+# 검열(YOLO) 의존성 고정 버전 - end-to-end 검증된 조합
+# opencv 4.13은 numpy 상한이 없어(numpy>=2) torch/로컬 엔진과 numpy를 공유해도 충돌 없음 → numpy는 비고정 유지
+CENSOR_DEPS = ["ultralytics==8.3.248", "opencv-python==4.13.0.92"]
+CENSOR_OPENCV_DEP = "opencv-python==4.13.0.92"
+
+
 def _install_base_environment_sync():
     """기본 환경 설치 (첫 실행 시 자동) - torch CPU + ultralytics"""
     global install_status
@@ -6058,7 +6068,7 @@ def _install_base_environment_sync():
         
         ret = _run_uv_install(
             uv_exe, python_exe,
-            ["ultralytics", "opencv-python"],
+            CENSOR_DEPS,
             progress_base=60,
             progress_end=80
         )
@@ -6109,6 +6119,62 @@ def _install_base_environment_sync():
         install_status["installing"] = False
         print(f"[Install Error] {e}")
         return False
+
+
+def _repair_cv2_if_missing():
+    """검열 기능에 필요한 cv2(opencv-python)가 누락된 경우 opencv-python만 타깃 설치.
+
+    캐시된 install_status.json을 신뢰하지 않고 실제 파일 존재(cv2 폴더)로 판단한다.
+    torch 등 다른 패키지는 건드리지 않으므로 GPU 환경이 그대로 유지된다.
+    (구버전 설치본 등에서 ultralytics는 있는데 opencv만 빠진 경우 자동 복구)
+    """
+    global install_status
+
+    # Python 미설치(배포판 첫 실행)면 기본 설치 단계가 opencv까지 함께 깔므로 스킵
+    if not _check_python_installed():
+        return
+    # cv2가 이미 있으면 할 일 없음 (stat 1회, 사실상 공짜)
+    if _check_cv2_installed():
+        return
+    # ultralytics 자체가 없으면 검열 기능 미설치 상태 → 기본 설치 경로가 ultralytics+opencv 함께 설치
+    if not _check_ultralytics_installed():
+        return
+
+    print("\n" + "=" * 50)
+    print("  검열 기능에 필요한 opencv(cv2)가 없어 설치합니다")
+    print("  (opencv-python만 설치, 약 30초~1분)")
+    print("=" * 50 + "\n")
+
+    try:
+        python_exe, uv_exe, temp_dir = _setup_python_and_uv()
+
+        # --reinstall-package로 강제 재설치: dist-info만 남고 cv2 폴더가 없는
+        # 부분설치 상태에서도 cv2 파일이 확실히 복구되도록 한다.
+        ret = _run_uv_install(
+            uv_exe, python_exe,
+            [CENSOR_OPENCV_DEP],
+            progress_base=0,
+            progress_end=100,
+            reinstall_packages=["opencv-python"]
+        )
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+        if ret != 0:
+            print(f"  [실패] opencv-python 설치 실패 (code {ret})")
+            return
+
+        # 상태 파일에 censor 반영 (이미 True여도 일관성 유지)
+        current = get_install_status()
+        current["censor"] = True
+        save_install_status(current)
+        print("  opencv(cv2) 설치 완료!\n")
+    except Exception as e:
+        print(f"  [오류] opencv(cv2) 설치 중 오류: {e}\n")
+    finally:
+        # 시작 흐름에서 호출되므로 install_status 진행 상태를 깨끗이 리셋
+        install_status["installing"] = False
+        install_status["progress"] = 0
+        install_status["message"] = ""
 
 
 def _install_local_environment_sync():
@@ -6170,7 +6236,7 @@ def _install_local_environment_sync():
             
             ret = _run_uv_install(
                 uv_exe, python_exe,
-                ["ultralytics", "opencv-python"],
+                CENSOR_DEPS,
                 progress_base=80,
                 progress_end=90
             )
@@ -7540,6 +7606,10 @@ if __name__ == "__main__":
         status = get_install_status()
     else:
         print(f"[Environment] torch={status['torch']}, censor={status['censor']}, local={status['local']}")
+
+    # 캐시된 상태와 무관하게 cv2(opencv) 실제 존재 확인 → 없으면 opencv만 타깃 복구
+    # (구버전 설치본에서 opencv 누락으로 검열 탭이 "No module named 'cv2'" 나는 문제 자동 해결)
+    _repair_cv2_if_missing()
 
     # YOLO 모델 미리 로드 (서버 시작 전, API 블로킹 방지)
     if status.get("censor"):
