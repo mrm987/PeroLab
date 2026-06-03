@@ -26717,6 +26717,12 @@
             const methodSelector = 'censorMethod';
             const method = document.getElementById(methodSelector)?.value || censorState.processingMethod;
 
+            // steam은 백엔드가 처리하지 않음 → 서버 렌더(API)를 쓰면 검열이 빠진 이미지가 캐시됨. 클라이언트에서 직접 렌더
+            if (method === 'steam' || censorState.editBoxes.some(b => b.method === 'steam')) {
+                drawCensorPreview();
+                return;
+            }
+
             // 이미지별 캐시 확인
             const cachedImg = getCachedCensoredPreview(imageKey, censorState.editBoxes, method);
             if (cachedImg) {
@@ -27437,6 +27443,9 @@
                 const result = censorState.processingResults[imageKey];
                 if (!result?.editBoxes || result.editBoxes.length === 0) continue;
 
+                // steam 박스는 백엔드가 렌더하지 않으므로 서버 캐시 대상에서 제외 (클라이언트에서 직접 렌더)
+                if (result.editBoxes.some(b => (b.method || method) === 'steam')) continue;
+
                 // 이미 캐시되어 있으면 스킵
                 const cached = getCachedCensoredPreview(imageKey, result.editBoxes, method);
                 if (cached) continue;
@@ -27503,14 +27512,9 @@
                 censorPreviewDebounceTimer = null;
             }
 
-            // 현재 이미지의 editBoxes를 저장 (이미 검열중 탭에 있을 때만)
-            const currentKey = censorState.currentImage?.id || censorState.currentImage?.path;
-            if (censorState.currentTab === 'processing' && 
-                currentKey && 
-                censorState.processingResults[currentKey]) {
-                censorState.processingResults[currentKey].editBoxes = censorState.editBoxes.map(b => ({...b, box: [...b.box]}));
-            }
-            
+            // 이전 이미지의 editBoxes를 저장 (다른 저장 경로와 동일한 path 키 사용)
+            saveProcessingEditBoxes();
+
             censorState.currentIndex = index;
             const imageKey = imageKeys[index];
             const processingResult = censorState.processingResults[imageKey];
@@ -27623,7 +27627,9 @@
                 }
 
                 // 이미지별 검열 프리뷰 캐시 확인 (확장/부드럽게 적용된 이미지)
-                const cachedImg = getCachedCensoredPreview(imageKey, censorState.editBoxes, method);
+                // steam은 백엔드가 처리하지 않는 프론트 전용 효과 → 서버 캐시는 검열이 빠진 이미지이므로 사용 금지, 항상 클라이언트 렌더
+                const usesSteam = method === 'steam' || censorState.editBoxes.some(b => b.method === 'steam');
+                const cachedImg = usesSteam ? null : getCachedCensoredPreview(imageKey, censorState.editBoxes, method);
                 if (cachedImg) {
                     // 캔버스 크기와 오프셋 계산 (drawCensorPreview와 동일하게)
                     const previewArea = document.querySelector('.censor-preview-area');
@@ -27671,21 +27677,8 @@
                 return;
             }
             
-            // 현재 이미지의 editBoxes를 저장 (검증 포함)
-            const currentKey = censorState.currentImage?.id || censorState.currentImage?.path;
-            if (currentKey && censorState.processingResults[currentKey]) {
-                const validBoxes = censorState.editBoxes.filter(b => {
-                    if (!b.box || !Array.isArray(b.box) || b.box.length !== 4) {
-                        console.error('Invalid box in current editBoxes:', b);
-                        return false;
-                    }
-                    return true;
-                });
-                censorState.processingResults[currentKey].editBoxes = validBoxes.map(b => ({
-                    ...b,
-                    box: [b.box[0], b.box[1], b.box[2], b.box[3]]
-                }));
-            }
+            // 현재 이미지의 editBoxes를 저장 (다른 저장 경로와 동일한 path 키 사용)
+            saveProcessingEditBoxes();
             
             const method = document.getElementById('censorMethod')?.value || censorState.processingMethod;
             // 검열후 탭에서 선택된 폴더 사용 (없으면 루트)
@@ -28470,12 +28463,7 @@
                         censorState.hoverBoxIndex = -1;
 
                         // 검열중 탭: processingResults에도 반영
-                        if (censorState.currentTab === 'processing' && censorState.currentImage) {
-                            const path = censorState.currentImage.path;
-                            if (censorState.processingResults[path]) {
-                                censorState.processingResults[path].editBoxes = [...censorState.editBoxes];
-                            }
-                        }
+                        saveProcessingEditBoxes();
 
                         // 검열후 탭: dirty 표시
                         if (censorState.currentTab === 'after') {
@@ -28643,12 +28631,7 @@
                     censorState.hoverBoxIndex = -1;
 
                     // 검열중 탭: processingResults에도 반영
-                    if (censorState.currentTab === 'processing' && censorState.currentImage) {
-                        const path = censorState.currentImage.path;
-                        if (censorState.processingResults[path]) {
-                            censorState.processingResults[path].editBoxes = [...censorState.editBoxes];
-                        }
-                    }
+                    saveProcessingEditBoxes();
 
                     // 검열후 탭: dirty 표시
                     if (censorState.currentTab === 'after') {
@@ -29571,6 +29554,17 @@
             return { handle: null, boxIndex: -1 };
         }
         
+        // 검열중 탭: 현재 editBoxes를 processingResults에 즉시 반영 (추가/삭제/편집 공통)
+        // 박스 변경 직후 저장하지 않으면, 완료 시점이나 키 불일치 상황에서 편집이 유실될 수 있음
+        function saveProcessingEditBoxes() {
+            if (censorState.currentTab !== 'processing' || !censorState.currentImage) return;
+            const path = censorState.currentImage.path;
+            if (!censorState.processingResults[path]) return;
+            censorState.processingResults[path].editBoxes = censorState.editBoxes
+                .filter(b => b.box && Array.isArray(b.box) && b.box.length === 4)
+                .map(b => ({ ...b, box: [b.box[0], b.box[1], b.box[2], b.box[3]] }));
+        }
+
         // 마우스 다운
         function handleCensorMouseDown(e) {
             if (!censorState.currentImage) return;
@@ -29716,6 +29710,8 @@
                     if (deleteIndex >= 0) {
                         censorState.editBoxes.splice(deleteIndex, 1);
                         censorState.selectedBoxIndex = -1;
+                        // 검열중 탭: 삭제 결과를 즉시 저장 (유실 방지)
+                        saveProcessingEditBoxes();
                         if (censorState.currentTab === 'after') {
                             markAfterEditDirty();
                         }
@@ -29971,6 +29967,8 @@
                         method: method
                     });
                     censorState.selectedBoxIndex = censorState.editBoxes.length - 1;
+                    // 검열중 탭: 추가된 박스를 즉시 저장 (유실 방지)
+                    saveProcessingEditBoxes();
                     // 검열후 탭에서 새 박스 추가 시 dirty 표시
                     if (censorState.currentTab === 'after') {
                         markAfterEditDirty();
@@ -29987,20 +29985,7 @@
             // 드래그/리사이즈/회전 완료 시 결과 저장 및 API 프리뷰 업데이트
             if (censorState.isDragging || censorState.isResizing || censorState.isRotating) {
                 if (censorState.currentTab === 'processing') {
-                    if (censorState.currentImage && censorState.processingResults[censorState.currentImage.path]) {
-                        // 저장 전 검증
-                        const validBoxes = censorState.editBoxes.filter(b => {
-                            if (!b.box || !Array.isArray(b.box) || b.box.length !== 4) {
-                                console.error('Invalid box detected during save:', b);
-                                return false;
-                            }
-                            return true;
-                        });
-                        censorState.processingResults[censorState.currentImage.path].editBoxes = validBoxes.map(b => ({
-                            ...b,
-                            box: [b.box[0], b.box[1], b.box[2], b.box[3]]  // 명시적 4개 값 복사
-                        }));
-                    }
+                    saveProcessingEditBoxes();
                 } else if (censorState.currentTab === 'after') {
                     // 검열후 탭에서 편집 시 dirty 표시
                     markAfterEditDirty();
