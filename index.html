@@ -10437,6 +10437,39 @@
             updateSlotSizePresetButtons();
             updateSlotSizeSlider();
             autoSaveSettings();
+            scheduleSlotsLOD();
+        }
+
+        // 슬롯 카드 LOD: 표시 폭이 썸네일 실측 폭을 넘으면 원본으로 승격, 충분히 작아지면 썸네일로 복귀.
+        function updateSlotCardLOD(slot) {
+            if (!slot) return;
+            const cont = slot.querySelector('.slot-images');
+            if (!cont) return;
+            const dispW = cont.clientWidth * (window.devicePixelRatio || 1);  // 카드 실제 표시 픽셀 폭
+            if (!dispW) return;
+            cont.querySelectorAll('.slot-image-card').forEach(card => {
+                if (!card._thumbSrc || !card._fullSrc) return;  // base64 프리뷰 등은 LOD 대상 아님
+                const img = card.querySelector('img');
+                if (!img) return;
+                const thumbW = card._thumbNatW || 640;  // 실측 전이면 썸네일 최대변 640 기준
+                if (card._lod !== 'full' && dispW > thumbW * 1.05) {
+                    card._lod = 'full';
+                    img.src = card._fullSrc;
+                } else if (card._lod !== 'thumb' && dispW < thumbW * 0.9) {  // 히스테리시스로 깜빡임 방지
+                    card._lod = 'thumb';
+                    img.src = card._thumbSrc;
+                }
+            });
+        }
+
+        // 슬라이더 드래그 등 연속 호출을 디바운스(매 프레임 src 교체 방지)
+        let _slotsLODTimer = null;
+        function scheduleSlotsLOD() {
+            if (_slotsLODTimer) clearTimeout(_slotsLODTimer);
+            _slotsLODTimer = setTimeout(() => {
+                _slotsLODTimer = null;
+                slotsContainer.querySelectorAll('.slot').forEach(updateSlotCardLOD);
+            }, 150);
         }
 
         // 슬롯 사이즈 프리셋
@@ -11074,7 +11107,9 @@
             // 이미지 데이터 저장 (갤러리 저장용 + 설정 불러오기용)
             // metadata가 null이면 seed/prompt도 null로 처리 (strip_metadata 옵션)
             const hasMetadata = !!data.metadata;
-            card._fullSrc = imgSrc;  // 원본 해상도 URL (카드 <img>는 썸네일을 쓰므로 별도 보관)
+            card._fullSrc = imgSrc;   // 원본 해상도 URL (카드 <img>는 썸네일을 쓰므로 별도 보관)
+            card._thumbSrc = data.image_path ? cardSrc : null;  // 썸네일 URL(원본만 LOD 대상)
+            card._lod = data.image_path ? 'thumb' : 'full';     // 현재 표시 수준
             card._imageData = {
                 image_path: data.image_path || null,
                 image: data.image || null,  // 하위 호환
@@ -11477,12 +11512,22 @@
             });
 
             // 이미지 로드 완료 후 카드 추가 (이미지와 info가 동시에 표시되도록)
-            const insertCard = () => {
+            img.onload = () => {
+                // 최초 썸네일 로드 시 실측 폭 기록(LOD 전환 기준). 이후 src 교체에는 재실행 안 함.
+                if (card._lod === 'thumb' && !card._thumbNatW && img.naturalWidth) {
+                    card._thumbNatW = img.naturalWidth;
+                }
                 imagesContainer.insertBefore(card, imagesContainer.firstChild);
                 console.log(`[addImageToSlot] Card inserted for ${data.filename}`);
+                img.onload = null;   // LOD 승격으로 src를 바꿀 때 재삽입(순서 꼬임) 방지
+                img.onerror = null;
+                updateSlotCardLOD(targetSlot);  // 이미 넓은 슬롯이면 즉시 원본으로 승격
             };
-            img.onload = insertCard;
-            img.onerror = insertCard;  // 로드 실패 시에도 카드 표시
+            img.onerror = () => {
+                imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                img.onload = null;
+                img.onerror = null;
+            };
         }
 
         function addHiresPreviewToSlot(slotIndex, data) {
@@ -12491,8 +12536,10 @@
             slotsContainer.style.transition = 'none';
         });
         
-        slotsContainer.addEventListener('mousemove', (e) => {
+        window.addEventListener('mousemove', (e) => {
             if (!isScrollDragging) return;
+            // 창 밖에서 버튼을 뗀 경우 mouseup이 안 오므로, 버튼이 풀린 걸 감지해 종료
+            if (e.buttons === 0) { endScrollDrag(); return; }
             e.preventDefault();
             const x = e.pageX - slotsContainer.offsetLeft;
             const walk = (x - scrollStartX) * 1.5;
@@ -12539,8 +12586,8 @@
             }
         }
         
-        slotsContainer.addEventListener('mouseup', endScrollDrag);
-        slotsContainer.addEventListener('mouseleave', endScrollDrag);
+        // 드래그 중 커서가 컨테이너를 벗어나도 유지되도록 종료는 window에서 감지 (mouseleave로 끊지 않음)
+        window.addEventListener('mouseup', endScrollDrag);
         
         // Tab switching
         let localEnvInstalled = false;  // Local 환경 설치 여부
