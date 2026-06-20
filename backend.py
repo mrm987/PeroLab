@@ -4500,10 +4500,12 @@ async def list_outputs():
     return {"files": files}
 
 
+_output_serve_thumb_cache = {}  # (path, thumb_size) -> (mtime, jpeg_bytes)
+
 @app.get("/api/outputs/{filepath:path}")
-async def get_output_image(filepath: str):
-    """출력 이미지 파일 서빙"""
-    from fastapi.responses import FileResponse
+async def get_output_image(filepath: str, thumb: int = 0):
+    """출력 이미지 파일 서빙. thumb>0이면 해당 크기로 리사이즈한 JPEG 반환(슬롯 카드 LOD용)."""
+    from fastapi.responses import FileResponse, Response
     file_path = OUTPUT_DIR / filepath
     if not file_path.exists() or not file_path.is_file():
         return {"error": "File not found"}
@@ -4517,6 +4519,28 @@ async def get_output_image(filepath: str):
         '.webp': 'image/webp'
     }
     media_type = media_type_map.get(ext, 'image/png')
+
+    # LOD: 썸네일 요청 시 리사이즈된 JPEG 반환 (메모리 캐시, mtime 기반 무효화)
+    if thumb and thumb > 0:
+        try:
+            mtime = file_path.stat().st_mtime
+            cache_key = (str(file_path), thumb)
+            cached = _output_serve_thumb_cache.get(cache_key)
+            if not cached or cached[0] != mtime:
+                with open(file_path, 'rb') as f:
+                    img = Image.open(io.BytesIO(f.read()))
+                img = img.copy()
+                img.thumbnail((thumb, thumb), Image.LANCZOS)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=90)
+                cached = (mtime, buf.getvalue())
+                _output_serve_thumb_cache[cache_key] = cached
+            return Response(content=cached[1], media_type='image/jpeg')
+        except Exception as e:
+            print(f"[Output thumb] {filepath}: {e}")
+            # 실패 시 원본 폴백
 
     return FileResponse(file_path, media_type=media_type)
 

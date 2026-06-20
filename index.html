@@ -3399,6 +3399,9 @@
             border: 1px solid var(--border);
             transition: border-color 0.2s;
             flex-shrink: 0;
+            /* 화면 밖 카드의 레이아웃/페인트/디코드를 건너뛰어 스크롤 성능 개선 */
+            content-visibility: auto;
+            contain-intrinsic-size: auto 320px;
         }
         
         .slot-image-card:hover {
@@ -6685,6 +6688,9 @@
             height: fit-content;
             position: relative;
             max-width: 520px;
+            /* 화면 밖 항목의 레이아웃/페인트/디코드를 건너뛰어 스크롤 성능 개선 */
+            content-visibility: auto;
+            contain-intrinsic-size: auto 360px;
         }
         .gallery-item:hover {
             transform: translateY(-2px);
@@ -10237,7 +10243,7 @@
             } else {
                 const firstCard = newCards[0];
                 const firstImg = firstCard.querySelector('img');
-                openSlotLightbox(newSlot, firstCard, firstImg ? firstImg.src : '');
+                openSlotLightbox(newSlot, firstCard, firstCard._fullSrc || (firstImg ? firstImg.src : ''));
             }
         }
 
@@ -10251,7 +10257,7 @@
             const newCard = cards[newIndex];
             const newImg = newCard.querySelector('img');
             if (newImg) {
-                lightboxImg.src = newImg.src;
+                lightboxImg.src = newCard._fullSrc || newImg.src;
                 lightboxCurrentCard = newCard;
 
                 // Update active thumbnail
@@ -10313,6 +10319,33 @@
         }
 
         // Revert a saved card back to unsaved state (file deleted, keep card for re-save)
+        // 파일 삭제로 원본이 사라지기 전에, 카드의 풀해상도 이미지를 base64로 보존한다.
+        // (카드 <img>는 LOD 썸네일을 표시하므로 그대로 캡처하면 미저장 프리뷰가 열화됨)
+        function bakeCardFullRes(card) {
+            return new Promise((resolve) => {
+                const cardImg = card.querySelector('img');
+                if (!cardImg) return resolve();
+                // 이미 base64(미저장 프리뷰 등)면 보존 불필요
+                if (cardImg.src.startsWith('data:')) return resolve();
+                const fullSrc = card._fullSrc || cardImg.src;
+                const tmp = new Image();
+                tmp.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = tmp.naturalWidth;
+                        canvas.height = tmp.naturalHeight;
+                        canvas.getContext('2d').drawImage(tmp, 0, 0);
+                        const base64 = canvas.toDataURL('image/png').split(',')[1];
+                        if (card._imageData) card._imageData.image_base64 = base64;
+                        cardImg.src = 'data:image/png;base64,' + base64;
+                    } catch (e) { /* tainted canvas 등은 무시 */ }
+                    resolve();
+                };
+                tmp.onerror = () => resolve();
+                tmp.src = fullSrc;
+            });
+        }
+
         function revertCardToUnsaved(card) {
             // Capture current image as base64 before URL becomes invalid
             const cardImg = card.querySelector('img');
@@ -10996,6 +11029,10 @@
             const imgSrc = data.image_path
                 ? `${API_BASE}/api/outputs/${data.image_path}?t=${cacheBuster}`
                 : (data.image_base64 ? `data:image/png;base64,${data.image_base64}` : `data:image/png;base64,${data.image}`);
+            // 카드에는 LOD 썸네일을 표시(스크롤 성능). 라이트박스/저장/인페인트는 원본(imgSrc) 사용.
+            const cardSrc = data.image_path
+                ? `${API_BASE}/api/outputs/${data.image_path}?thumb=640&t=${cacheBuster}`
+                : imgSrc;
 
             // 미리보기 전용인 경우 "미저장" 표시, 아니면 파일명 표시
             const filenameDisplay = isPreviewOnly
@@ -11006,7 +11043,7 @@
 
             card.innerHTML = `
                 <span class="card-saved-badge">✓</span>
-                <img src="${imgSrc}" alt="" draggable="false">
+                <img src="${cardSrc}" alt="" draggable="false" decoding="async">
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="info-row">
@@ -11037,6 +11074,7 @@
             // 이미지 데이터 저장 (갤러리 저장용 + 설정 불러오기용)
             // metadata가 null이면 seed/prompt도 null로 처리 (strip_metadata 옵션)
             const hasMetadata = !!data.metadata;
+            card._fullSrc = imgSrc;  // 원본 해상도 URL (카드 <img>는 썸네일을 쓰므로 별도 보관)
             card._imageData = {
                 image_path: data.image_path || null,
                 image: data.image || null,  // 하위 호환
@@ -11401,6 +11439,8 @@
                 }
 
                 try {
+                    // 삭제 전 원본 해상도를 프리뷰로 보존 (LOD 썸네일 열화 방지)
+                    await bakeCardFullRes(card);
                     const response = await fetch(`${API_BASE}/api/outputs/${encodeURIComponent(imagePath)}`, {
                         method: 'DELETE'
                     });
@@ -11474,9 +11514,10 @@
             card.dataset.jobId = data.job_id;  // 나중에 최종 이미지로 교체할 때 찾기 위해
 
             const imgSrc = `data:image/png;base64,${data.image_base64}`;
+            card._fullSrc = imgSrc;
 
             card.innerHTML = `
-                <img src="${imgSrc}" alt="" draggable="false">
+                <img src="${imgSrc}" alt="" draggable="false" decoding="async">
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장" disabled>☆</button>
                 <div class="info">
                     <div class="info-row">
@@ -11519,7 +11560,7 @@
             // 기존 이미지와 시드 정보를 유지하면서 버튼들을 추가
 
             const existingData = card._imageData || {};
-            const imgSrc = card.querySelector('img')?.src || '';
+            const imgSrc = card._fullSrc || card.querySelector('img')?.src || '';
             const seed = existingData.seed || '';
 
             // hires-preview 클래스 제거
@@ -11527,8 +11568,9 @@
             delete card.dataset.jobId;
 
             // 카드 내용 재구성 (일반 카드와 동일한 구조)
+            card._fullSrc = imgSrc;
             card.innerHTML = `
-                <img src="${imgSrc}" alt="" draggable="false">
+                <img src="${imgSrc}" alt="" draggable="false" decoding="async">
                 <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
                 <div class="info">
                     <div class="info-row">
@@ -12379,7 +12421,7 @@
             if (imgCard) {
                 const img = imgCard.querySelector('img');
                 if (img && img.src) {
-                    pipPreviewImg.src = img.src;
+                    pipPreviewImg.src = imgCard._fullSrc || img.src;
                     pipPreviewImg.style.display = '';
                     pipEmpty.style.display = 'none';
                 }
@@ -14425,7 +14467,8 @@
                 openSlotLightbox(slot, null, '');
             } else {
                 const newIdx = Math.min(idx, remainingCards.length - 1);
-                openSlotLightbox(slot, remainingCards[newIdx], remainingCards[newIdx].querySelector('img')?.src);
+                const newCard = remainingCards[newIdx];
+                openSlotLightbox(slot, newCard, newCard._fullSrc || newCard.querySelector('img')?.src);
             }
             showToast('미리보기 제거됨', 'success');
         };
@@ -14472,6 +14515,8 @@
             }
 
             try {
+                // 삭제 전 원본 해상도를 프리뷰로 보존 (LOD 썸네일 열화 방지)
+                await bakeCardFullRes(card);
                 const response = await fetch(`${API_BASE}/api/outputs/${encodeURIComponent(imagePath)}`, {
                     method: 'DELETE'
                 });
@@ -19650,7 +19695,7 @@
                 item._folder = folder;
                 item.draggable = true;
                 item.innerHTML = `
-                    <img src="data:image/png;base64,${img.thumbnail}" alt="">
+                    <img src="data:image/png;base64,${img.thumbnail}" alt="" loading="lazy" decoding="async">
                     <div class="gallery-item-info">
                         <div class="filename-row">
                             <span class="filename" title="${img.filename}">${img.filename.replace('.png', '')}</span>
@@ -19922,7 +19967,7 @@
                 const displayName = vibe.filename.replace(/\.png$/i, '').replace(/_[\d.]+_[\d.]+_\d+$/, '');
 
                 item.innerHTML = `
-                    <img src="data:image/png;base64,${vibe.thumbnail}" alt="">
+                    <img src="data:image/png;base64,${vibe.thumbnail}" alt="" loading="lazy" decoding="async">
                     <div class="gallery-item-info">
                         <div class="filename-row">
                             <span class="filename" title="${vibe.filename}">${displayName}</span>
