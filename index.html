@@ -1872,6 +1872,14 @@
             color: var(--text-dim);
         }
 
+        .tag-autocomplete-item-badge.wildcard {
+            background: rgba(168, 85, 247, 0.25);
+            color: #c084fc;
+        }
+        [data-theme="light"] .tag-autocomplete-item-badge.wildcard {
+            background: #EDE4F8; color: #7C3AED;
+        }
+
         .tag-autocomplete-item-badge.artist {
             background: #4a3520;
             color: #f4a261;
@@ -7121,6 +7129,103 @@
         }
         #presetManagerModal.active { display: flex; }
 
+        /* === 와일드카드 === */
+        .wildcard-trigger-btn {
+            background: none; border: none; cursor: pointer; font-size: 1rem;
+            padding: 2px 4px; border-radius: var(--radius-xs); line-height: 1;
+        }
+        .wildcard-trigger-btn:hover { background: var(--bg-light); }
+
+        #wildcardModal {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.8); z-index: 10000;
+            justify-content: center; align-items: center;
+        }
+        #wildcardModal.active { display: flex; }
+        .wc-modal {
+            background: var(--bg); border-radius: 16px;
+            width: 92%; max-width: 900px; height: 80vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .wc-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px; border-bottom: 1px solid var(--border);
+        }
+        .wc-header h2 { font-size: 1.2rem; font-weight: 600; margin: 0; }
+        .wc-close-btn {
+            background: none; border: none; color: var(--text-dim);
+            font-size: 1.5rem; cursor: pointer; padding: 4px 8px; border-radius: var(--radius-xs);
+        }
+        .wc-close-btn:hover { background: var(--bg-light); color: var(--text); }
+        .wc-body { flex: 1; display: flex; min-height: 0; }
+        .wc-side {
+            width: 200px; flex-shrink: 0; border-right: 1px solid var(--border);
+            padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+        }
+        .wc-side-title { font-size: 0.85rem; color: var(--text-dim); font-weight: 600; }
+        .wc-pool-list { display: flex; flex-direction: column; gap: 6px; }
+        .wc-pool-empty { color: var(--text-dim); font-size: 0.8rem; }
+        .wc-pool-chip {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; background: var(--bg-light); border-radius: var(--radius-sm);
+            cursor: pointer; font-size: 0.85rem;
+        }
+        .wc-pool-chip:hover { background: var(--accent); color: #fff; }
+        .wc-pool-name { font-family: 'Consolas', monospace; }
+        .wc-pool-num { opacity: 0.6; font-size: 0.75rem; }
+        .wc-help { margin-top: auto; font-size: 0.75rem; color: var(--text-dim); line-height: 1.7; }
+        .wc-help code {
+            background: var(--bg-light); padding: 1px 5px; border-radius: 4px;
+            font-family: 'Consolas', monospace; color: var(--accent);
+        }
+        .wc-help b { color: var(--text); }
+        .wc-help-ex {
+            margin: 6px 0 10px; padding: 8px 10px;
+            background: var(--bg-light); border-radius: var(--radius-sm);
+            font-family: 'Consolas', monospace; color: var(--text); font-size: 0.72rem; line-height: 1.5;
+        }
+        .wc-main { flex: 1; display: flex; flex-direction: column; padding: 14px; gap: 10px; min-width: 0; }
+        .wc-editor {
+            flex: 1; resize: none; width: 100%;
+            font-family: 'Consolas', 'D2Coding', monospace; font-size: 0.9rem; line-height: 1.5;
+            background: var(--bg-light); color: var(--text);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px;
+        }
+        .wc-preview-row { display: flex; gap: 8px; }
+        .wc-preview-input {
+            flex: 1; background: var(--bg-light); color: var(--text);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.85rem;
+        }
+        .wc-preview-out {
+            min-height: 38px; background: var(--bg-light); border: 1px dashed var(--border);
+            border-radius: var(--radius-sm); padding: 8px 10px; font-size: 0.85rem;
+            color: var(--text); white-space: pre-wrap; word-break: break-word;
+        }
+        .wc-footer {
+            display: flex; justify-content: flex-end; align-items: center; gap: 12px;
+            padding: 12px 20px; border-top: 1px solid var(--border);
+        }
+        .wc-status { color: #4caf50; font-size: 0.8rem; }
+        .wc-btn {
+            padding: 8px 14px; background: var(--bg-light); color: var(--text);
+            border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; font-size: 0.85rem;
+        }
+        .wc-btn:hover { background: var(--border); }
+        .wc-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .wc-btn.primary:hover { opacity: 0.9; }
+
+        /* 와일드카드 토큰 강조 (프롬프트 하이라이트 백드롭) */
+        .wildcard-token { border-radius: 3px; padding: 0 1px; }
+        .wildcard-token.wc-named {
+            background: rgba(168, 85, 247, 0.30);
+            box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.65);
+        }
+        .wildcard-token.wc-inline {
+            background: rgba(34, 197, 94, 0.24);
+            box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.6);
+        }
+
         .preset-manager-modal {
             background: var(--bg);
             border-radius: 16px;
@@ -8268,6 +8373,7 @@
                                     </div>
                                 </div>
                             </div>
+                            <button type="button" class="wildcard-trigger-btn" id="wildcardBtn" title="와일드카드 관리 (🃏 프롬프트 풀에서 랜덤 추출)">🃏</button>
                         </div>
                     </div>
                     <div id="basePromptContent" class="collapsible-content">
@@ -14174,8 +14280,27 @@
                 document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
             }
 
+            // 와일드카드 원본 보관 (배치마다 새로 해석 → 풀 안에서 랜덤 조합 시험)
+            const wcRaw = {
+                base_prompt: request.base_prompt,
+                negative_prompt: request.negative_prompt,
+                character_prompts: request.character_prompts,
+                character_prompts_with_coords: request.character_prompts_with_coords,
+                prompt_list: request.prompt_list,
+            };
+
             // N번 큐에 등록
             for (let i = 0; i < repeatCount; i++) {
+                // 와일드카드 해석 (토큰 없으면 원문 그대로) — 매 장 새로운 랜덤 조합
+                request.base_prompt = resolveWildcards(wcRaw.base_prompt, wildcardPools);
+                request.negative_prompt = resolveWildcards(wcRaw.negative_prompt, wildcardPools);
+                // 캐릭터 프롬프트는 한 번만 해석해 두 필드에 동일 적용
+                // (생성용 character_prompts_with_coords / 기록용 character_prompts 불일치 방지)
+                const resolvedChars = wcRaw.character_prompts_with_coords.map(c => ({ ...c, prompt: resolveWildcards(c.prompt, wildcardPools) }));
+                request.character_prompts_with_coords = resolvedChars;
+                request.character_prompts = resolvedChars.map(c => c.prompt);
+                request.prompt_list = wcRaw.prompt_list.map(s => ({ ...s, content: resolveWildcards(s.content, wildcardPools) }));
+
                 try {
                     await fetch(`${API_BASE}/api/generate/multi`, {
                         method: 'POST',
@@ -16899,6 +17024,7 @@
         // ============================================================
 
         let promptHighlightEnabled = true;
+        let wildcardPools = {};   // 와일드카드: { 이름(소문자): [후보, ...] }
 
         /**
          * NAI 문법 파싱: {text}, [text], number::text ::
@@ -17244,7 +17370,7 @@
                 if (text.endsWith('\n')) {
                     escapedText += '\u00A0';
                 }
-                backdrop.innerHTML = escapedText;
+                backdrop.innerHTML = highlightWildcardTokens(escapedText);
                 return;
             }
 
@@ -17307,11 +17433,12 @@
                         .replace(/>/g, '&gt;')
                         .replace(/"/g, '&quot;')
                         .replace(/'/g, '&#039;');
+                    const wcText = highlightWildcardTokens(escapedText);
 
                     if (color === 'transparent' || !color) {
-                        html += escapedText;
+                        html += wcText;
                     } else {
-                        html += `<span style="background-color: ${color};">${escapedText}</span>`;
+                        html += `<span style="background-color: ${color};">${wcText}</span>`;
                     }
                 });
             }
@@ -17804,6 +17931,7 @@
         function showAutocomplete(textarea, results) {
             const dropdown = getAutocompleteDropdown();
             dropdown.innerHTML = '';
+            dropdown._wildcardMode = false;
 
             if (results.length === 0) {
                 dropdown.innerHTML = '<div class="tag-autocomplete-empty">No matching tags</div>';
@@ -17991,8 +18119,10 @@
             // Determine what comes after the tag
             let suffix = ', ';
 
-            // Check if there's already a comma after the current word
-            if (fullEnd < value.length && value[fullEnd] === ',') {
+            if (textarea.dataset.noTagComma === 'true') {
+                // 와일드카드 편집기 등: 한 줄 한 후보 → 콤마 접미사 없음
+                suffix = '';
+            } else if (fullEnd < value.length && value[fullEnd] === ',') {
                 suffix = ''; // Don't add comma if one already exists
                 // But ensure space after comma
                 if (fullEnd + 1 < value.length && value[fullEnd + 1] !== ' ') {
@@ -18024,6 +18154,74 @@
             textarea.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
+        // 와일드카드 이름(#이름) 삽입 — # 보존, 언더바 유지, 접미사 없음
+        function insertWildcardName(textarea, name) {
+            const value = textarea.value;
+            const cursorPos = textarea.selectionStart;
+            const m = value.substring(0, cursorPos).match(/#([A-Za-z0-9_]*)$/);
+            if (!m) return;
+            const tokenStart = cursorPos - m[0].length;   // '#' 위치
+            let end = cursorPos;                            // 커서 뒤 이름 글자 흡수
+            while (end < value.length && /[A-Za-z0-9_]/.test(value[end])) end++;
+            // 접미사: 태그 자동완성과 동일하게 ", " (편집기는 생략 / 뒤에 콤마 있으면 생략)
+            let suffix = ', ';
+            if (textarea.dataset.noTagComma === 'true') {
+                suffix = '';
+            } else if (end < value.length && value[end] === ',') {
+                suffix = (end + 1 < value.length && value[end + 1] !== ' ') ? ' ' : '';
+            }
+            const insertText = '#' + name + suffix;
+            textarea.focus();
+            textarea.setSelectionRange(tokenStart, end);
+            const ok = document.execCommand('insertText', false, insertText);
+            if (!ok) {
+                textarea.value = value.substring(0, tokenStart) + insertText + value.substring(end);
+            }
+            const pos = tokenStart + insertText.length;
+            textarea.setSelectionRange(pos, pos);
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // 와일드카드 #이름 자동완성 드롭다운 (태그 드롭다운 재사용)
+        function showWildcardAutocomplete(textarea, names) {
+            const dropdown = getAutocompleteDropdown();
+            dropdown.innerHTML = '';
+            dropdown._wildcardMode = true;
+            names.slice(0, 20).forEach((name, index) => {
+                const item = document.createElement('div');
+                item.className = 'tag-autocomplete-item';
+                if (index === 0) item.classList.add('selected');
+                item.dataset.index = index;
+                item.dataset.wcName = name;
+                item.dataset.tagValue = '#' + name;
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'tag-autocomplete-item-name';
+                nameEl.textContent = '#' + name;
+
+                const badge = document.createElement('span');
+                badge.className = 'tag-autocomplete-item-badge wildcard';
+                badge.textContent = '와일드카드';
+
+                const count = document.createElement('span');
+                count.className = 'tag-autocomplete-item-count';
+                count.textContent = (wildcardPools[name] ? wildcardPools[name].length : 0) + '개';
+
+                item.appendChild(nameEl);
+                item.appendChild(badge);
+                item.appendChild(count);
+                item.addEventListener('click', () => {
+                    insertWildcardName(textarea, name);
+                    hideAutocomplete();
+                });
+                dropdown.appendChild(item);
+            });
+            positionDropdown(textarea, dropdown);
+            dropdown.classList.add('show');
+            dropdown._selectedIndex = 0;
+            dropdown._textarea = textarea;
+        }
+
         // Handle keyboard navigation in dropdown
         function handleAutocompleteKeyboard(e, dropdown) {
             if (!dropdown.classList.contains('show')) return false;
@@ -18046,10 +18244,13 @@
                     e.preventDefault();
                     const selectedItem = items[selectedIndex];
                     if (selectedItem) {
-                        const tagValue = selectedItem.dataset.tagValue;
                         // 엔터로 선택 시 잠시 autocomplete 억제
                         window._suppressAutocomplete = true;
-                        insertTag(dropdown._textarea, tagValue);
+                        if (dropdown._wildcardMode) {
+                            insertWildcardName(dropdown._textarea, selectedItem.dataset.wcName);
+                        } else {
+                            insertTag(dropdown._textarea, selectedItem.dataset.tagValue);
+                        }
                         hideAutocomplete();
                         setTimeout(() => { window._suppressAutocomplete = false; }, 100);
                     }
@@ -18132,6 +18333,19 @@
                         }
                     }
 
+                    // 와일드카드 #이름 자동완성 (태그 검색보다 우선)
+                    const wcMatch = textarea.value.substring(0, cursorPos).match(/#([A-Za-z0-9_]*)$/);
+                    if (wcMatch) {
+                        const q = wcMatch[1].toLowerCase();
+                        const names = Object.keys(wildcardPools).filter(n => n.startsWith(q)).sort();
+                        if (names.length > 0) {
+                            showWildcardAutocomplete(textarea, names);
+                        } else {
+                            hideAutocomplete();
+                        }
+                        return;
+                    }
+
                     const { word } = getCurrentWord(textarea);
 
                     // 스페이스를 언더바로 치환하여 검색
@@ -18182,6 +18396,226 @@
         console.log('[PeroPix] Initializing tag autocomplete system...');
         console.log('[PeroPix] tagAutocompleteEnabled initial value:', tagAutocompleteEnabled);
         loadTagData();
+
+        // ============================================================
+        // 와일드카드 (Wildcards) - 명명 프롬프트 풀에서 랜덤 추출
+        //   #이름  → 풀에서 랜덤 1줄 (재사용)
+        //   ||a|b|| → NAI 네이티브 인라인 (일회용)
+        //   {a|b}  → 인라인 변형 (일회용)
+        // ============================================================
+
+        // 정의 문서 → { 이름(소문자): [후보, ...] }
+        function parseWildcardDoc(text) {
+            const pools = {};
+            if (!text) return pools;
+            let current = null;
+            for (const rawLine of text.split('\n')) {
+                // 주석 제거: 줄 시작 // 또는 공백 뒤 // (http:// 처럼 붙은 건 보존)
+                const line = rawLine.replace(/\r$/, '').replace(/(^|\s)\/\/.*$/, '$1');
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                const header = trimmed.match(/^#([A-Za-z0-9_]+)$/);  // 단독 #이름 → 섹션 헤더
+                if (header) {
+                    current = header[1].toLowerCase();
+                    if (!pools[current]) pools[current] = [];
+                    continue;
+                }
+                if (current) {
+                    const cand = trimmed.replace(/[\s,]+$/, '');      // 후보 끝 공백·쉼표 정리
+                    if (cand) pools[current].push(cand);
+                }                                                     // 헤더 없는 본문은 무시
+            }
+            return pools;
+        }
+
+        // 프롬프트 텍스트의 와일드카드 토큰을 실제 값으로 해석 (재귀, 순환 방어)
+        function resolveWildcards(text, pools, depth) {
+            if (!text) return text;
+            depth = depth || 0;
+            if (depth > 20) return text;
+            pools = pools || {};
+            let result = text;
+
+            // 1) 명명 풀 호출: #이름 (미정의면 원문 유지)
+            result = result.replace(/#([A-Za-z0-9_]+)/g, (m, name) => {
+                const pool = pools[name.toLowerCase()];
+                if (!pool || pool.length === 0) return m;
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                return resolveWildcards(pick, pools, depth + 1);
+            });
+
+            // 2) NAI 네이티브 인라인: ||a|b|c||
+            result = result.replace(/\|\|([^]*?)\|\|/g, (m, body) => {
+                const opts = body.split('|');
+                const pick = opts[Math.floor(Math.random() * opts.length)];
+                return resolveWildcards(pick, pools, depth + 1);
+            });
+
+            // 3) 인라인 변형: {a|b|c}
+            result = result.replace(/\{([^{}]*\|[^{}]*)\}/g, (m, body) => {
+                const opts = body.split('|');
+                const pick = opts[Math.floor(Math.random() * opts.length)];
+                return resolveWildcards(pick, pools, depth + 1);
+            });
+
+            return result;
+        }
+
+        // 와일드카드 토큰 강조 (이미 HTML escape된 문자열에 적용)
+        function highlightWildcardTokens(escapedHtml) {
+            if (!escapedHtml) return escapedHtml;
+            if (escapedHtml.indexOf('#') === -1 &&
+                escapedHtml.indexOf('||') === -1 &&
+                escapedHtml.indexOf('{') === -1) return escapedHtml;
+            return escapedHtml
+                // (?<!&) : 아포스트로피 이스케이프(&#039;) 등 HTML 엔티티의 #을 매칭하지 않음
+                .replace(/(?<!&)#[A-Za-z0-9_]+/g, m => `<span class="wildcard-token wc-named">${m}</span>`)
+                .replace(/\|\|[^]*?\|\|/g, m => `<span class="wildcard-token wc-inline">${m}</span>`)
+                .replace(/\{[^{}]*\|[^{}]*\}/g, m => `<span class="wildcard-token wc-inline">${m}</span>`);
+        }
+
+        // --- 와일드카드 관리 모달 ---
+        let _wildcardModalWired = false;
+        let _wildcardSavedContent = '';   // 마지막으로 저장된 정의 문서 (저장 안 한 편집 폐기 기준)
+
+        async function loadWildcards() {
+            try {
+                const res = await fetch(`${API_BASE}/api/wildcards`);
+                const data = await res.json();
+                const content = data.content || '';
+                wildcardPools = parseWildcardDoc(content);
+                _wildcardSavedContent = content;
+                const editor = document.getElementById('wildcardEditor');
+                if (editor) editor.value = content;
+            } catch (e) {
+                console.warn('[Wildcards] load failed:', e);
+            }
+        }
+
+        async function saveWildcards() {
+            const editor = document.getElementById('wildcardEditor');
+            if (!editor) return;
+            const content = editor.value;
+            try {
+                await fetch(`${API_BASE}/api/wildcards`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                wildcardPools = parseWildcardDoc(content);
+                _wildcardSavedContent = content;
+                renderWildcardPoolList();
+                updatePromptHighlights();
+                const status = document.getElementById('wcStatus');
+                if (status) { status.textContent = '저장됨 ✓'; setTimeout(() => { status.textContent = ''; }, 1500); }
+                showToast('와일드카드 저장됨', 'success');
+            } catch (e) {
+                showToast(`와일드카드 저장 실패: ${e.message}`, 'error');
+            }
+        }
+
+        // 풀 칩 클릭 → 편집기에서 해당 #이름 정의 라인 선택(강조) + 스크롤
+        function focusWildcardLine(name) {
+            const editor = document.getElementById('wildcardEditor');
+            if (!editor) return;
+            const lines = editor.value.split('\n');
+            let offset = 0, targetStart = -1, targetEnd = -1, targetLineIdx = -1;
+            for (let i = 0; i < lines.length; i++) {
+                const stripped = lines[i].replace(/(^|\s)\/\/.*$/, '$1').trim();
+                const h = stripped.match(/^#([A-Za-z0-9_]+)$/);
+                if (h && h[1].toLowerCase() === name.toLowerCase()) {
+                    targetStart = offset;
+                    targetEnd = offset + lines[i].length;
+                    targetLineIdx = i;
+                    break;
+                }
+                offset += lines[i].length + 1;   // +1 = '\n'
+            }
+            if (targetLineIdx === -1) return;
+            editor.focus();
+            editor.setSelectionRange(targetStart, targetEnd);   // 라인 선택 = 강조
+            // 해당 라인이 가운데 오도록 스크롤
+            const cs = window.getComputedStyle(editor);
+            let lh = parseFloat(cs.lineHeight);
+            if (!lh || isNaN(lh)) lh = parseFloat(cs.fontSize) * 1.5;
+            editor.scrollTop = Math.max(0, targetLineIdx * lh - editor.clientHeight / 2 + lh);
+        }
+
+        function renderWildcardPoolList() {
+            const listEl = document.getElementById('wcPoolList');
+            const countEl = document.getElementById('wcPoolCount');
+            const editor = document.getElementById('wildcardEditor');
+            if (!listEl || !editor) return;
+            const pools = parseWildcardDoc(editor.value);
+            const names = Object.keys(pools);
+            if (countEl) countEl.textContent = names.length ? `(${names.length})` : '';
+            if (names.length === 0) {
+                listEl.innerHTML = '<div class="wc-pool-empty">아직 풀이 없습니다</div>';
+                return;
+            }
+            listEl.innerHTML = '';
+            names.forEach(name => {
+                const chip = document.createElement('div');
+                chip.className = 'wc-pool-chip';
+                chip.innerHTML = `<span class="wc-pool-name">#${name}</span><span class="wc-pool-num">${pools[name].length}</span>`;
+                chip.title = '클릭하여 정의 위치로 이동';
+                chip.addEventListener('click', () => focusWildcardLine(name));
+                listEl.appendChild(chip);
+            });
+        }
+
+        function runWildcardPreview() {
+            const input = document.getElementById('wcPreviewInput');
+            const out = document.getElementById('wcPreviewOut');
+            const editor = document.getElementById('wildcardEditor');
+            if (!input || !out || !editor) return;
+            const pools = parseWildcardDoc(editor.value);
+            out.textContent = resolveWildcards(input.value, pools) || '(비어 있음)';
+        }
+
+        function openWildcardModal() {
+            const modal = document.getElementById('wildcardModal');
+            if (!modal) return;
+            if (!_wildcardModalWired) {
+                _wildcardModalWired = true;
+                document.getElementById('wildcardCloseBtn').addEventListener('click', attemptCloseWildcardModal);
+                document.getElementById('wildcardSaveBtn').addEventListener('click', saveWildcards);
+                document.getElementById('wcPreviewBtn').addEventListener('click', runWildcardPreview);
+                const editor = document.getElementById('wildcardEditor');
+                if (editor) {
+                    editor.addEventListener('input', renderWildcardPoolList);
+                    editor.dataset.noTagComma = 'true';   // 편집기는 한 줄 한 후보 → 콤마 접미사 없음
+                    setupTagAutocomplete(editor);         // 정의 편집기에도 태그 자동완성
+                }
+                // 백드롭 클릭으로는 닫지 않음 — X 버튼만으로 닫는다
+            }
+            renderWildcardPoolList();
+            modal.classList.add('active');
+        }
+
+        // X 버튼: 미저장 변경이 있으면 경고 후에만 닫음 (변경 폐기)
+        function attemptCloseWildcardModal() {
+            const editor = document.getElementById('wildcardEditor');
+            if (editor && editor.value !== _wildcardSavedContent) {
+                const ok = confirm('저장하지 않은 변경 사항이 있습니다.\n저장하지 않고 닫으면 변경 내용이 사라집니다. 닫으시겠습니까?');
+                if (!ok) return;                          // 닫기 취소
+                editor.value = _wildcardSavedContent;     // 마지막 저장 상태로 되돌림
+                renderWildcardPoolList();
+            }
+            closeWildcardModal();
+        }
+
+        function closeWildcardModal() {
+            const modal = document.getElementById('wildcardModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        // 초기화: 와일드카드 로드 + 트리거 버튼 연결
+        document.addEventListener('DOMContentLoaded', () => {
+            loadWildcards();
+            const btn = document.getElementById('wildcardBtn');
+            if (btn) btn.addEventListener('click', openWildcardModal);
+        });
 
         // ============================================================
         // Settings Persistence (localStorage) - NAI/Local 완전 분리
@@ -33931,6 +34365,50 @@
                         <!-- 액션 버튼 -->
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="wildcardModal">
+        <div class="wc-modal">
+            <div class="wc-header">
+                <h2>🃏 와일드카드 관리</h2>
+                <button type="button" class="wc-close-btn" id="wildcardCloseBtn" title="닫기">×</button>
+            </div>
+            <div class="wc-body">
+                <div class="wc-side">
+                    <div class="wc-side-title">등록된 풀 <span id="wcPoolCount"></span></div>
+                    <div class="wc-pool-list" id="wcPoolList"></div>
+                    <div class="wc-help">
+                        <b>와일드카드란?</b><br>
+                        여러 후보 중 하나를 무작위로 뽑아 쓰는 기능입니다.
+                        <br><br>
+                        <b>① 풀 만들기</b><br>
+                        <code>#이름</code> 줄로 풀을 시작하고, 그 아래에 후보를
+                        <b>한 줄에 하나씩</b> 적습니다.
+                        <div class="wc-help-ex">#hair<br>blonde hair<br>(black hair:1.2)</div>
+                        <b>② 프롬프트에서 호출</b><br>
+                        원하는 위치에 <code>#hair</code> 를 적으면, 생성할 때마다
+                        그 풀의 후보 하나가 무작위로 들어갑니다.
+                        반복 생성(×N) 시 <b>매 장 다른 조합</b>이 나옵니다.
+                        <br><br>
+                        <b>그 외</b><br>
+                        • <code>//</code> 로 시작하면 주석(무시)<br>
+                        • <code>||빨강|파랑||</code> 처럼 그 자리에서 즉석 무작위 선택도 가능
+                    </div>
+                </div>
+                <div class="wc-main">
+                    <textarea id="wildcardEditor" class="wc-editor" spellcheck="false" placeholder="#hair&#10;blonde hair&#10;(black hair:1.2)&#10;red twintails, long hair&#10;&#10;#pose&#10;standing&#10;sitting, crossed legs"></textarea>
+                    <div class="wc-preview-row">
+                        <input type="text" id="wcPreviewInput" class="wc-preview-input" placeholder="미리보기: 1girl, #hair, #pose">
+                        <button type="button" class="wc-btn" id="wcPreviewBtn">🎲 미리보기</button>
+                    </div>
+                    <div class="wc-preview-out" id="wcPreviewOut">미리보기 결과가 여기 표시됩니다</div>
+                </div>
+            </div>
+            <div class="wc-footer">
+                <span class="wc-status" id="wcStatus"></span>
+                <button type="button" class="wc-btn primary" id="wildcardSaveBtn">💾 저장</button>
             </div>
         </div>
     </div>

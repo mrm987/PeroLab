@@ -5614,6 +5614,52 @@ async def delete_prompt_preset(category: str, filename: str):
     return {"deleted": filename}
 
 
+# === Wildcards API ===
+class WildcardData(BaseModel):
+    content: str
+
+# 파일이 아직 없을 때 보여줄 기본 샘플 (여러 케이스 포함 — 기능 이해용)
+DEFAULT_WILDCARDS = """// 샘플 와일드카드 (테스트용) — 자유롭게 수정/삭제하세요
+// 규칙: 한 줄 = 한 후보 / #이름 = 풀 정의 / // = 주석
+
+#hair
+blonde hair
+(black hair:1.2)
+red twintails, long hair
+{silver|pink|blue} hair      // 후보 안에 인라인 변형 {a|b}
+
+#outfit
+school uniform
+white dress, frills
+black business suit, necktie
+||casual hoodie|sportswear||   // 후보 안에 NAI 인라인 ||a|b||
+
+#scene
+1girl, solo, #hair, #outfit, classroom            // 다른 풀 중첩 호출
+1girl, solo, #hair, #outfit, city street at night
+1boy, #hair, #outfit, cozy cafe interior
+"""
+
+@app.get("/api/wildcards")
+async def get_wildcards():
+    """와일드카드 정의 문서 읽기 (#이름 섹션 + 한 줄=한 후보). 파일 없으면 기본 샘플."""
+    folder = PROMPTS_DIR / "wildcards"
+    folder.mkdir(parents=True, exist_ok=True)
+    filepath = folder / "default.txt"
+    if filepath.exists():
+        return {"content": filepath.read_text(encoding='utf-8')}
+    return {"content": DEFAULT_WILDCARDS}
+
+@app.post("/api/wildcards")
+async def save_wildcards(data: WildcardData):
+    """와일드카드 정의 문서 저장"""
+    folder = PROMPTS_DIR / "wildcards"
+    folder.mkdir(parents=True, exist_ok=True)
+    filepath = folder / "default.txt"
+    filepath.write_text(data.content, encoding='utf-8')
+    return {"ok": True}
+
+
 # ============================================================
 # Local Environment Installation System
 # ============================================================
