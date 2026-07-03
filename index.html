@@ -358,6 +358,7 @@
         .app {
             display: flex;
             height: 100vh;
+            overflow: hidden;
         }
         
         /* Sidebar */
@@ -371,13 +372,12 @@
             flex-direction: column;
             flex-shrink: 0;
             position: relative;
-            transition: width 0.25s ease, min-width 0.25s ease, opacity 0.25s ease;
+            transition: margin-left 0.25s ease, opacity 0.25s ease;
         }
 
+        /* 접힘: 너비를 0으로 줄이는 대신(=내용 재배열) 고정 너비를 유지한 채 좌측 화면 밖으로 밀어냄 */
         .sidebar.collapsed {
-            width: 0 !important;
-            min-width: 0 !important;
-            overflow: hidden;
+            margin-left: calc(var(--sidebar-width, 540px) * -1);
             opacity: 0;
             pointer-events: none;
             border-right: none;
@@ -2313,7 +2313,7 @@
             padding: var(--space-sm) var(--space-md);
         }
 
-        .anlas-info .anlas-icon { font-size: 0.8rem; }
+        .anlas-info .anlas-icon { font-size: 0.8rem; display: inline-flex; align-items: center; }
         .anlas-info #anlasBalance { font-weight: 600; color: var(--text); }
         .anlas-info .anlas-separator { opacity: 0.3; margin: 0 var(--space-xs); }
         .anlas-info .anlas-cost-label { opacity: 0.7; }
@@ -2327,7 +2327,14 @@
             font-size: 0.7rem;
             padding: 0 2px;
             opacity: 0.6;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
+        /* anlas 아이콘 컨테이너: 세로 중앙 정렬 통일 (baseline 오프셋 제거) */
+        .anlas-info .anlas-icon,
+        .anlas-info .anlas-refresh { line-height: 0; }
+        .anlas-info .anlas-refresh > span { display: inline-flex; align-items: center; }
         .anlas-refresh:hover { opacity: 1; color: var(--text); }
 
         .free-tag {
@@ -3558,8 +3565,11 @@
             gap: var(--space-md);
             max-height: 95vh;
             max-width: 98vw;
-            margin-left: -160px;
+            margin-left: 0;
         }
+        /* 좌측 슬롯 패널이 있을 때만 메인 이미지가 중앙에 오도록 보정.
+           패널 없이 이미지만 뜰 땐 보정 없이 그대로 중앙 정렬 */
+        .lightbox-wrapper:has(.lightbox-slots-panel.active) { margin-left: -160px; }
 
         .lightbox-main {
             display: flex;
@@ -5140,6 +5150,24 @@
             margin: 4px 2px;
             background: var(--border);
         }
+        /* 슬롯/싱글 생성 모드 세그먼트 토글 */
+        .gen-mode-switch {
+            display: flex;
+            gap: 2px;
+            padding: 2px;
+            background: var(--bg-lighter);
+            border-radius: var(--radius-md);
+        }
+        .gen-mode-switch .gen-seg {
+            padding: var(--space-md) var(--space-lg);
+        }
+        /* 보조 탭(갤러리/검열 등) 선택 시: 채움/명암 강조는 빼고,
+           현재 생성 대상(slot/single)은 테두리로만 "선택됨(단, 지금 보는 화면 아님)" 표시 */
+        .gen-mode-switch.inactive .mode-btn.active {
+            background: transparent;
+            color: var(--text-dim);
+            box-shadow: inset 0 0 0 1px var(--accent-dim);
+        }
 
         /* ============================================================
            Utility Mode (보조 도구)
@@ -6560,6 +6588,230 @@
             background: rgba(99, 102, 241, 0.2);
         }
 
+        /* Single Image Mode */
+        .single-container {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            overflow: hidden;
+        }
+        .single-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .single-viewer {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: var(--space-lg);
+            min-height: 0;
+        }
+        .single-viewer img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        }
+        .single-empty {
+            color: var(--text-dim, #888);
+            font-size: 14px;
+            text-align: center;
+            padding: 0 var(--space-lg);
+        }
+        /* 갤러리 저장 버튼: 이미지 우상단 오버레이 */
+        .single-gallery-btn {
+            position: absolute;
+            top: var(--space-lg);
+            right: var(--space-lg);
+            width: 34px;
+            height: 34px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        .single-gallery-btn:hover { background: rgba(0, 0, 0, 0.75); }
+        .single-gallery-btn.saved { color: gold; }
+        /* 확대/축소 컨트롤: 하단 액션 바 왼쪽에 배치 */
+        .single-zoom-ctrl {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            margin-right: auto;
+        }
+        #singleZoomLabel { min-width: 40px; display: inline-block; text-align: center; font-size: 12px; }
+        /* 액션 바: 이미지 하단 (슬롯 카드와 유사한 위치) */
+        .single-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--space-sm);
+            padding: 6px var(--space-md);
+            flex-shrink: 0;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+        }
+        .single-action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 4px 6px;
+            line-height: 1;
+            border-radius: 4px;
+        }
+        .single-action-btn:hover { background: var(--bg-lighter); }
+        .single-seed {
+            color: var(--text-dim, #ddd);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 2px 6px;
+            white-space: nowrap;
+        }
+        .single-seed:hover { text-decoration: underline; }
+        .single-strip {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            width: 128px;
+            padding: var(--space-sm);
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-left: 1px solid var(--border);
+            background: var(--bg);
+        }
+        /* 히스토리 스트립은 싱글 모드에서 항상 표시. 비어 있을 땐 안내 문구로 동작을 이해시킴 */
+        .single-strip:not(:has(.single-thumb))::before {
+            content: "생성한 이미지가\A여기에 쌓입니다";
+            white-space: pre-line;
+            display: block;
+            color: var(--text-dim);
+            font-size: 11px;
+            text-align: center;
+            padding: var(--space-md) 6px;
+            line-height: 1.6;
+        }
+        .single-thumb {
+            flex-shrink: 0;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            background: var(--bg-elevated, #1a1a1a);
+        }
+        .single-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .single-thumb.selected {
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 3px var(--accent-gold), 0 0 12px rgba(245, 185, 66, 0.45);
+        }
+
+        /* 큐 대기 플레이스홀더 (슬롯 카드 / 싱글 썸네일 공용) — 텍스트 표시 */
+        .single-thumb.placeholder,
+        .slot-image-card.placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: default;
+            border: 1px dashed var(--border);
+            background: var(--bg-lighter, #222);
+            color: var(--text-dim, #888);
+        }
+        .single-thumb.placeholder { border-radius: 6px; }
+        .slot-image-card.placeholder {
+            width: 100%;
+            border-radius: 6px;
+            margin-bottom: var(--space-sm, 8px);
+        }
+        .ph-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        /* 실제 생성 중인 한 곳: 텍스트만 강조 (테두리 하이라이트 없음) */
+        .placeholder.generating .ph-label { color: var(--accent-gold); font-weight: 700; }
+
+        /* 사이드바 접힘 시 좌측 세로 바 */
+        .collapsed-bar {
+            position: fixed;
+            left: 0; top: 0; bottom: 0;
+            width: 44px;
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: var(--bg-light);
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .collapsed-bar:hover { background: var(--bg-lighter); }
+        /* 펼치기 표시: 접기 버튼(◀)과 동일한 화면 중앙 위치 */
+        .collapsed-bar-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--text-dim);
+            font-size: 12px;
+        }
+        .collapsed-bar-actions {
+            margin-top: auto;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .collapsed-q-btn, .collapsed-c-btn {
+            width: 34px; height: 34px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px; font-weight: 700;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .collapsed-q-btn { background: var(--accent-gold); color: var(--bg); }
+        .collapsed-q-btn:hover { background: var(--accent-gold-hover); }
+        .collapsed-c-btn { background: var(--bg); color: var(--text-dim); border: 1px solid var(--border); }
+        .collapsed-c-btn:hover { color: var(--text); }
+        /* 접힘 시 메인을 바 너비만큼 우측으로 밀어 겹침 방지 */
+        .sidebar.collapsed ~ .main { margin-left: 44px; }
+
+        /* SVG 아이콘 (흰색 단색, currentColor 상속) */
+        /* 기본은 텍스트 크기에 비례(em) → 아이콘+텍스트 버튼에서 크기가 자연스럽게 맞음 */
+        .ic { width: 1.1em; height: 1.1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+        .mode-btn .ic { width: 17px; height: 17px; }
+        .anlas-info .ic { width: 13px; height: 13px; display: block; }
+        .slot-image-card button .ic { width: 16px; height: 16px; color: #e8e8e8; }
+        .card-saved-badge .ic { width: 12px; height: 12px; color: #fff; }
+        /* 갤러리 저장됨: 별 채우기 (단색 유지) */
+        .save-gallery-btn.saved .ic-star,
+        .single-gallery-btn.saved .ic-star { fill: currentColor; }
+        /* 아이콘 버튼 중앙 정렬 (SVG 앵커 보정) */
+        .single-gallery-btn,
+        .slot-image-card .save-gallery-btn { display: flex; align-items: center; justify-content: center; }
+        .single-action-btn,
+        .slot-image-card .info-row button { display: inline-flex; align-items: center; justify-content: center; }
+
         /* Gallery */
         .gallery-container {
             flex: 1;
@@ -7133,8 +7385,10 @@
         .wildcard-trigger-btn {
             background: none; border: none; cursor: pointer; font-size: 1rem;
             padding: 2px 4px; border-radius: var(--radius-xs); line-height: 1;
+            color: var(--text-dim);
+            display: inline-flex; align-items: center;
         }
-        .wildcard-trigger-btn:hover { background: var(--bg-light); }
+        .wildcard-trigger-btn:hover { background: var(--bg-light); color: var(--text); }
 
         #wildcardModal {
             display: none; position: fixed; inset: 0;
@@ -8356,7 +8610,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 4px;">
                             <div class="prompt-preset-dropdown" data-category="base">
-                                <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">🔖 ▼</button>
+                                <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋"><span data-icon="bookmark"></span> ▼</button>
                                 <div class="prompt-preset-menu">
                                     <div class="prompt-preset-list"></div>
                                     <div class="prompt-preset-actions">
@@ -8365,7 +8619,7 @@
                                 </div>
                             </div>
                             <div class="prompt-preset-dropdown" data-category="negative" id="baseNegativePresetDropdown" style="display: none;">
-                                <button type="button" class="prompt-preset-btn" title="네거티브 프리셋">🔖 ▼</button>
+                                <button type="button" class="prompt-preset-btn" title="네거티브 프리셋"><span data-icon="bookmark"></span> ▼</button>
                                 <div class="prompt-preset-menu">
                                     <div class="prompt-preset-list"></div>
                                     <div class="prompt-preset-actions">
@@ -8373,7 +8627,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" class="wildcard-trigger-btn" id="wildcardBtn" title="와일드카드 관리 (🃏 프롬프트 풀에서 랜덤 추출)">🃏</button>
+                            <button type="button" class="wildcard-trigger-btn" id="wildcardBtn" title="와일드카드 관리 (🃏 프롬프트 풀에서 랜덤 추출)"><span data-icon="cards"></span></button>
                         </div>
                     </div>
                     <div id="basePromptContent" class="collapsible-content">
@@ -8396,7 +8650,7 @@
                             <label class="prompt-label">Characters</label>
                             <div class="char-preset-dropdown" id="charPresetDropdown">
                                 <button type="button" class="char-preset-btn" title="캐릭터 전체 프리셋">
-                                    <span>🔖</span>
+                                    <span data-icon="bookmark"></span>
                                     <span class="char-preset-name" id="charPresetName">Preset</span>
                                     <span>▼</span>
                                 </button>
@@ -8404,7 +8658,7 @@
                                     <div class="char-preset-list" id="charPresetList"></div>
                                     <div class="char-preset-actions">
                                         <button type="button" class="char-preset-action-btn" id="charPresetNewBtn">+ New</button>
-                                        <button type="button" class="char-preset-action-btn" id="charPresetSaveBtn">💾 Save</button>
+                                        <button type="button" class="char-preset-action-btn" id="charPresetSaveBtn"><span data-icon="save"></span> Save</button>
                                     </div>
                                 </div>
                             </div>
@@ -8539,7 +8793,7 @@
                         <div id="localSettingsContent" class="collapsible-content">
                             <div class="lora-header">
                                 <label>Model</label>
-                                <button type="button" class="folder-btn" id="openCheckpointsFolderBtn" title="체크포인트 폴더 열기">📁</button>
+                                <button type="button" class="folder-btn" id="openCheckpointsFolderBtn" title="체크포인트 폴더 열기"><span data-icon="folder"></span></button>
                             </div>
                             <select id="localModel" style="width: 100%; margin-bottom: 12px;">
                                 <option value="">-- Select Model --</option>
@@ -8548,7 +8802,7 @@
                             <div class="lora-header">
                                 <label>LoRAs</label>
                                 <button type="button" class="lora-add-btn" id="addLoraSlotBtn" title="LoRA 슬롯 추가">+ Add</button>
-                                <button type="button" class="folder-btn" id="openLorasFolderBtn" title="LoRA 폴더 열기">📁</button>
+                                <button type="button" class="folder-btn" id="openLorasFolderBtn" title="LoRA 폴더 열기"><span data-icon="folder"></span></button>
                             </div>
                             <div class="lora-list" id="loraList">
                                 <div class="lora-empty">+ 버튼으로 LoRA 추가</div>
@@ -8659,12 +8913,12 @@
                     <div class="section-title">
                         <button type="button" class="collapse-toggle" data-target="baseImageContent" title="접기/펼치기">▼</button>
                         <span>Base Image</span>
-                        <button type="button" class="btn btn-secondary" id="clearBaseImage" style="margin-left: auto; padding: 4px 8px; font-size: 0.8rem; display: none;">✕ Clear</button>
+                        <button type="button" class="btn btn-secondary" id="clearBaseImage" style="margin-left: auto; padding: 4px 8px; font-size: 0.8rem; display: none;"><span data-icon="x"></span> Clear</button>
                     </div>
                     <div id="baseImageContent" class="collapsible-content">
                         <!-- 이미지가 없을 때: 파일 선택 버튼 -->
                         <div id="baseImageDropZone" class="base-image-dropzone">
-                            <button type="button" class="btn" id="baseImageSelectBtn" style="width: 100%;">📷 이미지 선택</button>
+                            <button type="button" class="btn" id="baseImageSelectBtn" style="width: 100%;"><span data-icon="camera"></span> 이미지 선택</button>
                             <div class="base-image-dropzone-hint">
                                 또는 슬롯/갤러리에서 🎨 Inpaint / ✨ Enhance 사용
                             </div>
@@ -8695,7 +8949,7 @@
                                         <label>Noise: <span id="baseImageNoiseValue">0</span></label>
                                         <input type="range" id="baseImageNoise" min="0" max="1" step="0.05" value="0">
                                     </div>
-                                    <button type="button" class="btn" id="editMaskBtn" style="margin-top: 8px; width: 100%; display: none;">🎨 마스크 수정</button>
+                                    <button type="button" class="btn" id="editMaskBtn" style="margin-top: 8px; width: 100%; display: none;"><span data-icon="brush"></span> 마스크 수정</button>
                                 </div>
                             </div>
                         </div>
@@ -8855,9 +9109,9 @@
             <div class="sidebar-footer">
                 <!-- Anlas Info (NAI only) - Single line -->
                 <div id="anlasInfo" class="anlas-info" style="display: none;">
-                    <span class="anlas-icon">💎</span>
+                    <span class="anlas-icon" data-icon="gem"></span>
                     <span id="anlasBalance">--</span>
-                    <button type="button" class="anlas-refresh" id="refreshAnlasBtn" title="새로고침">↻</button>
+                    <button type="button" class="anlas-refresh" id="refreshAnlasBtn" title="새로고침"><span data-icon="refresh"></span></button>
                     <span class="anlas-separator">│</span>
                     <span class="anlas-cost-label">-</span>
                     <span id="anlasCost">0</span>
@@ -8886,13 +9140,24 @@
             <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
         </aside>
         <button type="button" class="sidebar-toggle-btn" id="sidebarToggleBtn" title="사이드바 접기/펼치기">◀</button>
+        <div class="collapsed-bar" id="collapsedBar" style="display: none;" title="클릭하여 사이드바 펼치기">
+            <span class="collapsed-bar-hint">▶</span>
+            <div class="collapsed-bar-actions">
+                <button type="button" class="collapsed-q-btn" id="collapsedQueueBtn" title="생성 (Queue)">Q</button>
+                <button type="button" class="collapsed-c-btn" id="collapsedCancelBtn" title="현재 작업 취소">C</button>
+            </div>
+        </div>
 
         <!-- Main -->
         <main class="main">
             <!-- 모드 토글 (공통) -->
             <div class="mode-header">
                 <div class="mode-toggle">
-                    <button type="button" class="mode-btn active" id="slotModeBtn">🎰 슬롯 모드</button>
+                    <div class="gen-mode-switch" title="생성 모드: 슬롯(대량) / 싱글(한 장씩). 생성은 항상 여기서 선택한 쪽으로 갑니다">
+                        <button type="button" class="mode-btn gen-seg active" id="slotModeBtn">🎰 슬롯</button>
+                        <button type="button" class="mode-btn gen-seg" id="singleModeBtn">🎴 싱글</button>
+                    </div>
+                    <span class="mode-toggle-sep"></span>
                     <button type="button" class="mode-btn" id="galleryModeBtn">🖼️ 갤러리</button>
                     <button type="button" class="mode-btn" id="censorModeBtn">🔍 자동검열</button>
                     <button type="button" class="mode-btn" id="utilityModeBtn">🔧 보조 도구</button>
@@ -8904,8 +9169,8 @@
             <!-- 슬롯 모드 툴바 -->
             <div class="slots-toolbar" id="slotsToolbar">
                 <div class="toolbar-left">
-                    <button type="button" class="add-slot-btn" id="addSlotBtn" title="슬롯 추가">+🎰</button>
-                    <button type="button" class="lock-all-btn" id="lockAllBtn" title="전체 슬롯 락 토글">🔓</button>
+                    <button type="button" class="add-slot-btn" id="addSlotBtn" title="슬롯 추가"><span data-icon="plus"></span></button>
+                    <button type="button" class="lock-all-btn" id="lockAllBtn" title="전체 슬롯 락 토글"><span data-icon="unlock"></span></button>
                     <div class="slot-size-presets">
                         <button type="button" class="slot-size-preset-btn" id="slotSizePreset1" title="좌클릭: 프리셋 1 적용 | 우클릭: 현재 크기 저장">150</button>
                         <button type="button" class="slot-size-preset-btn" id="slotSizePreset2" title="좌클릭: 프리셋 2 적용 | 우클릭: 현재 크기 저장">675</button>
@@ -8913,12 +9178,12 @@
                     </div>
                     <button type="button" class="slot-prompt-target-global" id="slotPromptTargetGlobal" data-target="char" title="슬롯 프롬프트 적용 대상: Base (베이스에 추가) / Char (활성 캐릭터 전체에 추가)">Char</button>
                     <button type="button" class="header-btn" id="clearImagesBtn" title="미리보기 이미지 지우기 (파일은 삭제되지 않음)">
-                        <span>🧹</span>
+                        <span data-icon="eraser"></span>
                         <span>Clear</span>
                     </button>
                     <div class="preset-dropdown" id="presetDropdown">
                         <button type="button" class="header-btn preset-btn" id="presetBtn">
-                            <span>🔖</span>
+                            <span data-icon="bookmark"></span>
                             <span class="preset-name" id="presetName">Slot Set</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
@@ -8928,24 +9193,24 @@
                             </div>
                             <div class="preset-actions">
                                 <button type="button" class="preset-action-btn" id="newPresetBtn">+ New Set</button>
-                                <button type="button" class="preset-action-btn" id="savePresetBtn">💾 Save</button>
+                                <button type="button" class="preset-action-btn" id="savePresetBtn"><span data-icon="save"></span> Save</button>
                             </div>
                         </div>
                     </div>
                     <button type="button" class="header-btn" id="presetManagerBtn" title="프리셋 관리 (캐릭터/슬롯)">
-                        <span>🔖</span>
+                        <span data-icon="bookmark"></span>
                         <span>프리셋 관리</span>
                     </button>
-                    <button type="button" class="translate-mode-btn" onclick="toggleTranslateMode()" title="번역 모드 (태그에 호버하면 번역 표시)">🌐</button>
+                    <button type="button" class="translate-mode-btn" onclick="toggleTranslateMode()" title="번역 모드 (태그에 호버하면 번역 표시)"><span data-icon="globe"></span></button>
                     <button type="button" class="header-btn" id="syncScrollBtn" title="전체 슬롯 스크롤 동기화">
-                        <span>🔗</span>
+                        <span data-icon="link"></span>
                     </button>
                 </div>
                 <div class="toolbar-right">
                     <span class="toolbar-label">Save to:</span>
                     <div class="folder-dropdown" id="outputFolderDropdown">
                         <button type="button" class="header-btn folder-btn" id="outputFolderBtn">
-                            <span class="folder-icon">📁</span>
+                            <span class="folder-icon" data-icon="folder"></span>
                             <span class="folder-name" id="outputFolderName">output</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
@@ -8958,7 +9223,7 @@
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="header-btn icon-only" id="openOutputFolderBtn" title="출력 폴더 열기">📂</button>
+                    <button type="button" class="header-btn icon-only" id="openOutputFolderBtn" title="출력 폴더 열기"><span data-icon="folderOpen"></span></button>
                 </div>
             </div>
 
@@ -8986,17 +9251,17 @@
             <div class="gallery-container" id="galleryContainer" style="display: none;">
                 <div class="gallery-toolbar">
                     <div class="toolbar-left">
-                        <button type="button" class="folder-tab vibe-folder" id="vibeCacheBtn" data-folder="vibe">🎨 vibe</button>
+                        <button type="button" class="folder-tab vibe-folder" id="vibeCacheBtn" data-folder="vibe"><span data-icon="palette"></span> vibe</button>
                         <span class="folder-separator double"></span>
-                        <button type="button" class="folder-tab root-folder active" id="galleryRootBtn" data-folder="">📂 gallery</button>
+                        <button type="button" class="folder-tab root-folder active" id="galleryRootBtn" data-folder=""><span data-icon="folderOpen"></span> gallery</button>
                         <span class="folder-separator"></span>
-                        <button type="button" class="add-folder-btn" id="addFolderBtn" title="새 폴더 추가">+📁</button>
+                        <button type="button" class="add-folder-btn" id="addFolderBtn" title="새 폴더 추가"><span data-icon="folderPlus"></span></button>
                         <div class="gallery-subfolders" id="gallerySubfolders">
                             <!-- 하위 폴더 탭들이 여기에 추가됨 -->
                         </div>
                     </div>
                     <div class="toolbar-right">
-                        <button type="button" class="header-btn icon-only" id="openGalleryFolderBtn" title="갤러리 폴더 열기">📂</button>
+                        <button type="button" class="header-btn icon-only" id="openGalleryFolderBtn" title="갤러리 폴더 열기"><span data-icon="folderOpen"></span></button>
                     </div>
                 </div>
                 <div class="gallery-content">
@@ -9011,14 +9276,40 @@
                 </div>
             </div>
 
+            <!-- 싱글 이미지 모드 -->
+            <div class="single-container" id="singleContainer" style="display: none;">
+                <div class="single-main">
+                <div class="single-viewer" id="singleViewer">
+                    <div class="single-empty" id="singleEmpty">사이드바에서 프롬프트를 입력하고 생성하면 여기에 크게 표시됩니다</div>
+                    <img id="singleViewerImg" alt="" draggable="false" decoding="async" style="display: none;">
+                    <button type="button" class="single-gallery-btn" id="singleSaveGalleryBtn" title="갤러리에 저장" style="display: none;">☆</button>
+                </div>
+                <div class="single-actions" id="singleActions" style="display: none;">
+                    <div class="single-zoom-ctrl" id="singleZoomCtrl">
+                        <button type="button" class="single-action-btn" id="singleZoomOutBtn" title="축소" data-icon="minus"></button>
+                        <button type="button" class="single-action-btn" id="singleZoomResetBtn" title="원래 크기 (100%)"><span id="singleZoomLabel">100%</span></button>
+                        <button type="button" class="single-action-btn" id="singleZoomInBtn" title="확대" data-icon="plus"></button>
+                    </div>
+                    <button type="button" class="single-action-btn" id="singleClearBtn" title="이 이미지 지우기">🧹</button>
+                    <button type="button" class="single-action-btn" id="singleSavePreviewBtn" title="파일로 저장" style="display: none;">💾</button>
+                    <button type="button" class="single-action-btn" id="singleDeleteBtn" title="파일 삭제" style="display: none;">🗑️</button>
+                    <button type="button" class="single-action-btn" id="singleInpaintBtn" title="Inpaint">🎨</button>
+                    <button type="button" class="single-action-btn" id="singleEnhanceBtn" title="Enhance (NAI)" style="display: none;">✨</button>
+                    <button type="button" class="single-action-btn" id="singleLoadSettingsBtn" title="전체 설정 불러오기">📋</button>
+                    <span class="single-seed" id="singleSeed" title="클릭하여 시드 적용"></span>
+                </div>
+                </div>
+                <div class="single-strip" id="singleStrip"></div>
+            </div>
+
             <!-- 검열 모드 -->
             <div class="censor-container" id="censorContainer" style="display: none;">
                 <!-- 툴바 (슬롯모드와 동일한 스타일) -->
                 <div class="slots-toolbar" id="censorToolbar">
                     <div class="toolbar-left">
-                        <button type="button" class="header-btn active" id="censorTabBefore">📥 검열 전</button>
-                        <button type="button" class="header-btn" id="censorTabProcessing" style="display: none;">⚙️ 검열중</button>
-                        <button type="button" class="header-btn" id="censorTabAfter">📤 검열 후</button>
+                        <button type="button" class="header-btn active" id="censorTabBefore"><span data-icon="download"></span> 검열 전</button>
+                        <button type="button" class="header-btn" id="censorTabProcessing" style="display: none;"><span data-icon="settings"></span> 검열중</button>
+                        <button type="button" class="header-btn" id="censorTabAfter"><span data-icon="upload"></span> 검열 후</button>
                     </div>
                     <div class="toolbar-right">
                         <!-- 검열 전: 이미지 초기화 버튼 -->
@@ -9028,7 +9319,7 @@
                         <!-- 저장 폴더 드롭다운 (모든 탭에서 표시) -->
                         <div class="folder-dropdown" id="censorFolderAfter">
                             <button type="button" class="header-btn folder-btn" id="censorCensoredFolderBtn">
-                                <span class="folder-icon">📁</span>
+                                <span class="folder-icon" data-icon="folder"></span>
                                 <span class="folder-name" id="censorCensoredFolderName">censored</span>
                                 <span class="dropdown-arrow">▼</span>
                             </button>
@@ -9041,7 +9332,7 @@
                                 </div>
                             </div>
                         </div>
-                        <button type="button" class="header-btn icon-only" id="censorOpenFolderBtn" title="폴더 열기">📂</button>
+                        <button type="button" class="header-btn icon-only" id="censorOpenFolderBtn" title="폴더 열기"><span data-icon="folderOpen"></span></button>
                     </div>
                 </div>
                 
@@ -9109,14 +9400,14 @@
                         <div class="censor-side-panel-content">
                         <!-- 검열전 탭: 모델/감지대상 섹션 -->
                         <div class="censor-side-section censor-side-model" id="censorSideModel">
-                            <div class="side-section-title">📦 모델</div>
+                            <div class="side-section-title"><span data-icon="package"></span> 모델</div>
                             <select id="censorModel">
                                 <option value="">모델 선택...</option>
                             </select>
                         </div>
 
                         <div class="censor-side-section censor-side-targets" id="censorSideTargets">
-                            <div class="side-section-title">🎯 감지 대상</div>
+                            <div class="side-section-title"><span data-icon="target"></span> 감지 대상</div>
                             <div class="censor-targets" id="censorTargets">
                                 <div class="censor-target-loading">모델을 선택하세요</div>
                             </div>
@@ -9124,7 +9415,7 @@
 
                         <!-- 공통: 검열 설정 -->
                         <div class="censor-side-section censor-side-settings">
-                            <div class="side-section-title">⚙️ 검열 설정</div>
+                            <div class="side-section-title"><span data-icon="settings"></span> 검열 설정</div>
                             <div class="side-setting-row">
                                 <label>방식</label>
                                 <select id="censorMethod">
@@ -9172,27 +9463,27 @@
 
                         <!-- 검열중/후 탭: 도구 섹션 -->
                         <div class="censor-side-section censor-side-tools" id="censorSideTools" style="display: none;">
-                            <div class="side-section-title">🔧 도구</div>
+                            <div class="side-section-title"><span data-icon="wrench"></span> 도구</div>
                             <div class="side-tools-grid">
-                                <button type="button" class="side-tool-btn active" id="procToolSelect">↔ 선택</button>
+                                <button type="button" class="side-tool-btn active" id="procToolSelect"><span data-icon="moveH"></span> 선택</button>
                                 <button type="button" class="side-tool-btn" id="procToolAdd">+ 추가</button>
-                                <button type="button" class="side-tool-btn" id="procToolDelete">🗑️ 삭제</button>
+                                <button type="button" class="side-tool-btn" id="procToolDelete"><span data-icon="trash"></span> 삭제</button>
                             </div>
                         </div>
 
                         <!-- 검열후 탭: 도구 섹션 (별도 ID) -->
                         <div class="censor-side-section censor-side-tools-after" id="censorSideToolsAfter" style="display: none;">
-                            <div class="side-section-title">🔧 도구</div>
+                            <div class="side-section-title"><span data-icon="wrench"></span> 도구</div>
                             <div class="side-tools-grid">
-                                <button type="button" class="side-tool-btn active" id="afterToolSelect">↔ 선택</button>
+                                <button type="button" class="side-tool-btn active" id="afterToolSelect"><span data-icon="moveH"></span> 선택</button>
                                 <button type="button" class="side-tool-btn" id="afterToolAdd">+ 추가</button>
-                                <button type="button" class="side-tool-btn" id="afterToolDelete">🗑️ 삭제</button>
+                                <button type="button" class="side-tool-btn" id="afterToolDelete"><span data-icon="trash"></span> 삭제</button>
                             </div>
                         </div>
 
                         <!-- 단축키 가이드 (검열중/후) -->
                         <div class="censor-side-section censor-side-shortcuts" id="censorSideShortcuts" style="display: none;">
-                            <div class="side-section-title">📋 단축키</div>
+                            <div class="side-section-title"><span data-icon="clipboard"></span> 단축키</div>
                             <div class="side-shortcuts-list">
                                 <div class="shortcut-row"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 모드</div>
                                 <div class="shortcut-row"><kbd>휠</kbd> 이미지 전환</div>
@@ -9204,12 +9495,12 @@
                         <!-- 액션 버튼 - content 밖에서 하단 고정 -->
                         <div class="censor-side-actions">
                             <!-- 검열전: 전체 검열 -->
-                            <button type="button" class="btn btn-primary" id="censorRunAllBtn">🔍 전체 검열</button>
+                            <button type="button" class="btn btn-primary" id="censorRunAllBtn"><span data-icon="search"></span> 전체 검열</button>
                             <!-- 검열중: 완료/취소 -->
-                            <button type="button" class="btn btn-success" id="censorCompleteBtn" style="display: none;">✓ 검열 완료</button>
+                            <button type="button" class="btn btn-success" id="censorCompleteBtn" style="display: none;"><span data-icon="check"></span> 검열 완료</button>
                             <button type="button" class="btn btn-secondary" id="censorCancelBtn" style="display: none;">취소</button>
                             <!-- 검열후: 저장 -->
-                            <button type="button" class="btn btn-success" id="censorAfterSaveBtn" style="display: none;" disabled>💾 저장</button>
+                            <button type="button" class="btn btn-success" id="censorAfterSaveBtn" style="display: none;" disabled><span data-icon="save"></span> 저장</button>
                         </div>
                     </div>
                 </div>
@@ -9227,9 +9518,9 @@
                 <!-- 툴바 (탭 버튼) -->
                 <div class="slots-toolbar" id="utilityToolbar">
                     <div class="toolbar-left">
-                        <button type="button" class="header-btn active" id="utilityTabConvert">🔄 이미지 변환</button>
-                        <button type="button" class="header-btn" id="utilityTabExif">📋 EXIF 리더</button>
-                        <button type="button" class="header-btn" id="utilityTabFileManager">📁 파일 관리</button>
+                        <button type="button" class="header-btn active" id="utilityTabConvert"><span data-icon="refresh"></span> 이미지 변환</button>
+                        <button type="button" class="header-btn" id="utilityTabExif"><span data-icon="clipboard"></span> EXIF 리더</button>
+                        <button type="button" class="header-btn" id="utilityTabFileManager"><span data-icon="folder"></span> 파일 관리</button>
                     </div>
                 </div>
 
@@ -9250,7 +9541,7 @@
                                 <div class="file-list-header">
                                     <span class="file-count" id="convertFileCount">0개 파일</span>
                                     <span class="file-reorder-hint" id="convertReorderHint" style="display: none;">드래그로 순서 변경</span>
-                                    <button type="button" class="header-btn" id="convertClearBtn">🧹 Clear</button>
+                                    <button type="button" class="header-btn" id="convertClearBtn"><span data-icon="eraser"></span> Clear</button>
                                 </div>
                                 <div class="file-list-items" id="convertFileItems">
                                     <!-- 파일 항목들 -->
@@ -9261,7 +9552,7 @@
                         <!-- 우측: 설정 패널 -->
                         <div class="utility-side-panel">
                             <div class="utility-side-section">
-                                <div class="side-section-title">📦 출력 형식</div>
+                                <div class="side-section-title"><span data-icon="package"></span> 출력 형식</div>
                                 <select id="convertFormat" class="utility-select">
                                     <option value="png">PNG</option>
                                     <option value="jpg">JPEG</option>
@@ -9279,7 +9570,7 @@
 
                             <!-- 파일명 설정 섹션 -->
                             <div class="utility-side-section">
-                                <div class="side-section-title">📝 파일명 설정</div>
+                                <div class="side-section-title"><span data-icon="fileText"></span> 파일명 설정</div>
                                 <div class="checkbox-row">
                                     <input type="checkbox" id="convertRenameEnabled">
                                     <label for="convertRenameEnabled">파일명 일괄 변경</label>
@@ -9305,7 +9596,7 @@
                             </div>
 
                             <div class="utility-side-section">
-                                <div class="side-section-title">⚙️ 옵션</div>
+                                <div class="side-section-title"><span data-icon="settings"></span> 옵션</div>
                                 <div class="checkbox-row">
                                     <input type="checkbox" id="convertStripMetadata">
                                     <label for="convertStripMetadata">메타데이터 제거</label>
@@ -9317,7 +9608,7 @@
                             </div>
 
                             <div class="utility-side-section">
-                                <button type="button" class="btn btn-primary" id="convertRunBtn" disabled>🔄 변환 시작</button>
+                                <button type="button" class="btn btn-primary" id="convertRunBtn" disabled><span data-icon="refresh"></span> 변환 시작</button>
                             </div>
 
                             <div class="utility-progress" id="convertProgress" style="display: none;">
@@ -9350,8 +9641,8 @@
                                 <div class="exif-image-info">
                                     <span class="exif-format" id="exifFormat">Unknown</span>
                                     <div class="exif-btn-row">
-                                        <button type="button" class="exif-action-btn" id="exifReplaceBtn">🔄 교체</button>
-                                        <button type="button" class="exif-action-btn exif-close-btn" id="exifClearBtn">✕ 닫기</button>
+                                        <button type="button" class="exif-action-btn" id="exifReplaceBtn"><span data-icon="refresh"></span> 교체</button>
+                                        <button type="button" class="exif-action-btn exif-close-btn" id="exifClearBtn"><span data-icon="x"></span> 닫기</button>
                                     </div>
                                 </div>
                             </div>
@@ -9370,7 +9661,7 @@
                         <!-- 좌측: 폴더 트리 -->
                         <div class="file-manager-sidebar">
                             <div class="file-manager-sidebar-header">
-                                <span class="sidebar-title">📂 폴더</span>
+                                <span class="sidebar-title"><span data-icon="folderOpen"></span> 폴더</span>
                             </div>
                             <div class="folder-tree" id="fileManagerFolderTree">
                                 <!-- 동적으로 채워짐 -->
@@ -9385,17 +9676,17 @@
                             <div class="file-manager-toolbar">
                                 <div class="fm-toolbar-left">
                                     <div class="fm-view-modes">
-                                        <button type="button" class="btn btn-sm active" id="fmViewThumbnail" title="썸네일 보기">🔲</button>
-                                        <button type="button" class="btn btn-sm" id="fmViewList" title="리스트 보기">☰</button>
+                                        <button type="button" class="btn btn-sm active" id="fmViewThumbnail" title="썸네일 보기"><span data-icon="grid"></span></button>
+                                        <button type="button" class="btn btn-sm" id="fmViewList" title="리스트 보기"><span data-icon="menu"></span></button>
                                         <button type="button" class="btn btn-sm active" id="fmPipModeBtn" title="PIP 모드 (호버 시 확대)">⧉</button>
-                                        <button type="button" class="btn btn-sm" id="fmOpenFolderBtn" title="탐색기에서 열기">📂</button>
+                                        <button type="button" class="btn btn-sm" id="fmOpenFolderBtn" title="탐색기에서 열기"><span data-icon="folderOpen"></span></button>
                                     </div>
                                     <span class="fm-selected-count" id="fmSelectedCount">0개 선택됨</span>
                                 </div>
                                 <div class="fm-toolbar-right fm-actions" id="fmActions">
-                                    <button type="button" class="btn btn-sm btn-danger fm-action-dynamic" id="fmDeleteBtn" style="display: none;">🗑️ 삭제</button>
-                                    <button type="button" class="btn btn-sm fm-action-dynamic" id="fmRenameBtn" style="display: none; white-space: nowrap;">✏️ 이름변경</button>
-                                    <button type="button" class="btn btn-sm fm-action-dynamic" id="fmConvertBtn" style="display: none; white-space: nowrap;">🔄 변환 추가</button>
+                                    <button type="button" class="btn btn-sm btn-danger fm-action-dynamic" id="fmDeleteBtn" style="display: none;"><span data-icon="trash"></span> 삭제</button>
+                                    <button type="button" class="btn btn-sm fm-action-dynamic" id="fmRenameBtn" style="display: none; white-space: nowrap;"><span data-icon="pencil"></span> 이름변경</button>
+                                    <button type="button" class="btn btn-sm fm-action-dynamic" id="fmConvertBtn" style="display: none; white-space: nowrap;"><span data-icon="refresh"></span> 변환 추가</button>
                                     <span class="fm-toolbar-divider"></span>
                                     <button type="button" class="btn btn-sm" id="fmSelectAllBtn" style="white-space: nowrap;">전체 선택</button>
                                     <button type="button" class="btn btn-sm" id="fmDeselectBtn" style="white-space: nowrap;">선택 해제</button>
@@ -9421,7 +9712,7 @@
                                 <!-- 변환 패널 토글 + 패널 wrapper -->
                                 <div class="fm-convert-toggle-wrapper">
                                     <button type="button" class="fm-convert-toggle" id="fmConvertToggle" title="이미지 변환 패널">
-                                        <span class="toggle-text">🔄 변환</span>
+                                        <span class="toggle-text"><span data-icon="refresh"></span> 변환</span>
                                     </button>
 
                                     <!-- 변환 사이드 패널 -->
@@ -9536,7 +9827,7 @@
                 <div class="card-collection-view" id="cardCollectionView">
                     <div class="card-collection-toolbar">
                         <button type="button" class="header-btn" id="cardNewBtn">+ 새 카드</button>
-                        <button type="button" class="header-btn" id="cardOpenFolderBtn" title="카드 폴더 열기">📂</button>
+                        <button type="button" class="header-btn" id="cardOpenFolderBtn" title="카드 폴더 열기"><span data-icon="folderOpen"></span></button>
                         <input type="text" class="toolbar-search" id="cardSearchInput" placeholder="카드 검색...">
                         <select id="cardSortSelect" class="toolbar-search" style="max-width:140px;flex:none;">
                             <option value="modified">수정 날짜순</option>
@@ -9552,19 +9843,19 @@
                     <!-- 메뉴바 (Notepad 스타일) -->
                     <div class="card-menubar">
                         <div class="card-menubar-left">
-                            <button type="button" class="card-back-btn" id="cardBackBtn" title="카드 목록으로 (Esc)">←</button>
+                            <button type="button" class="card-back-btn" id="cardBackBtn" title="카드 목록으로 (Esc)"><span data-icon="arrowLeft"></span></button>
                             <span class="card-editor-title" id="cardEditorTitle" title="클릭하여 이름 변경">새 카드</span>
                             <span class="card-dirty-indicator" id="cardDirtyIndicator" title="저장되지 않은 변경사항">●</span>
                         </div>
                         <div class="card-menubar-right">
-                            <button type="button" class="card-tb-btn" id="cardEditorOpenFolderBtn" title="카드 폴더 열기">📂</button>
+                            <button type="button" class="card-tb-btn" id="cardEditorOpenFolderBtn" title="카드 폴더 열기"><span data-icon="folderOpen"></span></button>
                             <button type="button" class="card-tb-btn" id="cardLineNumBtn" title="줄 번호 토글">#</button>
                             <button type="button" class="card-tb-btn" id="cardZoomInBtn" title="확대 (Ctrl++)">A+</button>
                             <button type="button" class="card-tb-btn" id="cardZoomOutBtn" title="축소 (Ctrl+-)">A-</button>
                             <button type="button" class="card-tb-btn" id="cardSplitBtn" title="분할 보기">⧉</button>
                             <div class="card-menu-sep"></div>
-                            <button type="button" class="card-tb-btn" id="cardExportBtn" title="텍스트 파일로 내보내기">📤</button>
-                            <button type="button" class="card-tb-btn" id="cardSaveBtn" title="저장 (Ctrl+S)">💾</button>
+                            <button type="button" class="card-tb-btn" id="cardExportBtn" title="텍스트 파일로 내보내기"><span data-icon="upload"></span></button>
+                            <button type="button" class="card-tb-btn" id="cardSaveBtn" title="저장 (Ctrl+S)"><span data-icon="save"></span></button>
                         </div>
                     </div>
 
@@ -9577,9 +9868,9 @@
                             </div>
                             <div class="card-pane-toolbar">
                                 <button type="button" class="card-tb-btn" id="cardDividerBtnLeft" title="구분선 추가 (Ctrl+Shift+Enter)"><span style="display:inline-block;transform:rotate(90deg);font-size:.85em;letter-spacing:1px">][</span></button>
-                                <button type="button" class="card-tb-btn" id="cardFindBtnLeft" title="찾기/바꾸기 (Ctrl+F)">🔍</button>
+                                <button type="button" class="card-tb-btn" id="cardFindBtnLeft" title="찾기/바꾸기 (Ctrl+F)"><span data-icon="search"></span></button>
                                 <span style="flex:1"></span>
-                                <button type="button" class="card-tb-btn" id="cardCopyBtnLeft" title="전체 복사 (Ctrl+Shift+C)">📋</button>
+                                <button type="button" class="card-tb-btn" id="cardCopyBtnLeft" title="전체 복사 (Ctrl+Shift+C)"><span data-icon="clipboard"></span></button>
                             </div>
                             <div class="card-blocks-container" id="cardBlocksLeft"></div>
                         </div>
@@ -9594,9 +9885,9 @@
                             </div>
                             <div class="card-pane-toolbar">
                                 <button type="button" class="card-tb-btn" id="cardDividerBtnRight" title="구분선 추가 (Ctrl+Shift+Enter)"><span style="display:inline-block;transform:rotate(90deg);font-size:.85em;letter-spacing:1px">][</span></button>
-                                <button type="button" class="card-tb-btn" id="cardFindBtnRight" title="찾기/바꾸기 (Ctrl+F)">🔍</button>
+                                <button type="button" class="card-tb-btn" id="cardFindBtnRight" title="찾기/바꾸기 (Ctrl+F)"><span data-icon="search"></span></button>
                                 <span style="flex:1"></span>
-                                <button type="button" class="card-tb-btn" id="cardCopyBtnRight" title="전체 복사 (Ctrl+Shift+C)">📋</button>
+                                <button type="button" class="card-tb-btn" id="cardCopyBtnRight" title="전체 복사 (Ctrl+Shift+C)"><span data-icon="clipboard"></span></button>
                             </div>
                             <div class="card-blocks-container" id="cardBlocksRight"></div>
                         </div>
@@ -9653,7 +9944,7 @@
             <!-- 검열 편집 모달 -->
             <div class="censor-edit-modal" id="censorEditModal">
                 <div class="censor-edit-modal-header">
-                    <h3>🔍 검열 편집</h3>
+                    <h3><span data-icon="search"></span> 검열 편집</h3>
                     <button type="button" class="censor-edit-modal-close" id="censorEditModalClose">&times;</button>
                 </div>
                 <div class="censor-edit-modal-body">
@@ -9664,9 +9955,9 @@
                 </div>
                 <div class="censor-edit-modal-footer">
                     <div class="censor-edit-modal-tools">
-                        <button type="button" class="tool-btn active" id="editToolSelect">↔ 선택</button>
+                        <button type="button" class="tool-btn active" id="editToolSelect"><span data-icon="moveH"></span> 선택</button>
                         <button type="button" class="tool-btn" id="editToolAdd">+ 추가</button>
-                        <button type="button" class="tool-btn" id="editToolDelete">🗑️ 삭제</button>
+                        <button type="button" class="tool-btn" id="editToolDelete"><span data-icon="trash"></span> 삭제</button>
                         <span class="tool-separator">|</span>
                         <div class="censor-method-select">
                             <label>방식:</label>
@@ -9679,7 +9970,7 @@
                     </div>
                     <div class="censor-edit-modal-actions">
                         <button type="button" class="btn" id="censorEditCancelBtn">취소</button>
-                        <button type="button" class="btn btn-primary" id="censorEditSaveBtn">💾 저장 (덮어쓰기)</button>
+                        <button type="button" class="btn btn-primary" id="censorEditSaveBtn"><span data-icon="save"></span> 저장 (덮어쓰기)</button>
                     </div>
                 </div>
             </div>
@@ -9698,9 +9989,9 @@
             <div class="lightbox-main">
             <img src="" alt="">
             <div class="lightbox-actions" id="lightboxActions">
-                <button type="button" class="lightbox-btn lightbox-clear-btn" title="미리보기 지우기">🧹<span class="lightbox-key">Del</span></button>
-                <button type="button" class="lightbox-btn lightbox-save-btn" title="파일로 저장">💾 Save<span class="lightbox-key">Enter</span></button>
-                <button type="button" class="lightbox-btn lightbox-delete-btn" title="파일 삭제">🗑️ Delete<span class="lightbox-key">Enter</span></button>
+                <button type="button" class="lightbox-btn lightbox-clear-btn" title="미리보기 지우기"><span data-icon="eraser"></span><span class="lightbox-key">Del</span></button>
+                <button type="button" class="lightbox-btn lightbox-save-btn" title="파일로 저장"><span data-icon="save"></span> Save<span class="lightbox-key">Enter</span></button>
+                <button type="button" class="lightbox-btn lightbox-delete-btn" title="파일 삭제"><span data-icon="trash"></span> Delete<span class="lightbox-key">Enter</span></button>
                 <span class="lightbox-counter" id="lightboxCounter"></span>
             </div>
         </div>
@@ -9778,7 +10069,7 @@
     <!-- Enhance Modal (NAI) -->
     <div class="drop-modal" id="enhanceModal">
         <div class="drop-modal-content modal-lg">
-            <h3>✨ Enhance</h3>
+            <h3><span data-icon="sparkles"></span> Enhance</h3>
             <div class="enhance-layout">
                 <div id="enhanceModalPreview" class="preview-box preview-box-md">
                     <img id="enhanceModalImg" src="">
@@ -9826,7 +10117,7 @@
             </div>
             <div class="buttons">
                 <button type="button" class="btn btn-secondary" id="enhanceModalCancel">취소</button>
-                <button type="button" class="btn btn-primary" id="enhanceModalConfirm">✨ Enhance 실행</button>
+                <button type="button" class="btn btn-primary" id="enhanceModalConfirm"><span data-icon="sparkles"></span> Enhance 실행</button>
             </div>
         </div>
     </div>
@@ -9835,12 +10126,12 @@
     <div class="mask-editor-modal" id="maskEditorModal">
         <div class="mask-editor-container">
             <div class="mask-editor-header">
-                <h3>🎨 Inpaint Mask Editor</h3>
+                <h3><span data-icon="brush"></span> Inpaint Mask Editor</h3>
                 <button class="modal-close" id="maskEditorClose">&times;</button>
             </div>
             <div class="mask-editor-toolbar">
                 <div class="tool-group">
-                    <button class="tool-btn active" id="maskToolBrush" title="브러시 (마스크 그리기)">🖌️ Brush</button>
+                    <button class="tool-btn active" id="maskToolBrush" title="브러시 (마스크 그리기)"><span data-icon="brush"></span> Brush</button>
                     <button class="tool-btn" id="maskToolEraser" title="지우개">◼ Eraser</button>
                 </div>
                 <div class="slider-group">
@@ -9849,8 +10140,8 @@
                     <span id="maskBrushSizeValue">30</span>
                 </div>
                 <div class="tool-group" style="margin-left:auto;">
-                    <button class="tool-btn" id="maskToolClear" title="전체 지우기">🗑️ Clear</button>
-                    <button class="tool-btn" id="maskToolInvert" title="마스크 반전">🔄 Invert</button>
+                    <button class="tool-btn" id="maskToolClear" title="전체 지우기"><span data-icon="trash"></span> Clear</button>
+                    <button class="tool-btn" id="maskToolInvert" title="마스크 반전"><span data-icon="refresh"></span> Invert</button>
                 </div>
             </div>
             <div class="mask-editor-canvas-wrapper">
@@ -9867,7 +10158,7 @@
             </div>
             <div class="mask-editor-footer">
                 <button class="btn btn-secondary" id="maskEditorCancel">취소</button>
-                <button class="btn btn-primary" id="maskEditorApply">✓ 베이스 이미지로 등록</button>
+                <button class="btn btn-primary" id="maskEditorApply"><span data-icon="check"></span> 베이스 이미지로 등록</button>
             </div>
         </div>
     </div>
@@ -9981,7 +10272,7 @@
     <div class="modal" id="localInstallModal">
         <div class="modal-content modal-md">
             <div class="modal-header">
-                <h2>⚙️ 환경 설치</h2>
+                <h2><span data-icon="settings"></span> 환경 설치</h2>
                 <button class="modal-close" id="localInstallModalClose" onclick="closeLocalInstallModal()">&times;</button>
             </div>
             
@@ -10020,7 +10311,7 @@
     <div class="modal" id="restartModal">
         <div class="modal-content modal-sm">
             <div class="modal-header">
-                <h2>🔄 재시작 필요</h2>
+                <h2><span data-icon="refresh"></span> 재시작 필요</h2>
             </div>
             
             <p style="margin-bottom: 8px;">
@@ -10151,6 +10442,10 @@
         let wsReconnectTimer = null;
         let lastImageSeq = 0;  // 마지막으로 받은 이미지 순번 (재연결 시 동기화용)
 
+        // 싱글 이미지 모드 상태 (결과 라우팅은 각 이미지의 gen_mode 태그로 판단 → 새로고침 복원에도 정확)
+        let currentSingleImageData = null;   // 싱글 뷰어에 현재 표시 중인 이미지의 _imageData
+        let singleZoom = 1, singlePanX = 0, singlePanY = 0;  // 싱글 뷰어 배율/팬 (재실행 전까지 유지)
+
         // Elements
         const tabs = document.querySelectorAll('.tab');
         const providerSections = document.querySelectorAll('.provider-section');
@@ -10226,7 +10521,7 @@
                     if (c._imageData?.image_path) {
                         const badge = document.createElement('span');
                         badge.className = 'lightbox-thumb-saved';
-                        badge.textContent = '✓';
+                        badge.innerHTML = ICONS.check;
                         thumbWrap.appendChild(badge);
                     }
                     thumbWrap.addEventListener('click', (e) => {
@@ -10781,17 +11076,26 @@
         (function setupSidebarToggle() {
             const sidebar = document.querySelector('.sidebar');
             const toggleBtn = document.getElementById('sidebarToggleBtn');
+            const collapsedBar = document.getElementById('collapsedBar');
             if (!sidebar || !toggleBtn) return;
+
+            // 접힘 바: 클릭 시 펼치기(펼치기 버튼 기능 대체) + 하단 Q/취소 버튼
+            if (collapsedBar) {
+                collapsedBar.onclick = () => { sidebar.classList.remove('collapsed'); updateToggleBtn(); localStorage.setItem('sidebarCollapsed', '0'); };
+                const qb = document.getElementById('collapsedQueueBtn');
+                const cb = document.getElementById('collapsedCancelBtn');
+                if (qb) qb.onclick = (e) => { e.stopPropagation(); addToQueue(); };
+                if (cb) cb.onclick = (e) => { e.stopPropagation(); cancelCurrent(); };
+            }
 
             function updateToggleBtn() {
                 const isCollapsed = sidebar.classList.contains('collapsed');
-                toggleBtn.textContent = isCollapsed ? '▶' : '◀';
-                toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
-                if (isCollapsed) {
-                    toggleBtn.style.left = '0px';
-                } else {
-                    toggleBtn.style.left = currentSidebarWidth + 'px';
-                }
+                // 펼침 상태에서만 접기 버튼(◀) 표시, 접힘 상태에선 바가 펼치기 담당
+                toggleBtn.textContent = '◀';
+                toggleBtn.title = '사이드바 접기';
+                toggleBtn.style.display = isCollapsed ? 'none' : '';
+                toggleBtn.style.left = currentSidebarWidth + 'px';
+                if (collapsedBar) collapsedBar.style.display = isCollapsed ? 'flex' : 'none';
             }
 
             toggleBtn.onclick = () => {
@@ -10827,8 +11131,8 @@
                     <div class="slot-prompt-header">
                         <span class="slot-number">001</span>
                         <input type="text" placeholder="이름 (선택)" class="slot-name">
-                        <button type="button" class="slot-lock" title="락 (생성 제외)" tabindex="-1">🔓</button>
-                        <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">☰</button>
+                        <button type="button" class="slot-lock" title="락 (생성 제외)" tabindex="-1">${ICONS.unlock}</button>
+                        <button type="button" class="slot-drag" title="드래그하여 순서 변경" tabindex="-1">${ICONS.menu}</button>
                         <button type="button" class="slot-duplicate" title="슬롯 복제" tabindex="-1"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="8" height="10" rx="1.5"/><path d="M7 3V2.5A1.5 1.5 0 0 1 8.5 1H13a1.5 1.5 0 0 1 1.5 1.5V11a1.5 1.5 0 0 1-1.5 1.5h-.5"/></svg></button>
                         <button type="button" class="slot-delete" tabindex="-1">×</button>
                     </div>
@@ -10858,7 +11162,7 @@
             lockBtn.onclick = () => {
                 const isLocked = slot.classList.toggle('locked');
                 lockBtn.classList.toggle('locked', isLocked);
-                lockBtn.textContent = isLocked ? '🔒' : '🔓';
+                lockBtn.innerHTML = isLocked ? ICONS.lock : ICONS.unlock;
                 lockBtn.title = isLocked ? '락 해제' : '락 (생성 제외)';
                 updateQueueButton();
                 updateAnlasCost();
@@ -11148,6 +11452,10 @@
             const empty = imagesContainer.querySelector('.slot-empty');
             if (empty) empty.remove();
 
+            // 큐 대기 플레이스홀더가 있으면 가장 오래된(맨 아래) 것을 이 이미지로 교체
+            const slotPhs = imagesContainer.querySelectorAll('.slot-image-card.placeholder');
+            const phTarget = slotPhs.length ? slotPhs[slotPhs.length - 1] : null;
+
             // HiresFix 미리보기 카드를 일반 카드로 업그레이드 (같은 job_id의 최종 이미지가 도착하면)
             if (data.job_id) {
                 const hiresPreviewCard = imagesContainer.querySelector(`.slot-image-card.hires-preview[data-job-id="${data.job_id}"]`);
@@ -11181,19 +11489,19 @@
             if (!isPreviewOnly) card.classList.add('is-saved');
 
             card.innerHTML = `
-                <span class="card-saved-badge">✓</span>
+                <span class="card-saved-badge">${ICONS.check}</span>
                 <img src="${cardSrc}" alt="" draggable="false" decoding="async">
-                <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
+                <button type="button" class="save-gallery-btn" title="갤러리에 저장">${ICONS.star}</button>
                 <div class="info">
                     <div class="info-row">
-                        <button type="button" class="clear-card-btn" title="미리보기 지우기">🧹</button>
-                        <button type="button" class="save-preview-btn" title="파일로 저장"${isPreviewOnly ? '' : ' style="display:none"'}>💾</button>
-                        <button type="button" class="delete-file-btn" title="파일 삭제"${isPreviewOnly ? ' style="display:none"' : ''}>🗑️</button>
+                        <button type="button" class="clear-card-btn" title="미리보기 지우기">${ICONS.eraser}</button>
+                        <button type="button" class="save-preview-btn" title="파일로 저장"${isPreviewOnly ? '' : ' style="display:none"'}>${ICONS.save}</button>
+                        <button type="button" class="delete-file-btn" title="파일 삭제"${isPreviewOnly ? ' style="display:none"' : ''}>${ICONS.trash}</button>
                         ${filenameDisplay}
-                        <button type="button" class="inpaint-btn" title="Inpaint">🎨</button>
-                        <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">✨</button>
-                        <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">✨</button>
-                        <button type="button" class="load-settings-btn" title="전체 설정 불러오기">📋</button>
+                        <button type="button" class="inpaint-btn" title="Inpaint">${ICONS.brush}</button>
+                        <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">${ICONS.sparkles}</button>
+                        <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">${ICONS.scaling}</button>
+                        <button type="button" class="load-settings-btn" title="전체 설정 불러오기">${ICONS.sliders}</button>
                     </div>
                     <div class="seed${data.metadata && data.seed ? ' clickable' : ''}"${data.metadata && data.seed ? ` data-seed="${data.seed}" title="클릭하여 시드 적용"` : ''}>${data.metadata ? 'Seed: ' + data.seed : '메타데이터 없음'}</div>
                 </div>
@@ -11226,7 +11534,8 @@
                 metadata: data.metadata || null,  // 전체 설정 메타데이터
                 save_format: data.save_format || 'png',
                 output_folder: data.output_folder || '',
-                slotIndex: slotIndex
+                slotIndex: slotIndex,
+                seq: data.seq
             };
 
             // 미리보기 저장 버튼 핸들러
@@ -11302,7 +11611,6 @@
                         const result = await response.json();
                         if (result.success) {
                             saveBtn.classList.remove('saved');
-                            saveBtn.textContent = '☆';
                             card._imageData.galleryFilename = null;
                             showToast('갤러리에서 제거됨', 'success');
                             // 갤러리 캐시 무효화
@@ -11337,7 +11645,6 @@
                     const result = await response.json();
                     if (result.success) {
                         saveBtn.classList.add('saved');
-                        saveBtn.textContent = '★';
                         card._imageData.galleryFilename = result.filename || card._imageData.filename;
                         showToast('갤러리에 저장됨', 'success');
                         // 갤러리 캐시 무효화
@@ -11554,7 +11861,7 @@
                 } catch (err) {
                     // 에러 시 버튼 상태 복원
                     hiresfixBtn.classList.remove('queued', 'processing');
-                    hiresfixBtn.textContent = '✨';
+                    hiresfixBtn.innerHTML = ICONS.scaling;
                     hiresfixBtn.title = 'HiresFix (Local)';
                     hiresfixBtn.disabled = false;
                     showToast('HiresFix 오류: ' + err.message, 'error');
@@ -11565,6 +11872,7 @@
             const clearCardBtn = card.querySelector('.clear-card-btn');
             clearCardBtn.onclick = (e) => {
                 e.stopPropagation();
+                forgetImages([card._imageData?.seq]);
                 card.remove();
             };
 
@@ -11623,18 +11931,546 @@
                 if (card._lod === 'thumb' && !card._thumbNatW && img.naturalWidth) {
                     card._thumbNatW = img.naturalWidth;
                 }
-                imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                if (phTarget && phTarget.isConnected) imagesContainer.replaceChild(card, phTarget);
+                else imagesContainer.insertBefore(card, imagesContainer.firstChild);
                 console.log(`[addImageToSlot] Card inserted for ${data.filename}`);
+                refreshPlaceholderStatus();
                 img.onload = null;   // LOD 승격으로 src를 바꿀 때 재삽입(순서 꼬임) 방지
                 img.onerror = null;
                 updateSlotCardLOD(targetSlot);  // 이미 넓은 슬롯이면 즉시 원본으로 승격
             };
             img.onerror = () => {
-                imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                if (phTarget && phTarget.isConnected) imagesContainer.replaceChild(card, phTarget);
+                else imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                refreshPlaceholderStatus();
                 img.onload = null;
                 img.onerror = null;
             };
         }
+
+        // ============================================================
+        // 싱글 이미지 모드 - 결과 렌더링
+        // ============================================================
+
+        // image_path만 있는 이미지에서 base64 확보 (image → image_base64 → image_path fetch 순)
+        async function resolveImageBase64(imageData) {
+            if (!imageData) return null;
+            if (imageData.image) return imageData.image;
+            if (imageData.image_base64) return imageData.image_base64;
+            if (imageData.image_path) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/outputs/${imageData.image_path}`);
+                    const blob = await response.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (err) {
+                    console.error('[single] 이미지 로드 실패:', err);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        // ===== 아이콘 (흰색 단색 SVG, currentColor 상속) =====
+        const _svg = (inner, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+        const ICONS = {
+            star: _svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', 'ic-star'),
+            check: _svg('<polyline points="20 6 9 17 4 12"/>'),
+            eraser: _svg('<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>'),
+            save: _svg('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'),
+            trash: _svg('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'),
+            brush: _svg('<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'),
+            sparkles: _svg('<path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/>'),
+            scaling: _svg('<path d="M21 3 9 15"/><path d="M12 3H3v18h18v-9"/><path d="M16 3h5v5"/><path d="M14 15H9v-5"/>'),
+            sliders: _svg('<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>'),
+            layoutGrid: _svg('<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>'),
+            image: _svg('<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>'),
+            images: _svg('<path d="M18 22H4a2 2 0 0 1-2-2V6"/><path d="m22 13-1.3-1.3a2.41 2.41 0 0 0-3.41 0L11 18"/><circle cx="12" cy="8" r="2"/><rect width="16" height="16" x="6" y="2" rx="2"/>'),
+            shield: _svg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>'),
+            wrench: _svg('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
+            idCard: _svg('<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 10h4"/><path d="M7 14h.01"/><circle cx="16" cy="10.5" r="1.5"/><path d="M13.6 15a2.5 2.5 0 0 1 4.8 0"/>'),
+            plus: _svg('<line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/>'),
+            minus: _svg('<line x1="5" x2="19" y1="12" y2="12"/>'),
+            lock: _svg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+            unlock: _svg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>'),
+            bookmark: _svg('<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'),
+            globe: _svg('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
+            link: _svg('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'),
+            folder: _svg('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>'),
+            folderOpen: _svg('<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>'),
+            folderPlus: _svg('<path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>'),
+            x: _svg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+            camera: _svg('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'),
+            bell: _svg('<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>'),
+            gem: _svg('<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/>'),
+            refresh: _svg('<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>'),
+            palette: _svg('<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'),
+            download: _svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>'),
+            upload: _svg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>'),
+            settings: _svg('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'),
+            target: _svg('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'),
+            package: _svg('<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'),
+            clipboard: _svg('<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'),
+            search: _svg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
+            pencil: _svg('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>'),
+            pin: _svg('<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>'),
+            fileText: _svg('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
+            moveH: _svg('<polyline points="18 8 22 12 18 16"/><polyline points="6 8 2 12 6 16"/><line x1="2" x2="22" y1="12" y2="12"/>'),
+            grid: _svg('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>'),
+            menu: _svg('<line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>'),
+            arrowLeft: _svg('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
+            cards: _svg('<rect width="14" height="19" x="5" y="2.5" rx="2"/><path d="M12 8.5v7"/><path d="m9 13.5 6-3"/><path d="m9 10.5 6 3"/>')
+        };
+        // 정적 버튼(모드/싱글)에 아이콘 일괄 적용 (단일 소스)
+        function applyStaticIcons() {
+            const modeMap = { slotModeBtn: ['layoutGrid', '슬롯'], singleModeBtn: ['image', '싱글'], galleryModeBtn: ['images', '갤러리'], censorModeBtn: ['shield', '자동검열'], utilityModeBtn: ['wrench', '보조 도구'], cardEditorModeBtn: ['idCard', '캐릭터 카드'] };
+            for (const id in modeMap) { const b = document.getElementById(id); if (b) b.innerHTML = ICONS[modeMap[id][0]] + `<span>${modeMap[id][1]}</span>`; }
+            const singleMap = { singleSaveGalleryBtn: 'star', singleClearBtn: 'eraser', singleSavePreviewBtn: 'save', singleDeleteBtn: 'trash', singleInpaintBtn: 'brush', singleEnhanceBtn: 'sparkles', singleLoadSettingsBtn: 'sliders' };
+            for (const id in singleMap) { const b = document.getElementById(id); if (b) b.innerHTML = ICONS[singleMap[id]]; }
+            // data-icon 속성을 가진 모든 요소에 아이콘 주입 (앱 전체 정적 이모지 대체용, 텍스트 형제는 유지)
+            document.querySelectorAll('[data-icon]').forEach(el => { const ic = ICONS[el.dataset.icon]; if (ic) el.innerHTML = ic; });
+        }
+        applyStaticIcons();
+
+        // ===== 큐 대기 플레이스홀더 (슬롯/싱글 공용) =====
+        // fill 순서대로 정렬된 대기 플레이스홀더. [0]만 '생성중', 나머지 '대기중'.
+        let pendingPlaceholders = [];
+        function makePlaceholderEl(cls, aspect) {
+            const el = document.createElement('div');
+            el.className = cls + ' placeholder';
+            if (aspect) el.style.aspectRatio = aspect;
+            el.innerHTML = '<span class="ph-label">대기중</span>';
+            return el;
+        }
+        // 실제 생성 중인 한 곳만 '생성중', 나머지는 '대기중' 표시 갱신
+        function refreshPlaceholderStatus() {
+            pendingPlaceholders = pendingPlaceholders.filter(p => p.isConnected && p.classList.contains('placeholder'));
+            pendingPlaceholders.forEach((p, i) => {
+                const label = p.querySelector('.ph-label');
+                if (label) label.textContent = i === 0 ? '생성중' : '대기중';
+                p.classList.toggle('generating', i === 0);
+            });
+        }
+        // 큐 시작 시 생성 예정 수만큼 플레이스홀더 예약 (genMode 기준, 슬롯은 요청 해상도 비율)
+        function reservePlaceholders(count, width, height) {
+            if (count <= 0) return;
+            if (genMode === 'single') {
+                const strip = document.getElementById('singleStrip');
+                if (!strip) return;
+                const created = [];
+                for (let i = 0; i < count; i++) {
+                    const ph = makePlaceholderEl('single-thumb');
+                    strip.insertBefore(ph, strip.firstChild);
+                    created.push(ph);  // created[0]=첫삽입=우측=가장 먼저 채워짐
+                }
+                pendingPlaceholders.push(...created);
+            } else {
+                const aspect = (width && height) ? `${width} / ${height}` : '1 / 1';
+                const slots = [...slotsContainer.querySelectorAll('.slot:not(.locked)')];
+                const perSlot = slots.map(slot => {
+                    const ic = slot.querySelector('.slot-images');
+                    if (!ic) return [];
+                    const emptyEl = ic.querySelector('.slot-empty');
+                    if (emptyEl) emptyEl.remove();
+                    const arr = [];
+                    for (let i = 0; i < count; i++) {
+                        const ph = makePlaceholderEl('slot-image-card', aspect);
+                        ic.insertBefore(ph, ic.firstChild);
+                        arr.push(ph);  // arr[0]=첫삽입=맨아래=repeat0(가장 먼저 채워짐)
+                    }
+                    return arr;
+                });
+                // fill 순서: repeat-major(같은 repeat 안에서 슬롯 순서대로 도착)
+                for (let r = 0; r < count; r++) for (let s = 0; s < slots.length; s++) {
+                    if (perSlot[s][r]) pendingPlaceholders.push(perSlot[s][r]);
+                }
+            }
+            refreshPlaceholderStatus();
+        }
+        // 큐가 비워지면(완료/취소/클리어) 남은 플레이스홀더 제거
+        function clearAllPlaceholders() {
+            document.querySelectorAll('.slot-image-card.placeholder, .single-thumb.placeholder').forEach(el => el.remove());
+            pendingPlaceholders = [];
+        }
+
+        // clear(미리보기 지우기)로 지운 이미지를 백엔드 복원 버퍼에서도 제거 → 새로고침해도 복원 안 됨
+        async function forgetImages(seqs) {
+            const list = (seqs || []).filter(s => s != null);
+            if (!list.length) return;
+            try {
+                await fetch(`${API_BASE}/api/recent/remove`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seqs: list })
+                });
+            } catch (e) { /* 무시 */ }
+        }
+
+        // 싱글 뷰어에 특정 이미지를 크게 표시하고 현재 액션 대상을 갱신
+        function selectSingleImage(imageData, thumbEl) {
+            if (!imageData) return;
+            const viewerImg = document.getElementById('singleViewerImg');
+            const emptyEl = document.getElementById('singleEmpty');
+            const actionsEl = document.getElementById('singleActions');
+            const seedEl = document.getElementById('singleSeed');
+            const galleryBtn = document.getElementById('singleSaveGalleryBtn');
+            const savePreviewBtn = document.getElementById('singleSavePreviewBtn');
+            const deleteBtn = document.getElementById('singleDeleteBtn');
+
+            currentSingleImageData = imageData;
+            viewerImg.src = imageData._fullSrc || '';
+            viewerImg.style.display = 'block';
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (actionsEl) actionsEl.style.display = 'flex';
+            if (galleryBtn) galleryBtn.style.display = '';
+
+            if (seedEl) {
+                if (imageData.seed != null) {
+                    seedEl.textContent = `Seed: ${imageData.seed}`;
+                    seedEl.style.display = '';
+                } else {
+                    seedEl.textContent = '';
+                    seedEl.style.display = 'none';
+                }
+            }
+            if (galleryBtn) {
+                const saved = !!imageData.galleryFilename;
+                galleryBtn.classList.toggle('saved', saved);
+            }
+            // 파일 저장 여부에 따라 💾(미저장) / 🗑️(저장됨) 표시 (슬롯과 동일)
+            const isFileSaved = !!imageData.image_path;
+            if (savePreviewBtn) savePreviewBtn.style.display = isFileSaved ? 'none' : '';
+            if (deleteBtn) deleteBtn.style.display = isFileSaved ? '' : 'none';
+            // 인핸스는 NAI 전용 (슬롯과 동일)
+            const enhanceBtn = document.getElementById('singleEnhanceBtn');
+            if (enhanceBtn) enhanceBtn.style.display = (currentProvider === 'nai') ? '' : 'none';
+
+            const strip = document.getElementById('singleStrip');
+            strip.querySelectorAll('.single-thumb.selected').forEach(t => t.classList.remove('selected'));
+            if (thumbEl) thumbEl.classList.add('selected');
+
+            // 배율/팬 유지 적용 (이미지·탭 전환에도 유지)
+            viewerImg.onload = () => applySingleTransform();
+            applySingleTransform();
+        }
+
+        // 썸네일 요소에 이미지 데이터를 채워 실제 썸네일로 만든다 (신규/플레이스홀더 채우기 공용)
+        function renderSingleThumb(thumb, data) {
+            const cacheBuster = Date.now();
+            // 슬롯 카드와 동일 규칙: 뷰어=원본, 썸네일=?thumb
+            const fullSrc = data.image_path
+                ? `${API_BASE}/api/outputs/${data.image_path}?t=${cacheBuster}`
+                : (data.image_base64 ? `data:image/png;base64,${data.image_base64}` : `data:image/png;base64,${data.image}`);
+            const thumbSrc = data.image_path
+                ? `${API_BASE}/api/outputs/${data.image_path}?thumb=640&t=${cacheBuster}`
+                : fullSrc;
+            const hasMetadata = !!data.metadata;
+            const imageData = {
+                image_path: data.image_path || null,
+                image: data.image || null,
+                image_base64: data.image_base64 || null,
+                filename: data.filename,
+                seed: hasMetadata ? data.seed : null,
+                prompt: hasMetadata ? (data.prompt || '') : null,
+                metadata: data.metadata || null,
+                save_format: data.save_format || 'png',
+                output_folder: data.output_folder || '',
+                slotIndex: 0,
+                galleryFilename: null,
+                seq: data.seq,
+                _fullSrc: fullSrc
+            };
+            thumb.className = 'single-thumb';
+            thumb.innerHTML = '';
+            thumb._imageData = imageData;
+            const timg = document.createElement('img');
+            timg.src = thumbSrc;
+            timg.alt = '';
+            timg.draggable = false;
+            timg.decoding = 'async';
+            thumb.appendChild(timg);
+            thumb.onclick = () => selectSingleImage(thumb._imageData, thumb);
+            return imageData;
+        }
+
+        // 생성 결과를 싱글 뷰에 추가 (최신이 좌측). 대기 플레이스홀더가 있으면 그걸 채운다.
+        function addImageToSingle(data) {
+            const strip = document.getElementById('singleStrip');
+            if (!strip) return;
+            // 가장 오래된(=오른쪽) 대기 플레이스홀더부터 채워 최신이 좌측에 오도록
+            const phs = strip.querySelectorAll('.single-thumb.placeholder');
+            let thumb;
+            if (phs.length) {
+                thumb = phs[phs.length - 1];
+            } else {
+                thumb = document.createElement('div');
+                strip.insertBefore(thumb, strip.firstChild);  // 최신이 좌측
+            }
+            const imageData = renderSingleThumb(thumb, data);
+            // 생성 완료 시 최신 항목으로 뷰어 포커스를 자동 이동하지 않음 (아무것도 보고 있지 않을 때만 표시)
+            if (!currentSingleImageData) selectSingleImage(imageData, thumb);
+            refreshPlaceholderStatus();
+        }
+
+        // 큰 뷰어 휠: 이전/다음 이미지 (플레이스홀더 제외한 실제 썸네일 사이 이동)
+        function navigateSingle(dir) {
+            const strip = document.getElementById('singleStrip');
+            if (!strip) return;
+            const thumbs = [...strip.querySelectorAll('.single-thumb:not(.placeholder)')];
+            if (!thumbs.length) return;
+            let idx = thumbs.findIndex(t => t.classList.contains('selected'));
+            if (idx < 0) idx = 0;
+            let next = idx + dir;
+            if (next < 0) next = 0;
+            if (next >= thumbs.length) next = thumbs.length - 1;
+            const t = thumbs[next];
+            if (t && t._imageData) {
+                selectSingleImage(t._imageData, t);
+                t.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
+        }
+
+        // 싱글 뷰어 배율/팬 적용 (확대 시 화면 밖으로 안 나가게 클램프)
+        function clampSinglePan() {
+            const img = document.getElementById('singleViewerImg');
+            const viewer = document.getElementById('singleViewer');
+            if (!img || !viewer) return;
+            const maxX = Math.max(0, (img.offsetWidth * singleZoom - viewer.clientWidth) / 2);
+            const maxY = Math.max(0, (img.offsetHeight * singleZoom - viewer.clientHeight) / 2);
+            singlePanX = Math.min(maxX, Math.max(-maxX, singlePanX));
+            singlePanY = Math.min(maxY, Math.max(-maxY, singlePanY));
+        }
+        function applySingleTransform() {
+            const img = document.getElementById('singleViewerImg');
+            if (!img) return;
+            clampSinglePan();
+            img.style.transform = `translate(${singlePanX}px, ${singlePanY}px) scale(${singleZoom})`;
+            img.style.cursor = singleZoom > 1 ? 'grab' : '';
+            const label = document.getElementById('singleZoomLabel');
+            if (label) label.textContent = `${Math.round(singleZoom * 100)}%`;
+        }
+        function setSingleZoom(z) {
+            // 하한 0.25(=25%): 100%(화면맞춤)보다 더 작게 축소 가능
+            singleZoom = Math.min(6, Math.max(0.25, Math.round(z * 100) / 100));
+            if (singleZoom <= 1) { singlePanX = 0; singlePanY = 0; }  // 100% 이하에선 팬 불필요
+            applySingleTransform();
+        }
+
+        // 싱글 모드 액션 버튼/휠 배선 (현재 뷰어에 표시 중인 이미지 대상)
+        (function setupSingleModeActions() {
+            const galleryBtn = document.getElementById('singleSaveGalleryBtn');
+            const loadBtn = document.getElementById('singleLoadSettingsBtn');
+            const inpaintBtn = document.getElementById('singleInpaintBtn');
+            const clearBtn = document.getElementById('singleClearBtn');
+            const savePreviewBtn = document.getElementById('singleSavePreviewBtn');
+            const deleteBtn = document.getElementById('singleDeleteBtn');
+            const seedEl = document.getElementById('singleSeed');
+            const strip = document.getElementById('singleStrip');
+            const viewer = document.getElementById('singleViewer');
+
+            // ☆ 갤러리 저장/제거
+            if (galleryBtn) galleryBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d) return;
+                if (galleryBtn.classList.contains('saved')) {
+                    try {
+                        const galleryFilename = d.galleryFilename || d.filename;
+                        const response = await fetch(`${API_BASE}/api/gallery/${encodeURIComponent(galleryFilename)}`, { method: 'DELETE' });
+                        const result = await response.json();
+                        if (result.success) {
+                            galleryBtn.classList.remove('saved');
+                            d.galleryFilename = null;
+                            showToast('갤러리에서 제거됨', 'success');
+                            window.galleryInitialized = false;
+                        } else showToast('제거 실패: ' + result.error, 'error');
+                    } catch (err) { showToast('제거 오류: ' + err.message, 'error'); }
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_BASE}/api/gallery/save`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: d.image || d.image_base64,
+                            image_path: d.image_path,
+                            filename: d.filename || 'unsaved.png',
+                            folder: currentGalleryFolder || '',
+                            metadata: d.metadata
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        galleryBtn.classList.add('saved');
+                        d.galleryFilename = result.filename || d.filename;
+                        showToast('갤러리에 저장됨', 'success');
+                        window.galleryInitialized = false;
+                    } else showToast('저장 실패: ' + result.error, 'error');
+                } catch (err) { showToast('저장 오류: ' + err.message, 'error'); }
+            };
+
+            // 📋 전체 설정 불러오기
+            if (loadBtn) loadBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d) return;
+                const b64 = await resolveImageBase64(d);
+                if (b64) showGalleryDropModal(b64, d.metadata, d.image_path || 'output.png');
+                else showToast('이미지를 불러올 수 없습니다', 'error');
+            };
+
+            // 🎨 인페인트
+            if (inpaintBtn) inpaintBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d) return;
+                const b64 = await resolveImageBase64(d);
+                if (b64) setBaseImageForInpaint('data:image/png;base64,' + b64);
+                else showToast('이미지 데이터가 없습니다', 'error');
+            };
+
+            // ✨ 인핸스 (NAI 전용)
+            const enhanceBtn = document.getElementById('singleEnhanceBtn');
+            if (enhanceBtn) enhanceBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d) return;
+                const b64 = await resolveImageBase64(d);
+                if (b64) openEnhanceModal('data:image/png;base64,' + b64, d.metadata, 0);
+                else showToast('이미지 데이터가 없습니다', 'error');
+            };
+
+            // 💾 파일로 저장 (미저장 미리보기)
+            if (savePreviewBtn) savePreviewBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d || d.image_path) return;
+                try {
+                    const response = await fetch(`${API_BASE}/api/save-preview`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image_base64: d.image_base64 || d.image,
+                            slot_index: 0,
+                            slot_name: '',
+                            save_format: document.getElementById('saveFormat').value,
+                            jpg_quality: parseInt(document.getElementById('jpgQuality').value) || 95,
+                            output_folder: typeof getOutputFolder === 'function' ? getOutputFolder() : '',
+                            exclude_slot_number: document.getElementById('excludeSlotNumber').checked
+                        })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        d.filename = result.filename;
+                        d.image_path = result.image_path;
+                        selectSingleImage(d, strip.querySelector('.single-thumb.selected'));
+                        showToast(`저장됨: ${result.filename}`, 'success');
+                    } else showToast(`저장 실패: ${result.error}`, 'error');
+                } catch (err) { showToast(`저장 오류: ${err.message}`, 'error'); }
+            };
+
+            // 🗑️ 파일 삭제 (미리보기는 유지)
+            if (deleteBtn) deleteBtn.onclick = async () => {
+                const d = currentSingleImageData;
+                if (!d || !d.image_path) return;
+                const b64 = await resolveImageBase64(d);  // 삭제 전 미리보기 보존
+                try {
+                    const response = await fetch(`${API_BASE}/api/outputs/${encodeURIComponent(d.image_path)}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (result.success) {
+                        if (b64) { d.image_base64 = b64; d._fullSrc = 'data:image/png;base64,' + b64; }
+                        d.image_path = null;
+                        const sel = strip.querySelector('.single-thumb.selected');
+                        if (sel && b64) { const im = sel.querySelector('img'); if (im) im.src = d._fullSrc; }
+                        selectSingleImage(d, sel);
+                        showToast('파일이 삭제되었습니다', 'success');
+                    } else showToast('삭제 실패: ' + (result.error || 'Unknown error'), 'error');
+                } catch (err) { showToast('삭제 오류: ' + err.message, 'error'); }
+            };
+
+            // 🧹 이 이미지 지우기 (미리보기에서 제거)
+            if (clearBtn) clearBtn.onclick = () => {
+                const cur = strip.querySelector('.single-thumb.selected');
+                if (!cur) return;
+                forgetImages([cur._imageData?.seq]);
+                const realFwd = (el) => { while (el && (el.classList.contains('placeholder') || !el._imageData)) el = el.nextElementSibling; return el; };
+                const realBwd = (el) => { while (el && (el.classList.contains('placeholder') || !el._imageData)) el = el.previousElementSibling; return el; };
+                const nextSel = realFwd(cur.nextElementSibling) || realBwd(cur.previousElementSibling);
+                cur.remove();
+                if (nextSel && nextSel._imageData) {
+                    selectSingleImage(nextSel._imageData, nextSel);
+                } else {
+                    currentSingleImageData = null;
+                    const viewerImg = document.getElementById('singleViewerImg');
+                    const emptyEl = document.getElementById('singleEmpty');
+                    const actionsEl = document.getElementById('singleActions');
+                    if (viewerImg) { viewerImg.src = ''; viewerImg.style.display = 'none'; }
+                    if (emptyEl) emptyEl.style.display = '';
+                    if (actionsEl) actionsEl.style.display = 'none';
+                    if (galleryBtn) galleryBtn.style.display = 'none';
+                }
+            };
+
+            // Seed 클릭 → 시드 입력란 적용
+            if (seedEl) seedEl.onclick = () => {
+                const d = currentSingleImageData;
+                if (!d || d.seed == null) return;
+                document.getElementById('seed').value = d.seed;
+                showToast(`시드 ${d.seed} 적용됨`, 'success');
+            };
+
+            // 우측 세로 스트립은 기본 세로 휠 스크롤 사용 (별도 처리 없음)
+
+            // 물리 확대/축소 버튼 (Ctrl+휠과 동일한 setSingleZoom 사용)
+            const zoomInBtn = document.getElementById('singleZoomInBtn');
+            const zoomOutBtn = document.getElementById('singleZoomOutBtn');
+            const zoomResetBtn = document.getElementById('singleZoomResetBtn');
+            const ZOOM_STEP = 0.25;  // 한 단계마다 +25%p 일정 증가
+            if (zoomInBtn) zoomInBtn.onclick = () => setSingleZoom(singleZoom + ZOOM_STEP);
+            if (zoomOutBtn) zoomOutBtn.onclick = () => setSingleZoom(singleZoom - ZOOM_STEP);
+            if (zoomResetBtn) zoomResetBtn.onclick = () => setSingleZoom(1);
+
+            // 큰 이미지: Ctrl+휠 = 배율 조정 / 일반 휠 = 이전·다음 이미지
+            if (viewer) viewer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) {
+                    setSingleZoom(singleZoom + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+                } else {
+                    navigateSingle(e.deltaY > 0 ? 1 : -1);
+                }
+            }, { passive: false });
+
+            // 확대 상태에서 드래그로 이동 / 더블클릭으로 배율 리셋
+            if (viewer) {
+                let panning = false, psx = 0, psy = 0, ppx = 0, ppy = 0;
+                viewer.addEventListener('mousedown', (e) => {
+                    if (singleZoom <= 1) return;
+                    e.preventDefault();
+                    panning = true; psx = e.clientX; psy = e.clientY; ppx = singlePanX; ppy = singlePanY;
+                    const img = document.getElementById('singleViewerImg');
+                    if (img) img.style.cursor = 'grabbing';
+                });
+                window.addEventListener('mousemove', (e) => {
+                    if (!panning) return;
+                    singlePanX = ppx + (e.clientX - psx);
+                    singlePanY = ppy + (e.clientY - psy);
+                    applySingleTransform();
+                });
+                window.addEventListener('mouseup', () => {
+                    if (!panning) return;
+                    panning = false;
+                    const img = document.getElementById('singleViewerImg');
+                    if (img) img.style.cursor = singleZoom > 1 ? 'grab' : '';
+                });
+                viewer.addEventListener('dblclick', () => setSingleZoom(1));
+            }
+
+            // Delete 키 → 현재 선택 이미지 지우기 (싱글 모드에서만, 입력 필드 포커스 시 제외)
+            document.addEventListener('keydown', (e) => {
+                if (currentMode !== 'single' || e.key !== 'Delete') return;
+                const ae = document.activeElement;
+                if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+                if (clearBtn) clearBtn.click();
+            });
+        })();
 
         function addHiresPreviewToSlot(slotIndex, data) {
             // HiresFix 1st pass 미리보기 이미지를 슬롯에 추가
@@ -11669,10 +12505,10 @@
 
             card.innerHTML = `
                 <img src="${imgSrc}" alt="" draggable="false" decoding="async">
-                <button type="button" class="save-gallery-btn" title="갤러리에 저장" disabled>☆</button>
+                <button type="button" class="save-gallery-btn" title="갤러리에 저장" disabled>${ICONS.star}</button>
                 <div class="info">
                     <div class="info-row">
-                        <button type="button" class="clear-card-btn" title="미리보기 지우기">🧹</button>
+                        <button type="button" class="clear-card-btn" title="미리보기 지우기">${ICONS.eraser}</button>
                         <div class="filename hires-label" title="HiresFix 처리 중...">HiresFix 처리 중...</div>
                     </div>
                     <div class="seed">${data.seed ? 'Seed: ' + data.seed : ''}</div>
@@ -11722,17 +12558,17 @@
             card._fullSrc = imgSrc;
             card.innerHTML = `
                 <img src="${imgSrc}" alt="" draggable="false" decoding="async">
-                <button type="button" class="save-gallery-btn" title="갤러리에 저장">☆</button>
+                <button type="button" class="save-gallery-btn" title="갤러리에 저장">${ICONS.star}</button>
                 <div class="info">
                     <div class="info-row">
-                        <button type="button" class="clear-card-btn" title="미리보기 지우기">🧹</button>
-                        <button type="button" class="save-preview-btn" title="파일로 저장">💾</button>
-                        <button type="button" class="delete-file-btn" title="파일 삭제" style="display:none">🗑️</button>
+                        <button type="button" class="clear-card-btn" title="미리보기 지우기">${ICONS.eraser}</button>
+                        <button type="button" class="save-preview-btn" title="파일로 저장">${ICONS.save}</button>
+                        <button type="button" class="delete-file-btn" title="파일 삭제" style="display:none">${ICONS.trash}</button>
                         <div class="filename unsaved" title="저장되지 않음">1pass 미리보기</div>
-                        <button type="button" class="inpaint-btn" title="Inpaint">🎨</button>
-                        <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">✨</button>
-                        <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">✨</button>
-                        <button type="button" class="load-settings-btn" title="전체 설정 불러오기" style="display: none;">📋</button>
+                        <button type="button" class="inpaint-btn" title="Inpaint">${ICONS.brush}</button>
+                        <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">${ICONS.sparkles}</button>
+                        <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">${ICONS.scaling}</button>
+                        <button type="button" class="load-settings-btn" title="전체 설정 불러오기" style="display: none;">${ICONS.sliders}</button>
                     </div>
                     <div class="seed">${seed ? 'Seed: ' + seed : ''}</div>
                 </div>
@@ -11870,7 +12706,7 @@
             const lockedSlots = slotsContainer.querySelectorAll('.slot.locked');
             const allLocked = slots.length > 0 && lockedSlots.length === slots.length;
             lockAllBtn.classList.toggle('all-locked', allLocked);
-            lockAllBtn.textContent = allLocked ? '🔒' : '🔓';
+            lockAllBtn.innerHTML = allLocked ? ICONS.lock : ICONS.unlock;
             lockAllBtn.title = allLocked ? '전체 슬롯 락 해제' : '전체 슬롯 락 설정';
         }
 
@@ -11884,12 +12720,12 @@
                 if (shouldLock) {
                     slot.classList.add('locked');
                     lockBtn.classList.add('locked');
-                    lockBtn.textContent = '🔒';
+                    lockBtn.innerHTML = ICONS.lock;
                     lockBtn.title = '락 해제';
                 } else {
                     slot.classList.remove('locked');
                     lockBtn.classList.remove('locked');
-                    lockBtn.textContent = '🔓';
+                    lockBtn.innerHTML = ICONS.unlock;
                     lockBtn.title = '락 (생성 제외)';
                 }
             });
@@ -12001,10 +12837,10 @@
 
             presetList.innerHTML = presets.map(p => `
                 <div class="preset-item ${currentPreset?.filename === p.filename ? 'selected' : ''}" data-filename="${p.filename}">
-                    <span class="check">${currentPreset?.filename === p.filename ? '✓' : ''}</span>
+                    <span class="check">${currentPreset?.filename === p.filename ? ICONS.check : ''}</span>
                     <span class="label">${p.name}</span>
-                    <button class="edit-btn" title="이름 변경">✏️</button>
-                    <button class="delete-btn" title="삭제">🗑️</button>
+                    <button class="edit-btn" title="이름 변경">${ICONS.pencil}</button>
+                    <button class="delete-btn" title="삭제">${ICONS.trash}</button>
                 </div>
             `).join('');
             
@@ -12203,7 +13039,7 @@
         function setOutputFolder(folderName) {
             currentOutputFolder = folderName;
             outputFolderName.textContent = folderName || 'output';
-            outputFolderIcon.textContent = '📁';
+            outputFolderIcon.innerHTML = ICONS.folder;
             autoSaveSettings();
         }
 
@@ -12254,7 +13090,7 @@
 
             let html = `
                 <div class="folder-item root-folder ${isRootSelected ? 'active' : ''}" data-folder="">
-                    <span>${isRootSelected ? '📂' : '📁'}</span>
+                    <span>${isRootSelected ? ICONS.folderOpen : ICONS.folder}</span>
                     <span>output</span>
                 </div>
             `;
@@ -12263,7 +13099,7 @@
                 const isSelected = currentOutputFolder === folder.name;
                 html += `
                     <div class="folder-item subfolder ${isSelected ? 'active' : ''}" data-folder="${folder.name}">
-                        <span>${isSelected ? '📂' : '📁'}</span>
+                        <span>${isSelected ? ICONS.folderOpen : ICONS.folder}</span>
                         <span>${folder.name}</span>
                         <span style="margin-left: auto; opacity: 0.6; font-size: 0.75rem;">${folder.image_count}</span>
                     </div>
@@ -13004,7 +13840,7 @@
                                 <div class="prompt-preset-item-actions">
                                     <button class="add-btn">Add</button>
                                     <button class="replace-btn">Replace</button>
-                                    <button class="delete-btn">🗑️</button>
+                                    <button class="delete-btn">${ICONS.trash}</button>
                                 </div>
                             </div>
                         `).join('');
@@ -13116,7 +13952,7 @@
             const dragHandle = document.createElement('button');
             dragHandle.type = 'button';
             dragHandle.className = 'char-drag';
-            dragHandle.innerHTML = '☰';
+            dragHandle.innerHTML = ICONS.menu;
             dragHandle.title = '드래그하여 순서 변경';
 
             // 접기 버튼
@@ -13167,7 +14003,7 @@
             const coordBtn = document.createElement('button');
             coordBtn.type = 'button';
             coordBtn.className = 'char-coord-btn' + (coord ? ' active' : '');
-            coordBtn.innerHTML = coord ? coord.toUpperCase() : '📍';
+            coordBtn.innerHTML = coord ? coord.toUpperCase() : ICONS.pin;
             coordBtn.title = coord ? `위치: ${coord.toUpperCase()} (클릭하여 해제)` : '캐릭터 위치 지정';
 
             coordBtn.onclick = (e) => {
@@ -13183,7 +14019,7 @@
                 // 이미 좌표가 있으면 해제
                 if (item.dataset.coord) {
                     item.dataset.coord = '';
-                    coordBtn.innerHTML = '📍';
+                    coordBtn.innerHTML = ICONS.pin;
                     coordBtn.classList.remove('active');
                     coordBtn.title = '캐릭터 위치 지정';
                     autoSaveSettings();
@@ -13269,7 +14105,7 @@
             presetDropdown.className = 'prompt-preset-dropdown';
             presetDropdown.dataset.category = 'character';
             presetDropdown.innerHTML = `
-                <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">🔖 ▼</button>
+                <button type="button" class="prompt-preset-btn" title="프롬프트 프리셋">${ICONS.bookmark} ▼</button>
                 <div class="prompt-preset-menu">
                     <div class="prompt-preset-list"></div>
                     <div class="prompt-preset-actions">
@@ -13622,7 +14458,7 @@
                         const isSelected = currentCharPreset?.filename === p.filename;
                         return `
                             <div class="char-preset-item ${isSelected ? 'selected' : ''}" data-filename="${p.filename}">
-                                <span class="check">${isSelected ? '✓' : ''}</span>
+                                <span class="check">${isSelected ? ICONS.check : ''}</span>
                                 <span class="label">${p.name}</span>
                                 <span class="preview">${preview}</span>
                                 <button class="delete-btn" title="삭제">×</button>
@@ -14111,6 +14947,11 @@
                 showNaiTokenModal();
                 return;
             }
+
+            // 생성은 항상 활성 생성 모드(genMode)로. 보조 탭(갤러리/검열/보조/카드)을 보는 중이면 해당 생성 뷰로 전환.
+            if (currentMode !== 'slot' && currentMode !== 'single') {
+                setActiveView(genMode);
+            }
             
             // Complete 후 리셋 타이머 취소
             if (resetTimer) {
@@ -14127,8 +14968,8 @@
             const slotList = getSlotList();
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
 
-            // 슬롯 모드에서 모든 슬롯이 락되어 있으면 생성 불가
-            if (currentMode === 'slot') {
+            // 생성 모드가 슬롯인데 모든 슬롯이 락되어 있으면 생성 불가
+            if (genMode === 'slot') {
                 const allSlots = getAllSlotList();
                 if (allSlots.length > 0 && slotList.length === 0) {
                     showToast('모든 슬롯이 잠겨 있어 생성할 수 없습니다', 'warning');
@@ -14137,13 +14978,15 @@
             }
 
             // 모든 슬롯 등록 (빈 슬롯도 포함)
-            const promptCount = slotList.length || 1;
+            const promptCount = genMode === 'single' ? 1 : (slotList.length || 1);
 
             // 백엔드용 데이터 변환
             const globalPromptTarget = document.getElementById('slotPromptTargetGlobal')?.dataset.target || 'char';
-            const promptData = slotList.length > 0
-                ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex, promptTarget: globalPromptTarget }))
-                : [{ name: '', content: '', slotIndex: 0, promptTarget: globalPromptTarget }];
+            const promptData = genMode === 'single'
+                ? [{ name: '', content: '', slotIndex: 0, promptTarget: globalPromptTarget }]
+                : (slotList.length > 0
+                    ? slotList.map(s => ({ name: s.name, content: s.content, slotIndex: s.slotIndex, promptTarget: globalPromptTarget }))
+                    : [{ name: '', content: '', slotIndex: 0, promptTarget: globalPromptTarget }]);
 
             console.log(`[Queue] Adding job: slots=${slotList.length}, promptData=`, promptData);
             
@@ -14185,6 +15028,7 @@
                 sampler: document.getElementById('sampler').value,
                 scheduler: document.getElementById('scheduler').value,
                 output_folder: getOutputFolder(),
+                gen_mode: genMode,
             };
             
             if (currentProvider === 'nai') {
@@ -14289,6 +15133,9 @@
                 prompt_list: request.prompt_list,
             };
 
+            // 생성 예정 수만큼 플레이스홀더 예약 (시각적 대기 표시, 슬롯은 요청 해상도 비율)
+            reservePlaceholders(repeatCount, currentWidth, currentHeight);
+
             // N번 큐에 등록
             for (let i = 0; i < repeatCount; i++) {
                 // 와일드카드 해석 (토큰 없으면 원문 그대로) — 매 장 새로운 랜덤 조합
@@ -14383,10 +15230,8 @@
 
             ws.onopen = () => {
                 console.log('[WS] Connected');
-                // 재연결 시 누락된 이미지 동기화 요청
-                if (lastImageSeq > 0) {
-                    ws.send(JSON.stringify({ type: 'sync', last_seq: lastImageSeq }));
-                }
+                // 연결/재연결 시 항상 동기화 요청 → 새로고침 시 last_seq=0으로 기존 이미지 전체 복원, 재연결 시 누락분만
+                ws.send(JSON.stringify({ type: 'sync', last_seq: lastImageSeq }));
             };
 
             ws.onmessage = (event) => {
@@ -14436,7 +15281,7 @@
                     case 'done':
                     case 'cancelled':
                         btn.classList.remove('queued', 'processing');
-                        btn.textContent = '✨';
+                        btn.innerHTML = ICONS.scaling;
                         btn.disabled = false;
                         delete card.dataset.hiresfixJobId;
                         break;
@@ -14463,10 +15308,17 @@
                     // 재연결 시 누락된 이미지 수신
                     console.log(`[WS] Sync: received ${data.images?.length || 0} missed images`);
                     if (data.images) {
+                        const hadSelection = !!currentSingleImageData;
                         data.images.forEach(img => {
-                            addImageToSlot(img.slot_idx, img);
+                            if (img.gen_mode === 'single') addImageToSingle(img);
+                            else addImageToSlot(img.slot_idx, img);
                             if (img.seq) lastImageSeq = Math.max(lastImageSeq, img.seq);
                         });
+                        // 새로고침 복원 시(기존 선택 없음) 싱글 뷰어는 최신(최상단) 이미지 표시
+                        if (!hadSelection) {
+                            const topSingle = document.querySelector('#singleStrip .single-thumb:not(.placeholder)');
+                            if (topSingle && topSingle._imageData) selectSingleImage(topSingle._imageData, topSingle);
+                        }
                     }
                     if (data.status) {
                         currentIndex = data.status.completed_images;
@@ -14492,7 +15344,8 @@
                     console.log(`[WS] Image received: job_id=${data.job_id}, slot_idx=${data.slot_idx}, filename=${data.filename}, seq=${data.seq}`);
                     if (data.seq) lastImageSeq = Math.max(lastImageSeq, data.seq);
                     updateProgressFromServer(data.progress);
-                    addImageToSlot(data.slot_idx, data);
+                    if (data.gen_mode === 'single') addImageToSingle(data);
+                    else addImageToSlot(data.slot_idx, data);
                     break;
 
                 case 'job_done':
@@ -14532,10 +15385,10 @@
 
                     if (data.progress?.queue_length === 0) {
                         // 모든 작업 완료
+                        clearAllPlaceholders();  // 남은 대기 플레이스홀더 정리
                         statusText.textContent = '완료!';
                         progressFill.style.width = '100%';
                         showToast('완료', 'success');
-                        lastImageSeq = 0;  // 시퀀스 리셋
 
                         // 완료 알림
                         notifyQueueComplete();
@@ -14562,6 +15415,7 @@
                     updateProgressFromServer(data.progress);
                     // 큐가 비었으면 상태 초기화
                     if (!data.progress || data.progress.total === 0 || data.progress.queue_length === 0) {
+                        clearAllPlaceholders();  // 취소 시 남은 대기 플레이스홀더 정리
                         totalImages = 0;
                         currentIndex = 0;
                         updateProgress();
@@ -14587,6 +15441,7 @@
 
                 case 'queue_cleared':
                     console.log(`[WS] Queue cleared: ${data.cleared_images} images`);
+                    clearAllPlaceholders();  // 큐 비움 시 대기 플레이스홀더 정리
                     updateProgressFromServer(data.progress);
                     break;
 
@@ -14603,6 +15458,8 @@
         }
         
         function clearResults() {
+            // 지우는 슬롯 이미지들을 백엔드 복원 버퍼에서도 제거
+            forgetImages([...document.querySelectorAll('.slot-image-card')].map(c => c._imageData?.seq));
             clearSlotImages();
             statusText.textContent = '준비';
             progressFill.style.width = '0%';
@@ -14631,6 +15488,7 @@
             const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
             const idx = cards.indexOf(card);
 
+            forgetImages([card._imageData?.seq]);
             card.remove();
 
             // Navigate to next or previous image, or show empty state
@@ -19827,46 +20685,58 @@
         const galleryEmpty = document.getElementById('galleryEmpty');
         const gallerySubfolders = document.getElementById('gallerySubfolders');
         const galleryRootBtn = document.getElementById('galleryRootBtn');
+        const singleModeBtn = document.getElementById('singleModeBtn');
+        const singleContainer = document.getElementById('singleContainer');
 
-        let currentMode = 'slot'; // 'slot' | 'gallery' | 'censor' | 'utility' | 'cardeditor'
+        let currentMode = 'slot'; // 현재 보이는 뷰: 'slot' | 'single' | 'gallery' | 'censor' | 'utility' | 'cardeditor'
+        let genMode = 'slot';     // 생성 대상(슬롯/싱글). 생성은 항상 이 모드로 감. 슬롯/싱글 뷰 진입 시 갱신됨
         let currentGalleryFolder = ''; // 현재 선택된 폴더 (빈 문자열 = gallery 루트)
         let isVibeMode = false; // vibe cache mode
 
+        // 뷰 전환 공통 헬퍼: 컨테이너 표시/숨김 + 버튼 active + 생성 대상(genMode) 갱신
+        function setActiveView(view) {
+            const wasCard = currentMode === 'cardeditor';
+            currentMode = view;
+            // 슬롯/싱글 뷰면 생성 대상도 그쪽으로 고정 (새로고침 복원용으로 저장)
+            if (view === 'slot' || view === 'single') { genMode = view; try { localStorage.setItem('genMode', genMode); } catch (e) {} }
+
+            slotsToolbar.style.display = view === 'slot' ? 'flex' : 'none';
+            slotsWrapper.style.display = view === 'slot' ? 'flex' : 'none';
+            singleContainer.style.display = view === 'single' ? 'flex' : 'none';
+            galleryContainer.style.display = view === 'gallery' ? 'flex' : 'none';
+            censorContainer.style.display = view === 'censor' ? 'flex' : 'none';
+            utilityContainer.style.display = view === 'utility' ? 'flex' : 'none';
+            cardEditorContainer.style.display = view === 'cardeditor' ? 'flex' : 'none';
+
+            // 세그먼트 토글은 항상 genMode를, 보조 탭은 현재 뷰를 active 표시
+            slotModeBtn.classList.toggle('active', genMode === 'slot');
+            singleModeBtn.classList.toggle('active', genMode === 'single');
+            galleryModeBtn.classList.toggle('active', view === 'gallery');
+            censorModeBtn.classList.toggle('active', view === 'censor');
+            utilityModeBtn.classList.toggle('active', view === 'utility');
+            cardEditorModeBtn.classList.toggle('active', view === 'cardeditor');
+            // 슬롯/싱글 세그먼트: 보조 탭(생성 뷰가 아님) 선택 시 비활성처럼 표시
+            const genSwitch = document.querySelector('.gen-mode-switch');
+            if (genSwitch) genSwitch.classList.toggle('inactive', view !== 'slot' && view !== 'single');
+
+            // 카드에디터에서 나올 때 정리
+            if (wasCard && view !== 'cardeditor') {
+                if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar();
+                if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false);
+            }
+
+            // Queue 버튼 라벨 (생성 대상 기준)
+            generateBtn.textContent = genMode === 'single' ? 'Queue (1)' : `Queue (${getUnlockedSlotCount() || 1})`;
+        }
+
         slotModeBtn.onclick = () => {
             if (currentMode === 'slot') return;
-            const wasCard = currentMode === 'cardeditor';
-            currentMode = 'slot';
-            slotModeBtn.classList.add('active');
-            galleryModeBtn.classList.remove('active');
-            censorModeBtn.classList.remove('active');
-            utilityModeBtn.classList.remove('active');
-            cardEditorModeBtn.classList.remove('active');
-            slotsToolbar.style.display = 'flex';
-            slotsWrapper.style.display = 'flex';
-            galleryContainer.style.display = 'none';
-            censorContainer.style.display = 'none';
-            utilityContainer.style.display = 'none';
-            cardEditorContainer.style.display = 'none';
-            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
+            setActiveView('slot');
         };
 
         galleryModeBtn.onclick = () => {
             if (currentMode === 'gallery') return;
-            const wasCard = currentMode === 'cardeditor';
-            currentMode = 'gallery';
-            galleryModeBtn.classList.add('active');
-            slotModeBtn.classList.remove('active');
-            censorModeBtn.classList.remove('active');
-            utilityModeBtn.classList.remove('active');
-            cardEditorModeBtn.classList.remove('active');
-            slotsToolbar.style.display = 'none';
-            slotsWrapper.style.display = 'none';
-            galleryContainer.style.display = 'flex';
-            censorContainer.style.display = 'none';
-            utilityContainer.style.display = 'none';
-            cardEditorContainer.style.display = 'none';
-            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
-
+            setActiveView('gallery');
             // 갤러리가 이미 로드되어 있으면 스킵 (폴더는 첫 진입 시 로드됨)
             if (!window.galleryInitialized) {
                 loadGalleryFolders();
@@ -19877,21 +20747,7 @@
 
         censorModeBtn.onclick = async () => {
             if (currentMode === 'censor') return;
-            const wasCard = currentMode === 'cardeditor';
-            currentMode = 'censor';
-            censorModeBtn.classList.add('active');
-            slotModeBtn.classList.remove('active');
-            galleryModeBtn.classList.remove('active');
-            utilityModeBtn.classList.remove('active');
-            cardEditorModeBtn.classList.remove('active');
-            slotsToolbar.style.display = 'none';
-            slotsWrapper.style.display = 'none';
-            galleryContainer.style.display = 'none';
-            censorContainer.style.display = 'flex';
-            utilityContainer.style.display = 'none';
-            cardEditorContainer.style.display = 'none';
-            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
-
+            setActiveView('censor');
             // 검열 모드 초기화 (내부에서 캐싱 처리)
             if (typeof initCensorMode === 'function') {
                 await initCensorMode();
@@ -19901,26 +20757,11 @@
         // 보조 도구 모드
         utilityModeBtn.onclick = () => {
             if (currentMode === 'utility') return;
-            const wasCard = currentMode === 'cardeditor';
-            currentMode = 'utility';
-            utilityModeBtn.classList.add('active');
-            slotModeBtn.classList.remove('active');
-            galleryModeBtn.classList.remove('active');
-            censorModeBtn.classList.remove('active');
-            cardEditorModeBtn.classList.remove('active');
-            slotsToolbar.style.display = 'none';
-            slotsWrapper.style.display = 'none';
-            galleryContainer.style.display = 'none';
-            censorContainer.style.display = 'none';
-            utilityContainer.style.display = 'flex';
-            cardEditorContainer.style.display = 'none';
-            if (wasCard) { if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar(); if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false); }
-
+            setActiveView('utility');
             // 보조 도구 모드 초기화
             if (typeof initUtilityMode === 'function') {
                 initUtilityMode();
             }
-
             // 파일 관리 탭이 활성 상태면 진입 시 갱신
             if (utilityState.currentTab === 'filemanager' && utilityState.fileManager.initialized) {
                 fmLoadFolders();
@@ -19931,23 +20772,22 @@
         // 캐릭터 카드 에디터 모드
         cardEditorModeBtn.onclick = () => {
             if (currentMode === 'cardeditor') return;
-            currentMode = 'cardeditor';
-            cardEditorModeBtn.classList.add('active');
-            slotModeBtn.classList.remove('active');
-            galleryModeBtn.classList.remove('active');
-            censorModeBtn.classList.remove('active');
-            utilityModeBtn.classList.remove('active');
-            slotsToolbar.style.display = 'none';
-            slotsWrapper.style.display = 'none';
-            galleryContainer.style.display = 'none';
-            censorContainer.style.display = 'none';
-            utilityContainer.style.display = 'none';
-            cardEditorContainer.style.display = 'flex';
-
+            setActiveView('cardeditor');
             if (typeof initCardEditorMode === 'function') {
                 initCardEditorMode();
             }
         };
+
+        // 싱글 이미지 모드 (세그먼트 토글)
+        singleModeBtn.onclick = () => {
+            if (currentMode === 'single') return;
+            setActiveView('single');
+        };
+
+        // 새로고침 시 마지막 생성 모드(슬롯/싱글) 복원 → 싱글 사용 중이었으면 싱글 뷰로 복귀해 복원된 히스토리를 바로 표시
+        try {
+            if (localStorage.getItem('genMode') === 'single') setActiveView('single');
+        } catch (e) {}
 
         // 갤러리 폴더 열기 (현재 선택된 폴더)
         document.getElementById('openGalleryFolderBtn').onclick = async () => {
@@ -19997,7 +20837,7 @@
 
             // 루트 폴더
             const isRootActive = !isVibeMode && currentGalleryFolder === '';
-            galleryRootBtn.textContent = `${isRootActive ? '📂' : '📁'} gallery`;
+            galleryRootBtn.innerHTML = `${isRootActive ? ICONS.folderOpen : ICONS.folder} gallery`;
             galleryRootBtn.classList.toggle('active', isRootActive);
 
             // 하위 폴더들
@@ -20005,7 +20845,8 @@
                 const isActive = !isVibeMode && tab.dataset.folder === currentGalleryFolder;
                 const folderName = tab.dataset.folder;
                 const count = tab.dataset.count || '';
-                tab.textContent = `${isActive ? '📂' : '📁'} ${folderName}${count ? ` (${count})` : ''}`;
+                tab.innerHTML = isActive ? ICONS.folderOpen : ICONS.folder;
+                tab.append(' ' + folderName + (count ? ` (${count})` : ''));
                 tab.classList.toggle('active', isActive);
             });
         }
@@ -20185,9 +21026,9 @@
                         <div class="seed${img.seed ? ' clickable' : ''}"${img.seed ? ` data-seed="${img.seed}" title="클릭하여 시드 적용"` : ''}>${img.seed ? 'Seed: ' + img.seed : '메타데이터 없음'}</div>
                     </div>
                     <div class="gallery-item-actions">
-                        <button class="inpaint-btn" title="인페인트">🎨 Inpaint</button>
-                        <button class="apply-all-btn" title="설정 적용">📋 Apply</button>
-                        <button class="delete-btn" title="삭제">🗑️</button>
+                        <button class="inpaint-btn" title="인페인트">${ICONS.brush} Inpaint</button>
+                        <button class="apply-all-btn" title="설정 적용">${ICONS.clipboard} Apply</button>
+                        <button class="delete-btn" title="삭제">${ICONS.trash}</button>
                     </div>
                 `;
 
@@ -20456,8 +21297,8 @@
                         <div class="seed">S:${vibe.strength} IE:${vibe.info_extracted}</div>
                     </div>
                     <div class="gallery-item-actions">
-                        <button class="apply-vibe-btn" title="바이브 적용">🎨 Vibe</button>
-                        <button class="delete-btn" title="삭제">🗑️</button>
+                        <button class="apply-vibe-btn" title="바이브 적용">${ICONS.palette} Vibe</button>
+                        <button class="delete-btn" title="삭제">${ICONS.trash}</button>
                     </div>
                 `;
 
@@ -20821,7 +21662,7 @@
                 <div class="prompt-field">
                     <div class="prompt-field-header">
                         <label>${label}</label>
-                        <button type="button" class="copy-btn" data-copy-target="${id}" title="복사">📋</button>
+                        <button type="button" class="copy-btn" data-copy-target="${id}" title="복사">${ICONS.clipboard}</button>
                     </div>
                     <textarea id="${id}" readonly>${value || ''}</textarea>
                 </div>
@@ -21110,9 +21951,9 @@
                         height: img.height
                     };
                     updateBaseImageUI();
-                    // 슬롯 모드로 전환
-                    if (currentMode !== 'slot') {
-                        document.getElementById('slotModeBtn').click();
+                    // 생성 뷰(슬롯/싱글)가 아니면 활성 생성 모드로 전환
+                    if (currentMode !== 'slot' && currentMode !== 'single') {
+                        setActiveView(genMode);
                     }
                     showToast('베이스 이미지로 등록됨', 'success');
                     // Base Image 섹션 펼치고 스크롤
@@ -21758,18 +22599,18 @@
 
         // Inpaint용 이미지 설정 함수 (외부에서 호출)
         function setBaseImageForInpaint(imageBase64) {
-            // 슬롯 모드로 전환 (생성은 슬롯 모드에서만 가능)
-            if (currentMode !== 'slot') {
-                document.getElementById('slotModeBtn').click();
+            // 생성 뷰(슬롯/싱글)가 아니면 활성 생성 모드로 전환
+            if (currentMode !== 'slot' && currentMode !== 'single') {
+                setActiveView(genMode);
             }
             openMaskEditor(imageBase64);
         }
 
         // Enhance용 이미지 설정 함수 (NAI 전용)
         function setBaseImageForEnhance(imageBase64, metadata = null) {
-            // 슬롯 모드로 전환
-            if (currentMode !== 'slot') {
-                document.getElementById('slotModeBtn').click();
+            // 생성 뷰(슬롯/싱글)가 아니면 활성 생성 모드로 전환
+            if (currentMode !== 'slot' && currentMode !== 'single') {
+                setActiveView(genMode);
             }
 
             const img = new Image();
@@ -22035,7 +22876,9 @@
                 base_mode: 'img2img',
                 base_strength: strength,
                 base_noise: noise,
-                // 결과를 원본 슬롯에 표시
+                // 결과를 현재 생성 대상(슬롯/싱글)으로 라우팅 (일반 생성과 동일)
+                gen_mode: genMode,
+                // 결과를 원본 슬롯에 표시 (슬롯 모드일 때)
                 prompt_list: [{ name: '', content: '', slotIndex: enhanceState.slotIndex }],
                 // 저장 옵션 (자동저장 설정 반영)
                 auto_save: document.getElementById('autoSaveToggle').checked,
@@ -23024,7 +23867,7 @@
                         <div class="exif-section-title">${icon} ${title}</div>
                         <div class="exif-field">
                             <div class="exif-field-value prompt">${escaped || '<span style="color:#666">(없음)</span>'}</div>
-                            ${escaped ? `<button type="button" class="exif-copy-btn" onclick="copyExifField(\`${copyValue}\`)">📋</button>` : ''}
+                            ${escaped ? `<button type="button" class="exif-copy-btn" onclick="copyExifField(\`${copyValue}\`)">${ICONS.clipboard}</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -23231,7 +24074,7 @@
                         <div class="exif-section-title">${icon} ${title}</div>
                         <div class="exif-field">
                             <div class="exif-field-value prompt">${escaped}</div>
-                            <button type="button" class="exif-copy-btn" onclick="copyExifField(\`${copyValue}\`)">📋</button>
+                            <button type="button" class="exif-copy-btn" onclick="copyExifField(\`${copyValue}\`)">${ICONS.clipboard}</button>
                         </div>
                     </div>
                 `;
@@ -26103,7 +26946,7 @@
             
             let html = `
                 <div class="folder-item root-folder ${isRootSelected ? 'active' : ''}" data-folder="" data-type="${type}">
-                    <span>${isRootSelected ? '📂' : '📁'}</span>
+                    <span>${isRootSelected ? ICONS.folderOpen : ICONS.folder}</span>
                     <span>${rootName}</span>
                 </div>
             `;
@@ -26112,7 +26955,7 @@
                 const isSelected = currentFolder === folder.name;
                 html += `
                     <div class="folder-item subfolder ${isSelected ? 'active' : ''}" data-folder="${folder.name}" data-type="${type}">
-                        <span>${isSelected ? '📂' : '📁'}</span>
+                        <span>${isSelected ? ICONS.folderOpen : ICONS.folder}</span>
                         <span>${folder.name}</span>
                         <span style="margin-left: auto; opacity: 0.6; font-size: 0.75rem;">${folder.image_count}</span>
                     </div>
@@ -31007,9 +31850,9 @@
                             <span class="pm-preset-name" title="${name}">${isModified ? '● ' : ''}${name}</span>
                             <span class="pm-preset-summary">${summary}</span>
                             <div class="pm-item-actions">
-                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.renamePresetInline('${filename}')" title="이름 변경">✏️</button>
-                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.duplicatePresetFromList('${filename}')" title="복제">📋</button>
-                                <button class="pm-item-action-btn danger" onclick="event.stopPropagation(); presetManager.deletePreset('${filename}')" title="삭제">🗑</button>
+                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.renamePresetInline('${filename}')" title="이름 변경">${ICONS.pencil}</button>
+                                <button class="pm-item-action-btn" onclick="event.stopPropagation(); presetManager.duplicatePresetFromList('${filename}')" title="복제">${ICONS.clipboard}</button>
+                                <button class="pm-item-action-btn danger" onclick="event.stopPropagation(); presetManager.deletePreset('${filename}')" title="삭제">${ICONS.trash}</button>
                             </div>
                         </div>
                     `;
@@ -31150,7 +31993,7 @@
                 if (this.isPromptPresetTab()) {
                     detailHeader.innerHTML = `
                         <span style="flex: 1; font-weight: 600; font-size: 1rem;">${this.escapeHtml(name)}</span>
-                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">💾 저장</button>
+                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">${ICONS.save} 저장</button>
                     `;
                 } else {
                     const addBtnIcon = this.currentTab === 'character' ? '+' : '+🎰';
@@ -31158,7 +32001,7 @@
                     detailHeader.innerHTML = `
                         <span style="flex: 1; font-weight: 600; font-size: 1rem;">${this.escapeHtml(name)}</span>
                         <button class="pm-add-item-btn" onclick="presetManager.addItemToPreset()" title="${addBtnTitle}">${addBtnIcon}</button>
-                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">💾 저장</button>
+                        <button class="pm-toolbar-btn ${isModified ? 'highlight' : ''}" onclick="presetManager.saveCurrentPreset()" title="저장">${ICONS.save} 저장</button>
                     `;
                 }
 
@@ -33419,10 +34262,10 @@
 
         function cardShowCategoryMenu(e, category, pane) {
             const menu = document.getElementById('cardContextMenu');
-            let html = `<div class="card-context-menu-item" data-action="rename">✏️ 이름 변경</div>`;
-            html += `<div class="card-context-menu-item" data-action="duplicate">📋 복제</div>`;
+            let html = `<div class="card-context-menu-item" data-action="rename">${ICONS.pencil} 이름 변경</div>`;
+            html += `<div class="card-context-menu-item" data-action="duplicate">${ICONS.clipboard} 복제</div>`;
             if (category.type !== 'builtin') {
-                html += `<div class="card-context-menu-item danger" data-action="delete">🗑️ 삭제</div>`;
+                html += `<div class="card-context-menu-item danger" data-action="delete">${ICONS.trash} 삭제</div>`;
             }
             menu.innerHTML = html;
             menu.style.left = e.clientX + 'px';
@@ -34266,10 +35109,10 @@
 
             const menu = document.getElementById('cardContextMenu');
             menu.innerHTML = `
-                <div class="card-context-menu-item" data-action="open">📂 열기</div>
-                <div class="card-context-menu-item" data-action="rename">✏️ 이름 변경</div>
-                <div class="card-context-menu-item" data-action="duplicate">📋 복제</div>
-                <div class="card-context-menu-item danger" data-action="delete">🗑️ 삭제</div>
+                <div class="card-context-menu-item" data-action="open">${ICONS.folderOpen} 열기</div>
+                <div class="card-context-menu-item" data-action="rename">${ICONS.pencil} 이름 변경</div>
+                <div class="card-context-menu-item" data-action="duplicate">${ICONS.clipboard} 복제</div>
+                <div class="card-context-menu-item danger" data-action="delete">${ICONS.trash} 삭제</div>
             `;
             menu.style.left = e.clientX + 'px';
             menu.style.top = e.clientY + 'px';
@@ -34336,10 +35179,10 @@
             </div>
             <div class="pm-toolbar">
                 <button type="button" class="pm-toolbar-btn" id="pmNewBtn">+ 새로 만들기</button>
-                <button type="button" class="pm-toolbar-btn" id="pmImportBtn">📥 Import</button>
-                <button type="button" class="pm-toolbar-btn" id="pmExportBtn" disabled>📤 Export</button>
-                <button type="button" class="pm-toolbar-btn" id="pmMergeBtn" disabled>🔗 합치기</button>
-                <button type="button" class="pm-toolbar-btn danger" id="pmDeleteBtn" disabled>🗑 삭제</button>
+                <button type="button" class="pm-toolbar-btn" id="pmImportBtn"><span data-icon="download"></span> Import</button>
+                <button type="button" class="pm-toolbar-btn" id="pmExportBtn" disabled><span data-icon="upload"></span> Export</button>
+                <button type="button" class="pm-toolbar-btn" id="pmMergeBtn" disabled><span data-icon="link"></span> 합치기</button>
+                <button type="button" class="pm-toolbar-btn danger" id="pmDeleteBtn" disabled><span data-icon="trash"></span> 삭제</button>
             </div>
             <div class="pm-content">
                 <div class="pm-list-panel">
@@ -34408,7 +35251,7 @@
             </div>
             <div class="wc-footer">
                 <span class="wc-status" id="wcStatus"></span>
-                <button type="button" class="wc-btn primary" id="wildcardSaveBtn">💾 저장</button>
+                <button type="button" class="wc-btn primary" id="wildcardSaveBtn"><span data-icon="save"></span> 저장</button>
             </div>
         </div>
     </div>

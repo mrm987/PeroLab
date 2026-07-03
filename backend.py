@@ -931,6 +931,7 @@ class MultiGenerateRequest(BaseModel):
     model: str = ""
     loras: List[dict] = []
     output_folder: str = ""  # 비어있으면 outputs에 직접 저장, 있으면 outputs/폴더명에 저장
+    gen_mode: str = "slot"   # 생성 모드(slot/single) - 새로고침 복원 시 라우팅용
 
     # NAI Vibe Transfer
     vibe_transfer: List[dict] = []
@@ -2256,12 +2257,12 @@ class GenerationQueue:
         }
 
     def add_completed_image(self, image_data: dict):
-        """완료된 이미지 기록 (재연결 동기화용)"""
+        """완료된 이미지 기록 (재연결 동기화용). seq를 원본 dict에도 부여하고 사본을 저장."""
         self.image_sequence += 1
         image_data["seq"] = self.image_sequence
-        self.recent_images.append(image_data)
-        # 최대 100개 유지
-        if len(self.recent_images) > 100:
+        self.recent_images.append(dict(image_data))  # 저장은 사본 (이후 progress 등 변경과 격리)
+        # 최대 500개 유지 (재연결/새로고침 복원 상한)
+        if len(self.recent_images) > 500:
             self.recent_images.pop(0)
 
     def get_images_since(self, last_seq: int) -> list[dict]:
@@ -2744,11 +2745,12 @@ async def process_job(job):
                 "metadata": None if strip_metadata else unified_metadata,
                 "image_base64": image_base64,  # auto_save=False일 때만 포함
                 "save_format": save_format,
-                "output_folder": req.output_folder
+                "output_folder": req.output_folder,
+                "gen_mode": getattr(req, "gen_mode", "slot")
             }
 
-            # 재연결 동기화용 기록
-            gen_queue.add_completed_image(image_data.copy())
+            # 재연결 동기화용 기록 (seq를 원본 image_data에도 부여 → 브로드캐스트에 포함)
+            gen_queue.add_completed_image(image_data)
 
             # 진행 상황 추가
             image_data["progress"] = {
@@ -2815,8 +2817,7 @@ async def process_job(job):
     if queue_empty:
         gen_queue.completed_images = 0
         gen_queue.total_images = 0
-        gen_queue.recent_images.clear()
-        gen_queue.image_sequence = 0
+        # recent_images / image_sequence는 유지 → 브라우저 새로고침 시 복원 가능 (백엔드 재시작 때만 초기화됨)
 
 
 
@@ -4377,6 +4378,19 @@ async def generate_multi(req: MultiGenerateRequest):
         "queue_length": len(gen_queue.queue),
         "message": f"Job {job_id} added to queue"
     }
+
+
+class RecentRemoveRequest(BaseModel):
+    seqs: List[int] = []
+
+
+@app.post("/api/recent/remove")
+async def recent_remove(req: RecentRemoveRequest):
+    """clear(미리보기 지우기)로 제거한 이미지를 재연결 복원 버퍼에서도 제거 → 새로고침해도 복원 안 됨"""
+    if req.seqs:
+        seqset = set(req.seqs)
+        gen_queue.recent_images = [img for img in gen_queue.recent_images if img.get("seq") not in seqset]
+    return {"success": True}
 
 
 @app.websocket("/ws")
