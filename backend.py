@@ -3677,45 +3677,51 @@ async def get_gallery_image(filename: str, folder: str = ""):
         return {"success": False, "error": str(e)}
 
 
+def clear_recent_gallery_by_filename(filename: str) -> list:
+    """recent_images에서 해당 갤러리 파일명을 참조하는 항목의 별표(galleryFilename) 해제. 영향받은 seq 목록 반환."""
+    affected = []
+    for img in gen_queue.recent_images:
+        if img.get("galleryFilename") == filename:
+            img.pop("galleryFilename", None)
+            seq = img.get("seq")
+            if seq is not None:
+                affected.append(seq)
+    return affected
+
+
 @app.delete("/api/gallery/{filename}")
 async def delete_gallery_image(filename: str, folder: str = ""):
     """갤러리 이미지 삭제 (폴더 미지정 시 전체 검색)"""
-    # 폴더가 지정된 경우 해당 폴더에서만 검색
+    # 검색 후보 경로 (기존 우선순위 유지: 지정 폴더 → 루트 → 서브폴더)
+    candidates = []
     if folder:
         try:
-            gallery_path = get_gallery_folder_path(folder)
+            candidates.append((folder, get_gallery_folder_path(folder) / filename))
         except ValueError as e:
             return {"success": False, "error": str(e)}
+    candidates.append(("", GALLERY_DIR / filename))
+    for subfolder in GALLERY_DIR.iterdir():
+        if subfolder.is_dir():
+            candidates.append((subfolder.name, subfolder / filename))
 
-        filepath = gallery_path / filename
-        if filepath.exists():
+    deleted = False
+    found_in = None
+    for fin, fp in candidates:
+        if fp.exists():
             try:
-                filepath.unlink()
-                return {"success": True, "found_in": folder}
+                fp.unlink()
+                deleted, found_in = True, fin
+                break
             except Exception as e:
                 return {"success": False, "error": str(e)}
 
-    # 폴더 미지정 또는 지정된 폴더에 없는 경우 전체 검색
-    # 루트 폴더 먼저 확인
-    filepath = GALLERY_DIR / filename
-    if filepath.exists():
-        try:
-            filepath.unlink()
-            return {"success": True, "found_in": ""}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    # 갤러리에서 사라졌으니(또는 이미 없으니) 복원 버퍼의 별표 상태도 해제하고 라이브 반영
+    affected = clear_recent_gallery_by_filename(filename)
+    if affected:
+        await gen_queue.broadcast({"type": "gallery_removed", "seqs": affected})
 
-    # 서브폴더 검색
-    for subfolder in GALLERY_DIR.iterdir():
-        if subfolder.is_dir():
-            filepath = subfolder / filename
-            if filepath.exists():
-                try:
-                    filepath.unlink()
-                    return {"success": True, "found_in": subfolder.name}
-                except Exception as e:
-                    return {"success": False, "error": str(e)}
-
+    if deleted:
+        return {"success": True, "found_in": found_in}
     return {"success": False, "error": "Image not found"}
 
 
@@ -4391,6 +4397,24 @@ async def recent_remove(req: RecentRemoveRequest):
         seqset = set(req.seqs)
         gen_queue.recent_images = [img for img in gen_queue.recent_images if img.get("seq") not in seqset]
     return {"success": True}
+
+
+class RecentGalleryRequest(BaseModel):
+    seq: int
+    gallery_filename: Optional[str] = None  # 값 있으면 저장 표시, None/빈값이면 해제
+
+
+@app.post("/api/recent/gallery")
+async def recent_gallery(req: RecentGalleryRequest):
+    """갤러리 저장/해제 상태를 복원 버퍼(recent_images)에 seq로 기록 → 새로고침 복원 후에도 별표 유지"""
+    for img in gen_queue.recent_images:
+        if img.get("seq") == req.seq:
+            if req.gallery_filename:
+                img["galleryFilename"] = req.gallery_filename
+            else:
+                img.pop("galleryFilename", None)
+            return {"success": True}
+    return {"success": False, "error": "seq not found"}
 
 
 @app.websocket("/ws")

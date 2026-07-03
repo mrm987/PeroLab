@@ -6705,6 +6705,7 @@
             line-height: 1.6;
         }
         .single-thumb {
+            position: relative;
             flex-shrink: 0;
             width: 100%;
             aspect-ratio: 1 / 1;
@@ -6713,6 +6714,23 @@
             cursor: pointer;
             border: 2px solid transparent;
             background: var(--bg-elevated, #1a1a1a);
+        }
+        /* 갤러리에 저장된 이미지 표시: 썸네일 우상단 금색 별 */
+        .single-thumb-star {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            display: none;
+            line-height: 0;
+            pointer-events: none;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.8));
+        }
+        .single-thumb.starred .single-thumb-star { display: block; }
+        .single-thumb-star .ic {
+            width: 15px;
+            height: 15px;
+            fill: var(--accent-gold);
+            stroke: var(--accent-gold);
         }
         .single-thumb img {
             width: 100%;
@@ -11609,10 +11627,13 @@
                             method: 'DELETE'
                         });
                         const result = await response.json();
-                        if (result.success) {
+                        // 이미 갤러리에서 지워진 경우(파일 없음)도 성공으로 간주해 별표 해제
+                        const alreadyGone = !result.success && /not found/i.test(result.error || '');
+                        if (result.success || alreadyGone) {
                             saveBtn.classList.remove('saved');
                             card._imageData.galleryFilename = null;
-                            showToast('갤러리에서 제거됨', 'success');
+                            persistRecentGallery(card._imageData.seq, null);
+                            showToast(alreadyGone ? '이미 삭제된 이미지입니다' : '갤러리에서 제거됨', 'success');
                             // 갤러리 캐시 무효화
                             window.galleryInitialized = false;
                             // 갤러리 뷰 새로고침
@@ -11646,6 +11667,7 @@
                     if (result.success) {
                         saveBtn.classList.add('saved');
                         card._imageData.galleryFilename = result.filename || card._imageData.filename;
+                        persistRecentGallery(card._imageData.seq, card._imageData.galleryFilename);
                         showToast('갤러리에 저장됨', 'success');
                         // 갤러리 캐시 무효화
                         window.galleryInitialized = false;
@@ -12109,6 +12131,16 @@
             } catch (e) { /* 무시 */ }
         }
 
+        // 갤러리 저장/해제 상태를 백엔드 복원 버퍼(recent_images)에 seq로 기록 → 새로고침 복원 후에도 별표 유지
+        function persistRecentGallery(seq, galleryFilename) {
+            if (seq == null) return;
+            fetch(`${API_BASE}/api/recent/gallery`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seq, gallery_filename: galleryFilename || null })
+            }).catch(() => {});
+        }
+
         // 싱글 뷰어에 특정 이미지를 크게 표시하고 현재 액션 대상을 갱신
         function selectSingleImage(imageData, thumbEl) {
             if (!imageData) return;
@@ -12179,7 +12211,7 @@
                 save_format: data.save_format || 'png',
                 output_folder: data.output_folder || '',
                 slotIndex: 0,
-                galleryFilename: null,
+                galleryFilename: data.galleryFilename || null,  // 복원 시 백엔드가 내려준 저장 상태 유지
                 seq: data.seq,
                 _fullSrc: fullSrc
             };
@@ -12192,6 +12224,14 @@
             timg.draggable = false;
             timg.decoding = 'async';
             thumb.appendChild(timg);
+            // 복원 시 여러 썸네일을 한 틱에 몰아 삽입하면 일부가 페인트되지 않는 경우가 있어 디코드를 미리 트리거
+            if (timg.decode) timg.decode().catch(() => {});
+            // 갤러리 저장 표시용 금색 별 (galleryFilename 있을 때만 .starred로 노출)
+            const star = document.createElement('div');
+            star.className = 'single-thumb-star';
+            star.innerHTML = ICONS.star;
+            thumb.appendChild(star);
+            thumb.classList.toggle('starred', !!imageData.galleryFilename);
             thumb.onclick = () => selectSingleImage(thumb._imageData, thumb);
             return imageData;
         }
@@ -12272,6 +12312,12 @@
             const viewer = document.getElementById('singleViewer');
 
             // ☆ 갤러리 저장/제거
+            // 현재 선택된 썸네일의 별표를 galleryFilename 기준으로 동기화
+            const syncSelectedThumbStar = () => {
+                const sel = strip.querySelector('.single-thumb.selected');
+                if (sel) sel.classList.toggle('starred', !!(sel._imageData && sel._imageData.galleryFilename));
+            };
+
             if (galleryBtn) galleryBtn.onclick = async () => {
                 const d = currentSingleImageData;
                 if (!d) return;
@@ -12280,10 +12326,14 @@
                         const galleryFilename = d.galleryFilename || d.filename;
                         const response = await fetch(`${API_BASE}/api/gallery/${encodeURIComponent(galleryFilename)}`, { method: 'DELETE' });
                         const result = await response.json();
-                        if (result.success) {
+                        // 이미 갤러리에서 지워진 경우(파일 없음)도 성공으로 간주해 별표 해제
+                        const alreadyGone = !result.success && /not found/i.test(result.error || '');
+                        if (result.success || alreadyGone) {
                             galleryBtn.classList.remove('saved');
                             d.galleryFilename = null;
-                            showToast('갤러리에서 제거됨', 'success');
+                            syncSelectedThumbStar();
+                            persistRecentGallery(d.seq, null);
+                            showToast(alreadyGone ? '이미 삭제된 이미지입니다' : '갤러리에서 제거됨', 'success');
                             window.galleryInitialized = false;
                         } else showToast('제거 실패: ' + result.error, 'error');
                     } catch (err) { showToast('제거 오류: ' + err.message, 'error'); }
@@ -12305,6 +12355,8 @@
                     if (result.success) {
                         galleryBtn.classList.add('saved');
                         d.galleryFilename = result.filename || d.filename;
+                        syncSelectedThumbStar();
+                        persistRecentGallery(d.seq, d.galleryFilename);
                         showToast('갤러리에 저장됨', 'success');
                         window.galleryInitialized = false;
                     } else showToast('저장 실패: ' + result.error, 'error');
@@ -12463,12 +12515,22 @@
                 viewer.addEventListener('dblclick', () => setSingleZoom(1));
             }
 
-            // Delete 키 → 현재 선택 이미지 지우기 (싱글 모드에서만, 입력 필드 포커스 시 제외)
+            // 싱글 모드 키보드 조작 (입력 필드 포커스 시 제외)
+            //  · Delete → 현재 이미지 지우기
+            //  · ↑ → 더 최신(위) / ↓ → 더 오래된(아래) 이미지로 전환 (휠 방향과 일치)
             document.addEventListener('keydown', (e) => {
-                if (currentMode !== 'single' || e.key !== 'Delete') return;
+                if (currentMode !== 'single') return;
                 const ae = document.activeElement;
                 if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-                if (clearBtn) clearBtn.click();
+                if (e.key === 'Delete') {
+                    if (clearBtn) clearBtn.click();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    navigateSingle(-1);
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    navigateSingle(1);
+                }
             });
         })();
 
@@ -15319,11 +15381,42 @@
                             const topSingle = document.querySelector('#singleStrip .single-thumb:not(.placeholder)');
                             if (topSingle && topSingle._imageData) selectSingleImage(topSingle._imageData, topSingle);
                         }
+                        // 벌크 삽입 직후 일부 썸네일이 페인트되지 않는 문제 방지: 다음 프레임에 강제 리페인트
+                        const strip = document.getElementById('singleStrip');
+                        if (strip) requestAnimationFrame(() => { strip.style.display = 'none'; void strip.offsetHeight; strip.style.display = ''; });
                     }
                     if (data.status) {
                         currentIndex = data.status.completed_images;
                         totalImages = data.status.total_images;
                         updateProgress();
+                    }
+                    // 복원 완료 → 스플래시 제거 조건 갱신
+                    window._syncDone = true;
+                    maybeHideSplash();
+                    break;
+
+                case 'gallery_removed':
+                    // 갤러리에서 삭제된 이미지의 생성쪽 별표/저장표시를 즉시 해제 (여러 클라이언트 동기화)
+                    if (Array.isArray(data.seqs) && data.seqs.length) {
+                        const removedSet = new Set(data.seqs);
+                        document.querySelectorAll('#singleStrip .single-thumb').forEach(t => {
+                            if (t._imageData && removedSet.has(t._imageData.seq)) {
+                                t._imageData.galleryFilename = null;
+                                t.classList.remove('starred');
+                            }
+                        });
+                        document.querySelectorAll('.slot-image-card').forEach(c => {
+                            if (c._imageData && removedSet.has(c._imageData.seq)) {
+                                c._imageData.galleryFilename = null;
+                                const b = c.querySelector('.save-gallery-btn');
+                                if (b) b.classList.remove('saved');
+                            }
+                        });
+                        if (currentSingleImageData && removedSet.has(currentSingleImageData.seq)) {
+                            currentSingleImageData.galleryFilename = null;
+                            const gb = document.getElementById('singleSaveGalleryBtn');
+                            if (gb) gb.classList.remove('saved');
+                        }
                     }
                     break;
 
@@ -20621,6 +20714,21 @@
         });
         connectWebSocket();
 
+        // 스플래시: 초기화(init)와 이미지 복원(sync)이 모두 끝난 뒤 제거 (둘 다 async).
+        // WS 미연결/복원 지연 등에 대비해 최대 8초 후 강제 제거.
+        window._initDone = false;
+        window._syncDone = false;
+        function hideAppLoadingOverlay() {
+            const overlay = document.getElementById('appLoadingOverlay');
+            if (!overlay || overlay._hiding) return;
+            overlay._hiding = true;
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.2s';
+            setTimeout(() => overlay.remove(), 200);
+        }
+        function maybeHideSplash() { if (window._initDone && window._syncDone) hideAppLoadingOverlay(); }
+        setTimeout(hideAppLoadingOverlay, 8000);
+
         // Local 환경 상태 확인 후 초기화 완료
         checkLocalEnvStatus().then(() => {
             // 슬롯이 없으면 하나 추가
@@ -20639,13 +20747,9 @@
             // 초기 그라데이션 업데이트
             setTimeout(updateScrollGradients, 100);
 
-            // 로딩 오버레이 제거
-            const overlay = document.getElementById('appLoadingOverlay');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                overlay.style.transition = 'opacity 0.2s';
-                setTimeout(() => overlay.remove(), 200);
-            }
+            // 초기화 완료 표시 → 복원(sync) 완료와 함께 스플래시 제거
+            window._initDone = true;
+            maybeHideSplash();
         });
         
         // 탭 숨김/비활성 시 즉시 저장 (beforeunload보다 신뢰성 높음)
@@ -21668,15 +21772,20 @@
                 </div>
             `;
 
-            // 캐릭터 프롬프트 추출
-            let charPrompt = '';
+            // 캐릭터 프롬프트: 캐릭터 단위로 개별 박스 생성 (다중이면 번호 표기)
+            let charFieldsHtml;
             if (meta.character_prompts && meta.character_prompts.length > 0) {
-                charPrompt = meta.character_prompts.join('\n---\n');
+                const multi = meta.character_prompts.length > 1;
+                charFieldsHtml = meta.character_prompts.map((cp, i) =>
+                    createPromptField(`dropModalCharPrompt${i}`, multi ? `Character Prompt ${i + 1}` : 'Character Prompt', cp)
+                ).join('');
+            } else {
+                charFieldsHtml = createPromptField('dropModalCharPrompt', 'Character Prompt', '');
             }
 
             const promptFieldsHtml = `
                 ${createPromptField('dropModalBasePrompt', 'Base Prompt', meta.prompt)}
-                ${createPromptField('dropModalCharPrompt', 'Character Prompt', charPrompt)}
+                ${charFieldsHtml}
                 ${createPromptField('dropModalNegPrompt', 'Negative Prompt', meta.negative_prompt)}
                 ${createPromptField('dropModalSlotPrompt', 'Slot Prompt', meta.slot_prompt)}
                 ${isPureNai ? '<div class="nai-notice">✓ NAI 옵션에 의해 추가된 퀄리티/UC 태그 자동 제거됨</div>' : ''}
