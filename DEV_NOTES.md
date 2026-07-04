@@ -24,7 +24,7 @@ backend.py    - FastAPI 백엔드
 
 ### 엔드포인트
 - 이미지 생성: `POST https://image.novelai.net/ai/generate-image`
-- 구독 정보: `GET https://api.novelai.net/user/subscription`
+- 구독 정보: `GET https://image.novelai.net/user/subscription` (2026-07-04 마이그레이션: 구 `api.novelai.net`는 non-functional)
 
 ### 참고 자료
 - **NAIS2**: https://github.com/sunanakgo/NAIS2 (가장 정확한 참고)

@@ -24,8 +24,10 @@ backend.py    - FastAPI 백엔드
 
 ### 엔드포인트
 - 이미지 생성: `POST https://image.novelai.net/ai/generate-image`
-- 구독 정보: `GET https://api.novelai.net/user/subscription`
+- 구독 정보: `GET https://image.novelai.net/user/subscription`
 - Vibe 인코딩: `POST https://image.novelai.net/ai/encode-vibe`
+
+> **2026-07-04 서버 마이그레이션**: `/user/subscription`, `/user/information`, `/user/data` 등 user 엔드포인트가 `api.novelai.net` → `image.novelai.net`으로 이전됨. 구 `api.novelai.net` URL은 non-functional(유효 토큰도 400 반환). 근거: NAI 공식 changelog.
 
 ### 참고 자료
 - **NAIS2**: https://github.com/sunanakgo/NAIS2 (가장 정확한 참고)

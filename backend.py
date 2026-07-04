@@ -4090,6 +4090,10 @@ async def update_config(update: ConfigUpdate):
                 return {"success": False, "error": "올바른 Persistent API Token이 아닙니다. 'pst-'로 시작하는 토큰을 입력해주세요.\n(Account Settings → Get Persistent API Token)"}
 
             # NAI API로 토큰 유효성 검증
+            # 엔드포인트: image.novelai.net (2026-07-04 NAI 서버 마이그레이션으로
+            #   /user/subscription 등 user 엔드포인트가 api → image 로 이전됨.
+            #   구 api.novelai.net URL은 non-functional, 유효 토큰도 400 반환.
+            #   근거: NAI 공식 changelog 2026-07-04)
             # 원칙: 확정적으로 무효한 토큰(401)일 때만 차단한다.
             # 그 외 응답(400/403/429/5xx)·타임아웃·네트워크 오류는 토큰 자체가
             # 무효라는 증거가 아니므로 저장을 막지 않고 경고만 남긴다.
@@ -4098,7 +4102,7 @@ async def update_config(update: ConfigUpdate):
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.get(
-                        "https://api.novelai.net/user/subscription",
+                        "https://image.novelai.net/user/subscription",
                         headers={"Authorization": f"Bearer {token}"}
                     )
                     if resp.status_code == 401:
@@ -4140,7 +4144,7 @@ async def get_nai_subscription():
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             response = await client.get(
-                "https://api.novelai.net/user/subscription",
+                "https://image.novelai.net/user/subscription",
                 headers={"Authorization": f"Bearer {token}"}
             )
 
