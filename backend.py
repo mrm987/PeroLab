@@ -4066,6 +4066,7 @@ async def open_folder(request: dict):
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate):
     global CONFIG
+    nai_token_warning = None
     if update.nai_token is not None:
         token = update.nai_token
 
@@ -4089,6 +4090,10 @@ async def update_config(update: ConfigUpdate):
                 return {"success": False, "error": "올바른 Persistent API Token이 아닙니다. 'pst-'로 시작하는 토큰을 입력해주세요.\n(Account Settings → Get Persistent API Token)"}
 
             # NAI API로 토큰 유효성 검증
+            # 원칙: 확정적으로 무효한 토큰(401)일 때만 차단한다.
+            # 그 외 응답(400/403/429/5xx)·타임아웃·네트워크 오류는 토큰 자체가
+            # 무효라는 증거가 아니므로 저장을 막지 않고 경고만 남긴다.
+            # (NAI 쪽 일시적 400 등으로 멀쩡한 토큰이 등록조차 안 되는 문제 방지)
             import httpx
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
@@ -4098,14 +4103,12 @@ async def update_config(update: ConfigUpdate):
                     )
                     if resp.status_code == 401:
                         return {"success": False, "error": "토큰이 만료되었거나 유효하지 않습니다. 새 토큰을 발급해주세요."}
-                    elif resp.status_code == 403:
-                        return {"success": False, "error": "토큰 권한이 없습니다. Persistent API Token인지 확인해주세요."}
                     elif resp.status_code != 200:
-                        return {"success": False, "error": f"NAI 서버 응답 오류 ({resp.status_code}). 잠시 후 다시 시도해주세요."}
+                        nai_token_warning = f"토큰을 저장했지만 NAI 유효성 검증을 완료하지 못했습니다 (서버 응답 {resp.status_code}). 이미지 생성이 정상 동작하면 문제없습니다."
             except httpx.TimeoutException:
-                return {"success": False, "error": "NAI 서버 연결 시간 초과. 인터넷 연결을 확인하고 다시 시도해주세요."}
+                nai_token_warning = "토큰을 저장했지만 NAI 서버 연결 시간 초과로 검증을 건너뛰었습니다. 인터넷 연결을 확인해주세요."
             except Exception as e:
-                return {"success": False, "error": f"NAI 서버 연결 실패: {e}"}
+                nai_token_warning = f"토큰을 저장했지만 NAI 서버 연결 실패로 검증을 건너뛰었습니다: {e}"
 
             CONFIG["nai_token"] = token
 
@@ -4119,7 +4122,10 @@ async def update_config(update: ConfigUpdate):
     except Exception as e:
         return {"success": False, "error": f"설정 파일 저장 실패: {e}"}
 
-    return {"success": True}
+    result = {"success": True}
+    if nai_token_warning:
+        result["warning"] = nai_token_warning
+    return result
 
 
 @app.get("/api/nai/subscription")
