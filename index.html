@@ -841,6 +841,11 @@
             border-color: var(--accent);
             color: white;
         }
+        /* 프롬프트 패널의 번역 버튼: 와일드카드 버튼과 동일한 아이콘 버튼 형태로 표시하되 활성 시 강조 */
+        .wildcard-trigger-btn.translate-mode-btn.active {
+            background: var(--accent);
+            color: #fff;
+        }
 
         .prompt-highlight-container.translate-mode .prompt-highlight-overlay {
             pointer-events: auto;
@@ -878,6 +883,8 @@
         }
 
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+        /* Cancel 숨김(NAI) 시 Clear Q가 가로 전체를 채우도록 단일 컬럼 */
+        .row.one-col { grid-template-columns: 1fr; }
         .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md); }
         
         .size-row {
@@ -2299,52 +2306,81 @@
             background: rgba(255,100,100,0.8);
         }
 
-        /* Anlas Info - Single line */
+        /* ── Anlas info bar ───────────────────────────────────────────────────
+           정렬은 구조적(픽셀 튜닝 X). flex 한 줄 + align-items:center 로 모든 자식의
+           박스 중심을 한 축에 올리고, 모든 자식을 단일 타입스케일(font-size 0.75rem,
+           line-height 1)로 맞춰 박스 높이·광학 중심이 구조적으로 일치하게 함.
+           아이콘은 텍스트 line box와 같은 1em 정사각 flex 박스, 배지 박스도 같은 1em
+           으로 clamp 해 행 높이를 부풀리지 않음. transform·요소별 오프셋·line-height:0 없음.
+           런타임 필수: 바가 보일 때 display:flex 여야 함(updateAnlasVisibility 가 'flex').
+           과거의 display:block 은 inline 흐름으로 붕괴시켜 align-items:center 를 무효화함. */
         .anlas-info {
             display: flex;
             align-items: center;
-            font-size: 0.75rem;
+            gap: var(--space-sm);
+            font-size: 0.75rem;            /* 12px — 모든 자식이 상속 */
+            line-height: 1;                /* 텍스트·아이콘·배지 공통 line box */
             color: var(--text-dim);
             margin-bottom: var(--space-sm);
-            gap: var(--space-sm);
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             padding: var(--space-sm) var(--space-md);
         }
 
-        .anlas-info .anlas-icon { font-size: 0.8rem; display: inline-flex; align-items: center; }
-        .anlas-info #anlasBalance { font-weight: 600; color: var(--text); }
-        .anlas-info .anlas-separator { opacity: 0.3; margin: 0 var(--space-xs); }
+        /* 텍스트 요소: 동일 font-size·line-height 상속 → 같은 em 박스, 중심 자동 일치 */
+        .anlas-info #anlasBalance     { font-weight: 600; color: var(--text); }
+        .anlas-info #anlasCost        { font-weight: 600; color: var(--accent-gold); }
         .anlas-info .anlas-cost-label { opacity: 0.7; }
-        .anlas-info #anlasCost { color: var(--accent-gold); font-weight: 600; }
+        .anlas-info .anlas-separator  { opacity: 0.3; margin: 0 var(--space-xs); }
 
-        .anlas-refresh {
+        /* 아이콘 span·버튼: 텍스트 line box와 동일한 1em 정사각 flex 박스로 SVG 중앙정렬.
+           고정 px·아이콘별 font-size·line-height:0 해킹 제거. */
+        .anlas-info .anlas-icon,
+        .anlas-info .anlas-refresh {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 1em;
+            line-height: 1;
+        }
+        .anlas-info .anlas-refresh {
+            font: inherit;                 /* <button>은 font 미상속 → 1em을 바(12px) 기준으로 */
+            padding: 0 2px;                /* 가로 히트영역만, 세로 padding 0 → 높이 1em 유지 */
             background: none;
             border: none;
             color: var(--text-dim);
-            cursor: pointer;
-            font-size: 0.7rem;
-            padding: 0 2px;
             opacity: 0.6;
+            cursor: pointer;
+        }
+        .anlas-info .anlas-refresh > span {
             display: inline-flex;
             align-items: center;
             justify-content: center;
         }
-        /* anlas 아이콘 컨테이너: 세로 중앙 정렬 통일 (baseline 오프셋 제거) */
-        .anlas-info .anlas-icon,
-        .anlas-info .anlas-refresh { line-height: 0; }
-        .anlas-info .anlas-refresh > span { display: inline-flex; align-items: center; }
-        .anlas-refresh:hover { opacity: 1; color: var(--text); }
+        .anlas-info .anlas-refresh:hover { opacity: 1; color: var(--text); }
 
-        .free-tag {
-            background: var(--success);
-            color: white;
-            font-size: 0.75rem;
+        /* 두 아이콘 공통 광학 크기: 타입스케일 추종(em). 레거시 .anlas-info .ic{13px}
+           보다 한 단계 구체적이라 소스 순서와 무관하게 우선(해당 레거시 규칙은 삭제됨). */
+        .anlas-info .anlas-icon .ic,
+        .anlas-info .anlas-refresh .ic {
+            width: 1em;
+            height: 1em;
+            display: block;
+        }
+
+        /* FREE 배지: 박스 높이 = 바 line box(캡 12px + line-height:1 + 세로 padding 0 = 1em)
+           → 표시/숨김과 무관하게 행 리듬을 부풀리지 않음. 가로 간격은 flex gap. */
+        .anlas-info .free-tag {
+            display: inline-flex;
+            align-items: center;
+            line-height: 1;
+            font-size: 0.7rem;             /* 11.2px — 12px 텍스트가 배지를 꽉 채워 보여 살짝 축소 */
             font-weight: 700;
-            padding: 2px 5px;
+            padding: 1px var(--space-xs);  /* 작은 세로 여백으로 pill 안 breathing room (박스 ~13px) */
+            background: var(--success);
+            color: #fff;
             border-radius: var(--radius-xs);
-            margin-left: 4px;
         }
 
         /* Button */
@@ -3838,13 +3874,14 @@
             overflow-y: auto;
         }
         .drop-modal-content h3 { margin: 0; }
-        .drop-modal-content .modal-header { margin-bottom: var(--space-lg); }
+        .drop-modal-content .modal-header { margin-bottom: var(--space-lg); flex-shrink: 0; }
         .drop-modal-content .modal-header h3 { font-size: 1.1rem; }
         .drop-modal-content .preview {
             max-width: 200px;
             max-height: 200px;
             border-radius: var(--radius-md);
             margin-bottom: var(--space-lg);
+            flex-shrink: 0;
         }
         .drop-modal-content .metadata {
             background: var(--bg);
@@ -3854,6 +3891,18 @@
             margin-bottom: var(--space-lg);
             max-height: none;
             overflow-y: visible;
+        }
+        /* 프롬프트 보기 모달(dropModal): 하단 버튼은 항상 보이고 프롬프트 영역만 스크롤.
+           .drop-modal-content 는 confirm/input/enhance 모달과 공유하므로 #dropModal 로 한정 */
+        #dropModal .drop-modal-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #dropModal .drop-modal-content .metadata {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
         }
         .drop-modal-content .metadata div { margin-bottom: 4px; }
         /* Prompt field with copy button */
@@ -3936,6 +3985,7 @@
             gap: var(--space-md);
             width: 100%;
             margin-top: var(--space-lg);
+            flex-shrink: 0;
         }
         #dropModalButtons .btn-row {
             display: flex;
@@ -6603,6 +6653,19 @@
             min-width: 0;
             overflow: hidden;
         }
+        /* 싱글 상단 툴바: 슬롯 툴바 우측(Save to: 폴더 선택/열기)과 동일 스타일 */
+        .single-top-toolbar {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+            background: var(--bg);
+            min-height: 50px;
+            box-sizing: border-box;
+        }
         .single-viewer {
             flex: 1;
             position: relative;
@@ -6681,18 +6744,43 @@
             white-space: nowrap;
         }
         .single-seed:hover { text-decoration: underline; }
-        .single-strip {
+        /* 히스토리 스트립 래퍼: 상단 툴바(전체 지우기) + 스크롤 스트립 */
+        .single-strip-wrap {
             flex-shrink: 0;
+            width: 128px;
             display: flex;
             flex-direction: column;
-            gap: var(--space-sm);
-            width: 128px;
-            padding: var(--space-sm);
-            overflow-y: auto;
-            overflow-x: hidden;
             border-left: 1px solid var(--border);
             background: var(--bg);
         }
+        .single-strip-toolbar {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            padding: 6px;
+            min-height: 50px;            /* 상단 Save to: 바와 높이 정렬 */
+            box-sizing: border-box;
+            border-bottom: 1px solid var(--border);
+        }
+        /* 별표 필터 활성 표시 */
+        #singleStarredFilterBtn.active {
+            color: var(--accent-gold);
+            background: var(--bg-lighter);
+        }
+        .single-strip {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+            padding: var(--space-sm);
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        /* 별표(갤러리 저장)만 모아보기: 별표 없는 썸네일/플레이스홀더 숨김 */
+        .single-strip.starred-only .single-thumb:not(.starred) { display: none; }
         /* 히스토리 스트립은 싱글 모드에서 항상 표시. 비어 있을 땐 안내 문구로 동작을 이해시킴 */
         .single-strip:not(:has(.single-thumb))::before {
             content: "생성한 이미지가\A여기에 쌓입니다";
@@ -6757,16 +6845,22 @@
         .single-thumb.placeholder { border-radius: 6px; }
         .slot-image-card.placeholder {
             width: 100%;
+            height: 60px;               /* 이미지 비율 대신 가로로 넓은 바 */
+            min-height: 60px;
             border-radius: 6px;
             margin-bottom: var(--space-sm, 8px);
         }
+        .slot-image-card.placeholder .ph-label { font-size: 0.85rem; font-weight: 400; line-height: 1; font-family: Arial, sans-serif; /* 슬롯 이름 input과 동일 폰트로 렌더링(폼컨트롤 기본 폰트) */ }
         .ph-label {
             font-size: 12px;
             font-weight: 600;
             letter-spacing: 0.02em;
+            white-space: pre-line;
+            text-align: center;
+            line-height: 1.35;
         }
         /* 실제 생성 중인 한 곳: 텍스트만 강조 (테두리 하이라이트 없음) */
-        .placeholder.generating .ph-label { color: var(--accent-gold); font-weight: 700; }
+        .placeholder.generating .ph-label { color: var(--accent-gold); font-weight: 400; }
 
         /* 사이드바 접힘 시 좌측 세로 바 */
         .collapsed-bar {
@@ -6818,7 +6912,7 @@
         /* 기본은 텍스트 크기에 비례(em) → 아이콘+텍스트 버튼에서 크기가 자연스럽게 맞음 */
         .ic { width: 1.1em; height: 1.1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
         .mode-btn .ic { width: 17px; height: 17px; }
-        .anlas-info .ic { width: 13px; height: 13px; display: block; }
+        /* .anlas-info .ic 크기는 .anlas-info .anlas-icon .ic / .anlas-refresh .ic (1em)로 이전 */
         .slot-image-card button .ic { width: 16px; height: 16px; color: #e8e8e8; }
         .card-saved-badge .ic { width: 12px; height: 12px; color: #fff; }
         /* 갤러리 저장됨: 별 채우기 (단색 유지) */
@@ -8646,6 +8740,7 @@
                                 </div>
                             </div>
                             <button type="button" class="wildcard-trigger-btn" id="wildcardBtn" title="와일드카드 관리 (🃏 프롬프트 풀에서 랜덤 추출)"><span data-icon="cards"></span></button>
+                            <button type="button" class="wildcard-trigger-btn translate-mode-btn" id="promptTranslateBtn" onclick="toggleTranslateMode()" title="번역 모드 (태그에 호버하면 번역 표시)"><span data-icon="globe"></span></button>
                         </div>
                     </div>
                     <div id="basePromptContent" class="collapsible-content">
@@ -9150,7 +9245,7 @@
                         <input type="number" id="repeatCount" value="1" min="1" style="margin: 0; height: 100%; text-align: center;" title="반복 횟수">
                     </div>
                 </div>
-                <div class="row" style="gap: 6px;">
+                <div class="row" id="queueActionRow" style="gap: 6px;">
                     <button class="btn btn-secondary" id="cancelCurrentBtn" title="현재 작업 취소 (진행중인 이미지 완료 후)">Cancel</button>
                     <button class="btn btn-secondary" id="clearQueueBtn" title="대기열 비우기">Clear Q</button>
                 </div>
@@ -9162,7 +9257,7 @@
             <span class="collapsed-bar-hint">▶</span>
             <div class="collapsed-bar-actions">
                 <button type="button" class="collapsed-q-btn" id="collapsedQueueBtn" title="생성 (Queue)">Q</button>
-                <button type="button" class="collapsed-c-btn" id="collapsedCancelBtn" title="현재 작업 취소">C</button>
+                <button type="button" class="collapsed-c-btn" id="collapsedClearQBtn" title="대기열 비우기 (Clear Q)">CQ</button>
             </div>
         </div>
 
@@ -9196,7 +9291,7 @@
                     </div>
                     <button type="button" class="slot-prompt-target-global" id="slotPromptTargetGlobal" data-target="char" title="슬롯 프롬프트 적용 대상: Base (베이스에 추가) / Char (활성 캐릭터 전체에 추가)">Char</button>
                     <button type="button" class="header-btn" id="clearImagesBtn" title="미리보기 이미지 지우기 (파일은 삭제되지 않음)">
-                        <span data-icon="eraser"></span>
+                        <span data-icon="listX"></span>
                         <span>Clear</span>
                     </button>
                     <div class="preset-dropdown" id="presetDropdown">
@@ -9219,7 +9314,6 @@
                         <span data-icon="bookmark"></span>
                         <span>프리셋 관리</span>
                     </button>
-                    <button type="button" class="translate-mode-btn" onclick="toggleTranslateMode()" title="번역 모드 (태그에 호버하면 번역 표시)"><span data-icon="globe"></span></button>
                     <button type="button" class="header-btn" id="syncScrollBtn" title="전체 슬롯 스크롤 동기화">
                         <span data-icon="link"></span>
                     </button>
@@ -9297,27 +9391,47 @@
             <!-- 싱글 이미지 모드 -->
             <div class="single-container" id="singleContainer" style="display: none;">
                 <div class="single-main">
+                <!-- 저장 폴더 선택/열기 (슬롯 모드와 동일, 전역 폴더 상태 공유) -->
+                <div class="single-top-toolbar">
+                    <span class="toolbar-label">Save to:</span>
+                    <div class="folder-dropdown" id="singleOutputFolderDropdown">
+                        <button type="button" class="header-btn folder-btn" id="singleOutputFolderBtn">
+                            <span class="folder-icon" data-icon="folder"></span>
+                            <span class="folder-name" id="singleOutputFolderName">output</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                    </div>
+                    <button type="button" class="header-btn icon-only" id="singleOpenOutputFolderBtn" title="출력 폴더 열기"><span data-icon="folderOpen"></span></button>
+                </div>
                 <div class="single-viewer" id="singleViewer">
                     <div class="single-empty" id="singleEmpty">사이드바에서 프롬프트를 입력하고 생성하면 여기에 크게 표시됩니다</div>
                     <img id="singleViewerImg" alt="" draggable="false" decoding="async" style="display: none;">
                     <button type="button" class="single-gallery-btn" id="singleSaveGalleryBtn" title="갤러리에 저장" style="display: none;">☆</button>
                 </div>
                 <div class="single-actions" id="singleActions" style="display: none;">
+                    <!-- 확대/축소: 좌측 끝 고정 -->
                     <div class="single-zoom-ctrl" id="singleZoomCtrl">
                         <button type="button" class="single-action-btn" id="singleZoomOutBtn" title="축소" data-icon="minus"></button>
                         <button type="button" class="single-action-btn" id="singleZoomResetBtn" title="원래 크기 (100%)"><span id="singleZoomLabel">100%</span></button>
                         <button type="button" class="single-action-btn" id="singleZoomInBtn" title="확대" data-icon="plus"></button>
                     </div>
+                    <!-- 시드는 버튼들보다 왼쪽에 두어 길이가 바뀌어도 버튼 위치가 흔들리지 않게 함 -->
+                    <span class="single-seed" id="singleSeed" title="클릭하여 시드 적용"></span>
                     <button type="button" class="single-action-btn" id="singleClearBtn" title="이 이미지 지우기">🧹</button>
                     <button type="button" class="single-action-btn" id="singleSavePreviewBtn" title="파일로 저장" style="display: none;">💾</button>
                     <button type="button" class="single-action-btn" id="singleDeleteBtn" title="파일 삭제" style="display: none;">🗑️</button>
                     <button type="button" class="single-action-btn" id="singleInpaintBtn" title="Inpaint">🎨</button>
                     <button type="button" class="single-action-btn" id="singleEnhanceBtn" title="Enhance (NAI)" style="display: none;">✨</button>
                     <button type="button" class="single-action-btn" id="singleLoadSettingsBtn" title="전체 설정 불러오기">📋</button>
-                    <span class="single-seed" id="singleSeed" title="클릭하여 시드 적용"></span>
                 </div>
                 </div>
-                <div class="single-strip" id="singleStrip"></div>
+                <div class="single-strip-wrap">
+                    <div class="single-strip-toolbar">
+                        <button type="button" class="single-action-btn" id="singleStarredFilterBtn" title="갤러리 저장(별표)만 모아보기"><span data-icon="star"></span></button>
+                        <button type="button" class="single-action-btn" id="singleClearAllBtn" title="히스토리 전체 지우기 (파일은 삭제되지 않음)"><span data-icon="listX"></span></button>
+                    </div>
+                    <div class="single-strip" id="singleStrip"></div>
+                </div>
             </div>
 
             <!-- 검열 모드 -->
@@ -11104,9 +11218,9 @@
             if (collapsedBar) {
                 collapsedBar.onclick = () => { sidebar.classList.remove('collapsed'); updateToggleBtn(); localStorage.setItem('sidebarCollapsed', '0'); };
                 const qb = document.getElementById('collapsedQueueBtn');
-                const cb = document.getElementById('collapsedCancelBtn');
+                const cb = document.getElementById('collapsedClearQBtn');
                 if (qb) qb.onclick = (e) => { e.stopPropagation(); addToQueue(); };
-                if (cb) cb.onclick = (e) => { e.stopPropagation(); cancelCurrent(); };
+                if (cb) cb.onclick = (e) => { e.stopPropagation(); clearQueue(); };  // 취소 대신 대기열 비우기 (NAI/로컬 공통)
             }
 
             function updateToggleBtn() {
@@ -11444,6 +11558,8 @@
         }
 
         function updateQueueButton() {
+            // 싱글 모드는 슬롯 개수와 무관하므로 숫자 없이 'Queue'만 표시
+            if (genMode === 'single') { generateBtn.textContent = 'Queue'; return; }
             const count = getUnlockedSlotCount() || 1;
             generateBtn.textContent = `Queue (${count})`;
         }
@@ -11473,9 +11589,8 @@
             const empty = imagesContainer.querySelector('.slot-empty');
             if (empty) empty.remove();
 
-            // 큐 대기 플레이스홀더가 있으면 가장 오래된(맨 아래) 것을 이 이미지로 교체
-            const slotPhs = imagesContainer.querySelectorAll('.slot-image-card.placeholder');
-            const phTarget = slotPhs.length ? slotPhs[slotPhs.length - 1] : null;
+            // 큐 대기 플레이스홀더(카운팅용, 슬롯당 1개)는 맨 위에 유지하고
+            // 완성 카드는 그 바로 아래에 삽입한다 (남은 수는 consumePlaceholder로 감소)
 
             // HiresFix 미리보기 카드를 일반 카드로 업그레이드 (같은 job_id의 최종 이미지가 도착하면)
             if (data.job_id) {
@@ -11956,8 +12071,12 @@
                 if (card._lod === 'thumb' && !card._thumbNatW && img.naturalWidth) {
                     card._thumbNatW = img.naturalWidth;
                 }
-                if (phTarget && phTarget.isConnected) imagesContainer.replaceChild(card, phTarget);
+                const ph = imagesContainer.querySelector('.slot-image-card.placeholder');
+                if (ph) imagesContainer.insertBefore(card, ph.nextSibling);
                 else imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                consumePlaceholder(ph);
+                // 이 슬롯 이미지가 도착 → 다음 순서 슬롯이 '생성중'이 되도록 이동
+                genSlotIdx = computeNextGenSlot([...slotsContainer.querySelectorAll('.slot')].indexOf(targetSlot));
                 console.log(`[addImageToSlot] Card inserted for ${data.filename}`);
                 refreshPlaceholderStatus();
                 img.onload = null;   // LOD 승격으로 src를 바꿀 때 재삽입(순서 꼬임) 방지
@@ -11965,8 +12084,11 @@
                 updateSlotCardLOD(targetSlot);  // 이미 넓은 슬롯이면 즉시 원본으로 승격
             };
             img.onerror = () => {
-                if (phTarget && phTarget.isConnected) imagesContainer.replaceChild(card, phTarget);
+                const ph = imagesContainer.querySelector('.slot-image-card.placeholder');
+                if (ph) imagesContainer.insertBefore(card, ph.nextSibling);
                 else imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                consumePlaceholder(ph);
+                genSlotIdx = computeNextGenSlot([...slotsContainer.querySelectorAll('.slot')].indexOf(targetSlot));
                 refreshPlaceholderStatus();
                 img.onload = null;
                 img.onerror = null;
@@ -12005,6 +12127,7 @@
             star: _svg('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>', 'ic-star'),
             check: _svg('<polyline points="20 6 9 17 4 12"/>'),
             eraser: _svg('<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>'),
+            listX: _svg('<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="m19 10 4 4"/><path d="m19 14 4-4"/>'),
             save: _svg('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'),
             trash: _svg('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>'),
             brush: _svg('<path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/>'),
@@ -12061,57 +12184,101 @@
         applyStaticIcons();
 
         // ===== 큐 대기 플레이스홀더 (슬롯/싱글 공용) =====
-        // fill 순서대로 정렬된 대기 플레이스홀더. [0]만 '생성중', 나머지 '대기중'.
         let pendingPlaceholders = [];
-        function makePlaceholderEl(cls, aspect) {
+        // 슬롯 모드에서 현재 '실제로 생성 중'인 슬롯의 DOM 인덱스 (-1 = 없음).
+        // 백엔드가 슬롯 순서대로 한 장씩 생성하므로, 이 슬롯만 '생성중' 나머지는 '대기중'.
+        let genSlotIdx = -1;
+        // 실제로 job이 진행 중인지(job_start~job_done 사이). Clear Q 시 '생성중' 유지 여부 판단에 사용.
+        let jobInFlight = false;
+        // count = 이 플레이스홀더가 대표하는 '남은 생성 수'
+        function makePlaceholderEl(cls, aspect, count) {
             const el = document.createElement('div');
             el.className = cls + ' placeholder';
-            if (aspect) el.style.aspectRatio = aspect;
-            el.innerHTML = '<span class="ph-label">대기중</span>';
+            // 슬롯 플레이스홀더는 이미지 비율 대신 CSS로 작은 가로 바 형태로 표시(aspect 미적용).
+            // 싱글 썸네일은 .single-thumb 의 1:1 비율을 그대로 사용.
+            el._pending = Math.max(1, count || 1);
+            el.innerHTML = '<span class="ph-label"></span>';
+            updatePlaceholderLabel(el);
             return el;
         }
-        // 실제 생성 중인 한 곳만 '생성중', 나머지는 '대기중' 표시 갱신
+        // 라벨 표시: generating 클래스면 '생성중', 아니면 '대기중'. 남은 수>1이면 뒤에 (N).
+        function updatePlaceholderLabel(el) {
+            const n = Math.max(0, el._pending || 0);
+            const state = el.classList.contains('generating') ? '생성중' : '대기중';
+            const label = el.querySelector('.ph-label');
+            if (label) label.textContent = n > 1 ? `${state} (${n})` : state;
+        }
+        // 이미지 한 장 도착 시 해당 플레이스홀더의 남은 수를 1 감소, 0이 되면 제거
+        function consumePlaceholder(ph) {
+            if (!ph || !ph.isConnected) return;
+            ph._pending = (ph._pending || 1) - 1;
+            if (ph._pending <= 0) ph.remove();
+        }
+        function slotHasPlaceholder(slotEl) {
+            return !!(slotEl && slotEl.querySelector('.slot-image-card.placeholder'));
+        }
+        // afterIdx 다음(순환)으로 대기 플레이스홀더가 남은 첫 슬롯의 DOM 인덱스 (없으면 -1)
+        function computeNextGenSlot(afterIdx) {
+            const slots = [...slotsContainer.querySelectorAll('.slot')];
+            const nSlots = slots.length;
+            if (!nSlots) return -1;
+            for (let step = 1; step <= nSlots; step++) {
+                const idx = (((afterIdx % nSlots) + nSlots) + step) % nSlots;
+                if (slotHasPlaceholder(slots[idx])) return idx;
+            }
+            return -1;
+        }
+        // 생성중/대기중 상태 갱신: 싱글=항상 생성중, 슬롯=genSlotIdx 슬롯만 생성중
         function refreshPlaceholderStatus() {
             pendingPlaceholders = pendingPlaceholders.filter(p => p.isConnected && p.classList.contains('placeholder'));
-            pendingPlaceholders.forEach((p, i) => {
-                const label = p.querySelector('.ph-label');
-                if (label) label.textContent = i === 0 ? '생성중' : '대기중';
-                p.classList.toggle('generating', i === 0);
+            // 싱글 스트립: 한 개뿐이며 항상 생성중
+            document.querySelectorAll('#singleStrip .single-thumb.placeholder').forEach(ph => {
+                ph.classList.add('generating');
+                updatePlaceholderLabel(ph);
+            });
+            // 슬롯: genSlotIdx가 무효(그 슬롯에 플레이스홀더 없음)면 첫 대기 슬롯으로 보정
+            const slots = [...slotsContainer.querySelectorAll('.slot')];
+            if (genSlotIdx < 0 || !slotHasPlaceholder(slots[genSlotIdx])) {
+                genSlotIdx = computeNextGenSlot(-1);
+            }
+            slots.forEach((slot, idx) => {
+                slot.querySelectorAll('.slot-image-card.placeholder').forEach(ph => {
+                    ph.classList.toggle('generating', idx === genSlotIdx);
+                    updatePlaceholderLabel(ph);
+                });
             });
         }
-        // 큐 시작 시 생성 예정 수만큼 플레이스홀더 예약 (genMode 기준, 슬롯은 요청 해상도 비율)
+        // 큐 시작 시 컨테이너마다 '플레이스홀더 1개'만 두고 남은 개수를 카운트로 표시.
+        // (기존엔 장 수만큼 플레이스홀더가 생겨 기존 이미지가 밀려나 안 보이던 문제 해결)
+        // 이미 대기 플레이스홀더가 있으면 새로 만들지 않고 카운트만 누적.
         function reservePlaceholders(count, width, height) {
             if (count <= 0) return;
             if (genMode === 'single') {
                 const strip = document.getElementById('singleStrip');
                 if (!strip) return;
-                const created = [];
-                for (let i = 0; i < count; i++) {
-                    const ph = makePlaceholderEl('single-thumb');
-                    strip.insertBefore(ph, strip.firstChild);
-                    created.push(ph);  // created[0]=첫삽입=우측=가장 먼저 채워짐
+                let ph = strip.querySelector('.single-thumb.placeholder');
+                if (ph) { ph._pending = (ph._pending || 0) + count; updatePlaceholderLabel(ph); }
+                else {
+                    ph = makePlaceholderEl('single-thumb', null, count);
+                    strip.insertBefore(ph, strip.firstChild);  // 최신이 좌측(위)
+                    pendingPlaceholders.push(ph);
                 }
-                pendingPlaceholders.push(...created);
             } else {
                 const aspect = (width && height) ? `${width} / ${height}` : '1 / 1';
                 const slots = [...slotsContainer.querySelectorAll('.slot:not(.locked)')];
-                const perSlot = slots.map(slot => {
+                slots.forEach(slot => {
                     const ic = slot.querySelector('.slot-images');
-                    if (!ic) return [];
+                    if (!ic) return;
                     const emptyEl = ic.querySelector('.slot-empty');
                     if (emptyEl) emptyEl.remove();
-                    const arr = [];
-                    for (let i = 0; i < count; i++) {
-                        const ph = makePlaceholderEl('slot-image-card', aspect);
-                        ic.insertBefore(ph, ic.firstChild);
-                        arr.push(ph);  // arr[0]=첫삽입=맨아래=repeat0(가장 먼저 채워짐)
+                    let ph = ic.querySelector('.slot-image-card.placeholder');
+                    if (ph) { ph._pending = (ph._pending || 0) + count; updatePlaceholderLabel(ph); }
+                    else {
+                        ph = makePlaceholderEl('slot-image-card', aspect, count);
+                        ic.insertBefore(ph, ic.firstChild);  // 맨 위 고정
+                        pendingPlaceholders.push(ph);
                     }
-                    return arr;
                 });
-                // fill 순서: repeat-major(같은 repeat 안에서 슬롯 순서대로 도착)
-                for (let r = 0; r < count; r++) for (let s = 0; s < slots.length; s++) {
-                    if (perSlot[s][r]) pendingPlaceholders.push(perSlot[s][r]);
-                }
             }
             refreshPlaceholderStatus();
         }
@@ -12119,6 +12286,31 @@
         function clearAllPlaceholders() {
             document.querySelectorAll('.slot-image-card.placeholder, .single-thumb.placeholder').forEach(el => el.remove());
             pendingPlaceholders = [];
+            genSlotIdx = -1;
+        }
+        // Clear Q 전용: 대기 큐를 비웠으므로 '생성중'만 남기고 '대기중'은 모두 제거한다.
+        //  - 싱글: 플레이스홀더 1개 → 대기분(n)만 감소해 현재 in-flight 1장만 남김(미시작이면 제거).
+        //  - 슬롯: 현재 생성 중(genSlotIdx) 슬롯만 in-flight 1장으로 남기고, 나머지 대기 슬롯은 제거.
+        function reducePlaceholdersBy(n) {
+            // 싱글 스트립 (하나뿐): 대기분(n)만 감소. n<=0이면 변화 없음.
+            if (n > 0) {
+                document.querySelectorAll('#singleStrip .single-thumb.placeholder').forEach(ph => {
+                    ph._pending = (ph._pending || 1) - n;
+                    if (ph._pending <= 0) ph.remove();
+                });
+            }
+            // 슬롯: 대기 job 수(n)와 무관하게 항상 '생성중' 슬롯만 남기고 나머지 제거.
+            // (반복 1회 + 슬롯 여러 개면 대기 job이 0이라 예전엔 정리가 안 됐음)
+            const slots = [...slotsContainer.querySelectorAll('.slot')];
+            if (genSlotIdx < 0 || !slotHasPlaceholder(slots[genSlotIdx])) genSlotIdx = computeNextGenSlot(-1);
+            slots.forEach((slot, idx) => {
+                const ph = slot.querySelector('.slot-image-card.placeholder');
+                if (!ph) return;
+                if (idx === genSlotIdx) ph._pending = 1;   // 현재 in-flight 1장만
+                else ph.remove();                          // 대기중 슬롯 전부 제거
+            });
+            pendingPlaceholders = pendingPlaceholders.filter(p => p.isConnected && p.classList.contains('placeholder'));
+            refreshPlaceholderStatus();
         }
 
         // clear(미리보기 지우기)로 지운 이미지를 백엔드 복원 버퍼에서도 제거 → 새로고침해도 복원 안 됨
@@ -12243,26 +12435,52 @@
         function addImageToSingle(data) {
             const strip = document.getElementById('singleStrip');
             if (!strip) return;
-            // 가장 오래된(=오른쪽) 대기 플레이스홀더부터 채워 최신이 좌측에 오도록
-            const phs = strip.querySelectorAll('.single-thumb.placeholder');
-            let thumb;
-            if (phs.length) {
-                thumb = phs[phs.length - 1];
-            } else {
-                thumb = document.createElement('div');
-                strip.insertBefore(thumb, strip.firstChild);  // 최신이 좌측
-            }
+            // 카운팅 플레이스홀더는 맨 위에 유지(남은 수만 감소)하고, 완성본은 그 바로 아래에 삽입
+            const ph = strip.querySelector('.single-thumb.placeholder');
+            const thumb = document.createElement('div');
+            if (ph) strip.insertBefore(thumb, ph.nextSibling);
+            else strip.insertBefore(thumb, strip.firstChild);  // 최신이 좌측(위)
             const imageData = renderSingleThumb(thumb, data);
             // 생성 완료 시 최신 항목으로 뷰어 포커스를 자동 이동하지 않음 (아무것도 보고 있지 않을 때만 표시)
             if (!currentSingleImageData) selectSingleImage(imageData, thumb);
+            consumePlaceholder(ph);
             refreshPlaceholderStatus();
+        }
+
+        // 싱글 뷰어를 빈 상태로 되돌린다 (현재 표시 이미지 없음)
+        function resetSingleViewer() {
+            currentSingleImageData = null;
+            const viewerImg = document.getElementById('singleViewerImg');
+            const emptyEl = document.getElementById('singleEmpty');
+            const imgActions = document.getElementById('singleActions');
+            const galleryBtn = document.getElementById('singleSaveGalleryBtn');
+            if (viewerImg) { viewerImg.src = ''; viewerImg.style.display = 'none'; }
+            if (emptyEl) emptyEl.style.display = '';
+            if (imgActions) imgActions.style.display = 'none';
+            if (galleryBtn) galleryBtn.style.display = 'none';
+        }
+
+        // 미리보기 전체 지우기 (싱글 스트립의 실제 이미지 전부 제거; 파일은 삭제하지 않음)
+        // 진행 중인 대기 플레이스홀더는 남겨 생성 결과를 계속 받도록 함
+        function clearSingleResults() {
+            const strip = document.getElementById('singleStrip');
+            if (!strip) return;
+            const thumbs = [...strip.querySelectorAll('.single-thumb:not(.placeholder)')];
+            if (!thumbs.length) { showToast('지울 미리보기가 없습니다', 'info'); return; }
+            forgetImages(thumbs.map(t => t._imageData?.seq));
+            thumbs.forEach(t => t.remove());
+            resetSingleViewer();
+            showToast('미리보기 전체 제거됨', 'success');
         }
 
         // 큰 뷰어 휠: 이전/다음 이미지 (플레이스홀더 제외한 실제 썸네일 사이 이동)
         function navigateSingle(dir) {
             const strip = document.getElementById('singleStrip');
             if (!strip) return;
-            const thumbs = [...strip.querySelectorAll('.single-thumb:not(.placeholder)')];
+            // 별표 필터가 켜져 있으면 화면에 보이는(별표) 썸네일만 순회 (숨겨진 항목으로 이동 방지)
+            const starredOnly = strip.classList.contains('starred-only');
+            const thumbs = [...strip.querySelectorAll('.single-thumb:not(.placeholder)')]
+                .filter(t => !starredOnly || t.classList.contains('starred'));
             if (!thumbs.length) return;
             let idx = thumbs.findIndex(t => t.classList.contains('selected'));
             if (idx < 0) idx = 0;
@@ -12453,15 +12671,30 @@
                 if (nextSel && nextSel._imageData) {
                     selectSingleImage(nextSel._imageData, nextSel);
                 } else {
-                    currentSingleImageData = null;
-                    const viewerImg = document.getElementById('singleViewerImg');
-                    const emptyEl = document.getElementById('singleEmpty');
-                    const actionsEl = document.getElementById('singleActions');
-                    if (viewerImg) { viewerImg.src = ''; viewerImg.style.display = 'none'; }
-                    if (emptyEl) emptyEl.style.display = '';
-                    if (actionsEl) actionsEl.style.display = 'none';
-                    if (galleryBtn) galleryBtn.style.display = 'none';
+                    resetSingleViewer();
                 }
+            };
+
+            // 🧽 히스토리 전체 지우기 — 확인 모달 후 지움 (파일은 삭제 안 함)
+            const clearAllBtn = document.getElementById('singleClearAllBtn');
+            if (clearAllBtn) clearAllBtn.onclick = () => {
+                const cnt = strip.querySelectorAll('.single-thumb:not(.placeholder)').length;
+                if (!cnt) { showToast('지울 미리보기가 없습니다', 'info'); return; }
+                showConfirmModal(
+                    '히스토리 전체 지우기',
+                    `현재 히스토리의 미리보기 ${cnt}장을 모두 지웁니다.<br>(저장한 파일은 삭제되지 않습니다)`,
+                    () => clearSingleResults(),
+                    '전체 지우기',
+                    true
+                );
+            };
+
+            // ⭐ 갤러리 저장(별표)된 것만 모아보기 토글
+            const starFilterBtn = document.getElementById('singleStarredFilterBtn');
+            if (starFilterBtn) starFilterBtn.onclick = () => {
+                const on = strip.classList.toggle('starred-only');
+                starFilterBtn.classList.toggle('active', on);
+                showToast(on ? '별표 저장만 표시' : '전체 표시', 'info');
             };
 
             // Seed 클릭 → 시드 입력란 적용
@@ -13092,44 +13325,59 @@
         const outputFolderList = document.getElementById('outputFolderList');
         const outputFolderName = document.getElementById('outputFolderName');
         const outputFolderIcon = outputFolderBtn.querySelector('.folder-icon');
+        // 싱글 모드 폴더 컨트롤 (같은 전역 폴더 상태·메뉴 공유)
+        const singleOutputFolderDropdown = document.getElementById('singleOutputFolderDropdown');
+        const singleOutputFolderBtn = document.getElementById('singleOutputFolderBtn');
+        const singleOutputFolderName = document.getElementById('singleOutputFolderName');
 
-        let currentOutputFolder = ''; // 빈 문자열 = output 루트
+        // 슬롯/싱글 저장 폴더는 독립적으로 관리 (빈 문자열 = output 루트)
+        let slotOutputFolder = '';
+        let singleOutputFolder = '';
+        let activeFolderTarget = 'slot';  // 현재 열린 드롭다운 메뉴가 편집하는 대상('slot'|'single')
 
-        // 현재 선택된 폴더 반환 (API 호출 시 사용)
+        // 현재 생성 모드에 해당하는 저장 폴더 반환 (생성·저장 API 호출 시 사용)
         function getOutputFolder() {
-            return currentOutputFolder;
+            return genMode === 'single' ? singleOutputFolder : slotOutputFolder;
         }
 
-        // 폴더 선택 시 UI 업데이트
-        function setOutputFolder(folderName) {
-            currentOutputFolder = folderName;
-            outputFolderName.textContent = folderName || 'output';
-            outputFolderIcon.innerHTML = ICONS.folder;
+        // 폴더 선택 시 상태·표시 갱신 (target 미지정 시 현재 활성 대상)
+        function setOutputFolder(folderName, target) {
+            target = target || activeFolderTarget;
+            if (target === 'single') {
+                singleOutputFolder = folderName;
+                if (singleOutputFolderName) singleOutputFolderName.textContent = folderName || 'output';
+            } else {
+                slotOutputFolder = folderName;
+                outputFolderName.textContent = folderName || 'output';
+                outputFolderIcon.innerHTML = ICONS.folder;
+            }
             autoSaveSettings();
         }
 
-        // 폴더 드롭다운 토글
-        outputFolderBtn.onclick = (e) => {
-            e.stopPropagation();
+        // 폴더 드롭다운 토글 (슬롯/싱글 공용 메뉴 — 클릭한 버튼 기준 위치 + 편집 대상 지정)
+        function toggleOutputFolderMenu(anchorBtn, target) {
             const isShowing = outputFolderMenu.classList.contains('show');
-
             if (isShowing) {
                 outputFolderMenu.classList.remove('show');
                 outputFolderDropdown.appendChild(outputFolderMenu);
             } else {
+                activeFolderTarget = target;  // 이 메뉴가 편집할 대상(하이라이트·선택 반영)
                 document.body.appendChild(outputFolderMenu);
-                const btnRect = outputFolderBtn.getBoundingClientRect();
+                const btnRect = anchorBtn.getBoundingClientRect();
                 outputFolderMenu.style.top = (btnRect.bottom + 4) + 'px';
                 outputFolderMenu.style.right = (window.innerWidth - btnRect.right) + 'px';
                 outputFolderMenu.style.left = 'auto';
                 outputFolderMenu.classList.add('show');
                 loadOutputFolderList();
             }
-        };
+        }
+        outputFolderBtn.onclick = (e) => { e.stopPropagation(); toggleOutputFolderMenu(outputFolderBtn, 'slot'); };
+        if (singleOutputFolderBtn) singleOutputFolderBtn.onclick = (e) => { e.stopPropagation(); toggleOutputFolderMenu(singleOutputFolderBtn, 'single'); };
 
-        // 외부 클릭 시 닫기
+        // 외부 클릭 시 닫기 (슬롯/싱글 드롭다운·메뉴 밖 클릭일 때만)
         document.addEventListener('click', (e) => {
-            if (!outputFolderDropdown.contains(e.target) && !outputFolderMenu.contains(e.target)) {
+            if (!outputFolderDropdown.contains(e.target) && !outputFolderMenu.contains(e.target)
+                && !(singleOutputFolderDropdown && singleOutputFolderDropdown.contains(e.target))) {
                 outputFolderMenu.classList.remove('show');
                 if (outputFolderMenu.parentElement === document.body) {
                     outputFolderDropdown.appendChild(outputFolderMenu);
@@ -13149,9 +13397,10 @@
             }
         }
 
-        // 폴더 목록 렌더링
+        // 폴더 목록 렌더링 (현재 활성 대상의 선택 폴더를 하이라이트)
         function renderOutputFolderList(folders) {
-            const isRootSelected = currentOutputFolder === '';
+            const activeFolder = activeFolderTarget === 'single' ? singleOutputFolder : slotOutputFolder;
+            const isRootSelected = activeFolder === '';
 
             let html = `
                 <div class="folder-item root-folder ${isRootSelected ? 'active' : ''}" data-folder="">
@@ -13161,7 +13410,7 @@
             `;
 
             folders.forEach(folder => {
-                const isSelected = currentOutputFolder === folder.name;
+                const isSelected = activeFolder === folder.name;
                 html += `
                     <div class="folder-item subfolder ${isSelected ? 'active' : ''}" data-folder="${folder.name}">
                         <span>${isSelected ? ICONS.folderOpen : ICONS.folder}</span>
@@ -13805,6 +14054,16 @@
             if (promptTargetBtn) {
                 promptTargetBtn.style.display = currentProvider === 'nai' ? '' : 'none';
             }
+
+            // Cancel 버튼: NAI는 진행 중인 이미지를 중간 취소할 수 없어(원자적 API) 무의미하므로 숨김.
+            // NAI에서는 Clear Q(대기 큐 비우기)로 나머지 생성을 멈춘다.
+            const naiHideCancel = currentProvider === 'nai';
+            const cancelBtn = document.getElementById('cancelCurrentBtn');
+            if (cancelBtn) cancelBtn.style.display = naiHideCancel ? 'none' : '';
+            // 접힘 바의 두 번째 버튼은 Clear Q이므로 NAI/로컬 모두 항상 표시 (숨김 로직 제거)
+            // Cancel 숨김 시 Clear Q가 행 전체를 채우도록 단일 컬럼 전환
+            const queueRow = document.getElementById('queueActionRow');
+            if (queueRow) queueRow.classList.toggle('one-col', naiHideCancel);
         }
 
         // NAI 제한값 강제 적용 (입력 이벤트)
@@ -15279,6 +15538,12 @@
                     updateProgress();
                     showToast(`Cleared ${result.cleared_images} images`, 'warning');
                 }
+                // NAI는 Cancel 버튼이 없으므로 Clear Q가 '전체 중단' 역할:
+                // 대기 큐를 비운 뒤 현재 진행 중인 job도 취소한다.
+                // (NAI 특성상 현재 in-flight 1장은 완료되지만 이후는 생성 안 됨)
+                if (currentProvider === 'nai') {
+                    await fetch(`${API_BASE}/api/cancel-current`, { method: 'POST' });
+                }
             } catch (e) {
                 showToast(`Error: ${e.message}`, 'error');
             }
@@ -15454,6 +15719,7 @@
 
                 case 'job_start':
                     console.log(`[WS] Job started: ${data.job_id}, total: ${data.job_total}`);
+                    jobInFlight = true;
                     updateProgressFromServer(data.progress);
                     // HiresFix 버튼 상태 업데이트: 대기중 -> 처리중
                     updateHiresFixButtonState(data.job_id, 'processing');
@@ -15470,6 +15736,7 @@
 
                 case 'job_done':
                     console.log(`[WS] Job done: ${data.job_id}`);
+                    jobInFlight = false;
                     updateProgressFromServer(data.progress);
                     // HiresFix 버튼 상태 초기화 (완료)
                     updateHiresFixButtonState(data.job_id, 'done');
@@ -15545,6 +15812,7 @@
 
                 case 'job_cancelled':
                     console.log(`[WS] Job cancelled: ${data.job_id}, immediate: ${data.immediate}`);
+                    jobInFlight = false;
                     updateProgressFromServer(data.progress);
                     // 큐가 비었으면 상태 초기화
                     if (!data.progress || data.progress.total === 0 || data.progress.queue_length === 0) {
@@ -15576,8 +15844,11 @@
                     break;
 
                 case 'queue_cleared':
-                    console.log(`[WS] Queue cleared: ${data.cleared_images} images`);
-                    clearAllPlaceholders();  // 큐 비움 시 대기 플레이스홀더 정리
+                    console.log(`[WS] Queue cleared: ${data.cleared_images} images, ${data.cleared_jobs} jobs`);
+                    // 실제 진행 중 job이 있으면 '생성중' 1장만 남기고 대기분 제거,
+                    // idle 구간(job_start 전/사이)에 Clear Q 하면 진행 중이 없으므로 전부 제거(유령 '생성중' 방지)
+                    if (jobInFlight) reducePlaceholdersBy(data.cleared_jobs || 0);
+                    else clearAllPlaceholders();
                     batchImageCount = 0;
                     batchErrorCount = 0;
                     lastGenErrorMsg = '';
@@ -17177,7 +17448,17 @@
         generateBtn.onclick = addToQueue;
         cancelCurrentBtn.onclick = cancelCurrent;
         clearQueueBtn.onclick = clearQueue;
-        document.getElementById('clearImagesBtn').onclick = clearResults;
+        document.getElementById('clearImagesBtn').onclick = () => {
+            const cnt = document.querySelectorAll('#slotsContainer .slot-image-card:not(.placeholder)').length;
+            if (!cnt) { showToast('지울 이미지가 없습니다', 'info'); return; }
+            showConfirmModal(
+                '전체 이미지 지우기',
+                `현재 슬롯의 이미지 ${cnt}장을 모두 지웁니다.<br>(저장한 파일은 삭제되지 않습니다)`,
+                () => clearResults(),
+                '전체 지우기',
+                true
+            );
+        };
 
         // Anime/Furry Mode Toggle
         let furryModeEnabled = false;
@@ -17328,7 +17609,11 @@
         }
 
         document.getElementById('openOutputFolderBtn').onclick = () => {
-            openFolder('outputs', getOutputFolder());
+            openFolder('outputs', slotOutputFolder);   // 슬롯 저장 폴더
+        };
+        const singleOpenOutputFolderBtn = document.getElementById('singleOpenOutputFolderBtn');
+        if (singleOpenOutputFolderBtn) singleOpenOutputFolderBtn.onclick = () => {
+            openFolder('outputs', singleOutputFolder); // 싱글 저장 폴더
         };
         document.getElementById('openVibeFolderBtn').onclick = () => openFolder('vibe_cache');
         document.getElementById('openCheckpointsFolderBtn').onclick = () => openFolder('checkpoints');
@@ -17922,7 +18207,7 @@
 
                 if (data.is_free && data.vibe_encoding_cost === 0) {
                     document.getElementById('anlasCost').style.display = 'none';
-                    document.getElementById('anlasFreeTag').style.display = 'inline';
+                    document.getElementById('anlasFreeTag').style.display = 'inline-flex';
                 } else {
                     document.getElementById('anlasCost').style.display = 'inline';
                     document.getElementById('anlasFreeTag').style.display = 'none';
@@ -17968,7 +18253,7 @@
         function updateAnlasVisibility() {
             const anlasInfo = document.getElementById('anlasInfo');
             if (currentProvider === 'nai') {
-                anlasInfo.style.display = 'block';
+                anlasInfo.style.display = 'flex';   /* CSS의 display:flex 유지 — block이면 align-items 무효화되어 정렬 깨짐 */
                 fetchAnlasBalance();
             } else {
                 anlasInfo.style.display = 'none';
@@ -19659,8 +19944,9 @@
                 notifySoundOnComplete: document.getElementById('notifySoundOnComplete').checked,
                 notifySoundVolume: document.getElementById('notifySoundVolume').value,
 
-                // Output
-                outputFolder: getOutputFolder(),
+                // Output (슬롯/싱글 저장 폴더 독립 저장 — outputFolder는 하위호환상 슬롯 폴더)
+                outputFolder: slotOutputFolder,
+                singleOutputFolder: singleOutputFolder,
                 repeatCount: document.getElementById('repeatCount').value,
                 
                 // Slots & Preset
@@ -19751,13 +20037,12 @@
                     const coord = charData.coord || null;
                     const uc = charData.uc || '';
                     const skipSlotPrompt = charData.skipSlotPrompt || false;
-                    if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
-                        if (height) {
-                            item.querySelector('.char-prompt-textarea').style.height = height;
-                        }
-                        charactersList.appendChild(item);
+                    // 빈 슬롯도 그대로 복원 (저장된 모든 캐릭터를 충실히 재현)
+                    const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
+                    if (height) {
+                        item.querySelector('.char-prompt-textarea').style.height = height;
                     }
+                    charactersList.appendChild(item);
                 });
                 updateCharacterNumbers();
                 // 중복 복원 방지: pending을 null로 설정
@@ -19821,12 +20106,14 @@
                 if (settings.notifySoundVolume !== undefined) document.getElementById('notifySoundVolume').value = settings.notifySoundVolume;
             }
 
-            // Output
+            // Output (슬롯/싱글 저장 폴더 각각 복원)
             if (isFullRestore && isEmpty) {
-                setOutputFolder('');
+                setOutputFolder('', 'slot');
+                setOutputFolder('', 'single');
                 document.getElementById('repeatCount').value = 1;
             } else {
-                if (settings.outputFolder !== undefined) setOutputFolder(settings.outputFolder);
+                if (settings.outputFolder !== undefined) setOutputFolder(settings.outputFolder, 'slot');
+                if (settings.singleOutputFolder !== undefined) setOutputFolder(settings.singleOutputFolder, 'single');
                 if (settings.repeatCount) document.getElementById('repeatCount').value = settings.repeatCount;
             }
             
@@ -20381,6 +20668,7 @@
                     stripMetadata: settings.stripMetadata || false,
                     excludeSlotNumber: settings.excludeSlotNumber || false,
                     outputFolder: settings.outputFolder || '',
+                    singleOutputFolder: settings.singleOutputFolder || '',
                     repeatCount: settings.repeatCount || 1,
                     slots: settings.slots || [],
                     currentPreset: settings.currentPreset || null,
@@ -20673,8 +20961,57 @@
             }
         }
         
+        // 캐릭터 프롬프트를 _pendingCharacterPromptsLayout 로부터 DOM에 복원한다.
+        // 반드시 동기로(loadAppSettings 직후) 호출해서, 비동기 초기화(loadResources 등) 도중
+        // autoSaveSettings 가 빈 캐릭터 목록을 저장해 localStorage를 덮어쓰는 레이스를 막는다.
+        // idempotent: 복원 후 _pending을 비우므로 중복 호출해도 안전.
+        function restorePendingCharacterPrompts() {
+            if (window._charsRestored) return;
+            // _pending 우선, 비어있으면 현재 provider 설정에서 직접 읽는다.
+            // (loadAppSettings 가 _pending 세팅에 실패하는 경우가 있어 provider 설정을 신뢰 소스로 사용)
+            let layout = window._pendingCharacterPromptsLayout;
+            if (!layout || !layout.length) {
+                const ps = (currentProvider === 'nai' ? naiSettings : localSettings) || {};
+                layout = ps.characterPromptsLayout;
+            }
+            if (!layout || !layout.length) return;  // 복원할 것 없음 (flag 안 세워 나중 재시도 허용)
+            window._charsRestored = true;
+            window._pendingCharacterPromptsLayout = null;
+            let enabledCount = 0;
+            layout.forEach(charData => {
+                const content = charData.content || '';
+                const collapsed = charData.collapsed || false;
+                const height = charData.height || null;
+                let enabled = charData.enabled !== false;  // 기본값 true (하위 호환)
+                // 활성화 6명 제한 적용
+                if (enabled && enabledCount >= 6) {
+                    enabled = false;
+                }
+                if (enabled) enabledCount++;
+                const name = charData.name || '';
+                const coord = charData.coord || null;
+                const uc = charData.uc || '';
+                const skipSlotPrompt = charData.skipSlotPrompt || false;
+                // 저장은 DOM의 모든 캐릭터를 그대로 담으므로, 빈 슬롯도 그대로 복원한다
+                // (기존엔 내용/이름 없으면 걸러서 빈 캐릭터 슬롯이 사라졌음)
+                const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
+                if (height) {
+                    item.querySelector('.char-prompt-textarea').style.height = height;
+                }
+                charactersList.appendChild(item);
+            });
+            updateCharacterNumbers();
+            window._pendingCharacterPromptsLayout = null;
+        }
+
+        // 뷰/생성 대상 상태: loadAppSettings 도중 updateQueueButton 등이 참조하므로
+        // Init 이전에 선언해야 TDZ('Cannot access genMode before initialization') 에러가 안 남.
+        let currentMode = 'slot'; // 현재 보이는 뷰: 'slot' | 'single' | 'gallery' | 'censor' | 'utility' | 'cardeditor'
+        let genMode = 'slot';     // 생성 대상(슬롯/싱글). 생성은 항상 이 모드로 감. 슬롯/싱글 뷰 진입 시 갱신됨
+
         // Init
         loadAppSettings();  // 저장된 설정 먼저 로드
+        restorePendingCharacterPrompts();  // 캐릭터도 즉시 복원(비동기 저장 레이스 방지)
 
         // 네거티브 탭 상태 업데이트 (설정 로드 후)
         const negativeTab = document.getElementById('baseNegativeTab');
@@ -20728,34 +21065,9 @@
             if (window._pendingLutFile) {
                 document.getElementById('lutFile').value = window._pendingLutFile;
             }
-            // 캐릭터 프롬프트 복원 (레이아웃 포함)
-            if (window._pendingCharacterPromptsLayout) {
-                let enabledCount = 0;
-                window._pendingCharacterPromptsLayout.forEach(charData => {
-                    const content = charData.content || '';
-                    const collapsed = charData.collapsed || false;
-                    const height = charData.height || null;
-                    let enabled = charData.enabled !== false;  // 기본값 true (하위 호환)
-                    // 활성화 6명 제한 적용
-                    if (enabled && enabledCount >= 6) {
-                        enabled = false;
-                    }
-                    if (enabled) enabledCount++;
-                    const name = charData.name || '';
-                    const coord = charData.coord || null;
-                    const uc = charData.uc || '';
-                    const skipSlotPrompt = charData.skipSlotPrompt || false;
-                    if (content.trim() || collapsed || name.trim()) {
-                        const item = createCharacterItem(content, collapsed, enabled, name, coord, uc, skipSlotPrompt);
-                        if (height) {
-                            item.querySelector('.char-prompt-textarea').style.height = height;
-                        }
-                        charactersList.appendChild(item);
-                    }
-                });
-                updateCharacterNumbers();
-                window._pendingCharacterPromptsLayout = null;
-            }
+            // 캐릭터 프롬프트 복원은 이미 동기(loadAppSettings 직후)로 처리됨.
+            // 혹시 남아있으면(엣지 케이스) 여기서 한 번 더 시도 (idempotent).
+            restorePendingCharacterPrompts();
 
             // 모든 복원 완료 후 자동 저장 설정
             setupAutoSave();
@@ -20840,8 +21152,7 @@
         const singleModeBtn = document.getElementById('singleModeBtn');
         const singleContainer = document.getElementById('singleContainer');
 
-        let currentMode = 'slot'; // 현재 보이는 뷰: 'slot' | 'single' | 'gallery' | 'censor' | 'utility' | 'cardeditor'
-        let genMode = 'slot';     // 생성 대상(슬롯/싱글). 생성은 항상 이 모드로 감. 슬롯/싱글 뷰 진입 시 갱신됨
+        // currentMode / genMode 는 상단(Init 이전)에서 이미 선언됨 (TDZ 방지)
         let currentGalleryFolder = ''; // 현재 선택된 폴더 (빈 문자열 = gallery 루트)
         let isVibeMode = false; // vibe cache mode
 
@@ -20877,8 +21188,8 @@
                 if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false);
             }
 
-            // Queue 버튼 라벨 (생성 대상 기준)
-            generateBtn.textContent = genMode === 'single' ? 'Queue (1)' : `Queue (${getUnlockedSlotCount() || 1})`;
+            // Queue 버튼 라벨 (생성 대상 기준): 싱글은 슬롯 개수와 무관하므로 숫자 없이 표시
+            generateBtn.textContent = genMode === 'single' ? 'Queue' : `Queue (${getUnlockedSlotCount() || 1})`;
         }
 
         slotModeBtn.onclick = () => {

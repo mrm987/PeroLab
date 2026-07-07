@@ -54,6 +54,10 @@ dist/
 test_data/
 test_*.py
 tests/
+
+# 테스트 모드 (로컬 전용, 릴리즈/깃 미포함)
+test_mode.py
+PeroPix-Test.bat
 DEV_backup/
 debug_*.png
 *_debug_*.json

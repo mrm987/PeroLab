@@ -7659,6 +7659,15 @@ def run_first_install_if_needed():
         return False
 
 
+# 테스트 모드 훅 (릴리즈 미포함): test_mode.py 가 존재하고 PEROPIX_TEST_MODE 가 설정된
+# 경우에만 call_nai_api 를 더미 이미지 반환으로 대체한다. 파일이 없으면 아무 일도 안 함.
+try:
+    import test_mode as _test_mode  # noqa: E402
+    _test_mode.install(sys.modules[__name__])
+except ImportError:
+    pass
+
+
 if __name__ == "__main__":
     import uvicorn
 
