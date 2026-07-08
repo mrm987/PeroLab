@@ -35,10 +35,11 @@ models/embeddings/*.safetensors
 models/embeddings/*.pt
 models/embeddings/*.bin
 
-# IDE
+# IDE / 개인 개발용
 .idea/
 .vscode/
 .claude/
+/CLAUDE.md
 *.swp
 *.swo
 
