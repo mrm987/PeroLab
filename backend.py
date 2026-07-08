@@ -1336,6 +1336,14 @@ async def call_nai_api(req: GenerateRequest):
         "extra_noise_seed": int(seed),
     }
 
+    # 웹 페이로드와 정렬: 모든 생성 요청에 항상 포함되는 base 파라미터 (6개 캡처 전부 공통)
+    params["normalize_reference_strength_multiple"] = True
+    # SMEA: V3는 sm/sm_dyn, V4+는 autoSmea 사용 (웹과 동일). V4에선 sm/sm_dyn 미전송.
+    if is_v4_model:
+        params.pop("sm", None)
+        params.pop("sm_dyn", None)
+        params["autoSmea"] = False
+
     # 캐릭터 좌표 처리
     # character_prompts_with_coords가 있으면 사용, 없으면 character_prompts 사용 (하위 호환)
     char_data = []
@@ -1575,14 +1583,29 @@ async def call_nai_api(req: GenerateRequest):
             if img_pil.size != mask_pil.size:
                 print(f"[NAI] WARNING: Image and mask size mismatch!")
 
-            # NAI 웹과 정확히 동일한 인페인트 파라미터
-            params["strength"] = 0.7
+            # NAI 웹의 실제 인페인트 요청(generate-image-stream)을 캡처해 그대로 맞춤.
+            #   - add_original_image=False (웹은 false! 우리가 True로 잘못 보내고 있었음)
+            #   - request_type 미전송 (웹엔 없음. "NativeInfillingRequest"는 마스크 영역을
+            #     강도무관 완전재생성시켜 강도를 무효화하던 원인 → 제거)
+            #   - 강도 슬라이더를 웹과 동일하게 inpaintImg2ImgStrength + img2img.strength +
+            #     strength 세 곳에 반영 (JSON 엔드포인트가 어느 필드를 읽든 강도가 먹도록)
+            params.pop("request_type", None)
             params["add_original_image"] = False
+            params["strength"] = req.base_strength
+            params["inpaintImg2ImgStrength"] = req.base_strength
+            params["img2img"] = {"strength": req.base_strength, "color_correct": True}
+            params["noise"] = 0
+            # 웹은 V3 SMEA(sm/sm_dyn) 대신 autoSmea:false 사용
+            params.pop("sm", None)
+            params.pop("sm_dyn", None)
+            params["autoSmea"] = False
+            # euler ancestral 노이즈 재주입 끄고 brownian 선호 (웹과 동일)
+            params["deliberate_euler_ancestral_bug"] = False
+            params["prefer_brownian"] = True
+            params["normalize_reference_strength_multiple"] = True
             params["image_format"] = "png"
-            params["inpaintImg2ImgStrength"] = 1
             params["legacy"] = False
             params["legacy_v3_extend"] = False
-            params["noise"] = 0  # 삭제가 아니라 0으로 설정
 
             # 인페인트는 바이브 미지원, 프리사이즈 레퍼런스는 지원
             params_to_delete = [
@@ -1620,6 +1643,12 @@ async def call_nai_api(req: GenerateRequest):
     precise_ref_count = len(params.get("director_reference_images", []))
     has_char_ref = precise_ref_count > 0
     print(f"[NAI] Generating: {req.width}x{req.height}, steps={req.steps}, model={model_to_use}, vibes={vibe_count}, precise_refs={precise_ref_count}")
+    if action == "infill":
+        print(f"[NAI][INPAINT PARAMS] base_strength={req.base_strength} | "
+              f"inpaintImg2ImgStrength={params.get('inpaintImg2ImgStrength')} | img2img={params.get('img2img')} | strength={params.get('strength')} | "
+              f"add_original_image={params.get('add_original_image')} | request_type={params.get('request_type')} | autoSmea={params.get('autoSmea')} | "
+              f"deliberate_euler_ancestral_bug={params.get('deliberate_euler_ancestral_bug')} | prefer_brownian={params.get('prefer_brownian')} | "
+              f"sampler={params.get('sampler')} | noise_schedule={params.get('noise_schedule')} | seed={params.get('seed')}")
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -3986,6 +4015,8 @@ async def serve_assets(filepath: str):
         ".gif": "image/gif",
         ".svg": "image/svg+xml",
         ".ico": "image/x-icon",
+        ".js": "text/javascript",
+        ".css": "text/css",
     }
     media_type = media_types.get(suffix, "application/octet-stream")
     return FileResponse(file_path, media_type=media_type)
@@ -5266,8 +5297,12 @@ async def save_preview_image(req: SavePreviewRequest):
             target_pil_format = pil_format_map.get(save_format, 'PNG')
 
             # RGBA → RGB 변환 (JPEG는 알파 채널 미지원)
+            # 투명 영역은 흰색으로 매트 처리 (단순 convert('RGB')는 투명 픽셀을 검정으로 만듦)
             if save_format == 'jpg' and img.mode in ('RGBA', 'LA', 'P'):
-                img = img.convert('RGB')
+                rgba = img.convert('RGBA')
+                bg = PILImage.new('RGB', rgba.size, (255, 255, 255))
+                bg.paste(rgba, mask=rgba.split()[3])
+                img = bg
 
             if save_format in ('jpg', 'webp'):
                 img.save(buf, format=target_pil_format, quality=req.jpg_quality)

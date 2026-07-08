@@ -7198,6 +7198,7 @@
 
         /* Load settings button */
         .slot-image-card .load-settings-btn,
+        .slot-image-card .edit-btn,
         .slot-image-card .inpaint-btn,
         .slot-image-card .enhance-btn,
         .slot-image-card .clear-card-btn {
@@ -7219,6 +7220,11 @@
         .slot-image-card .inpaint-btn:hover {
             background: #9b59b6;
             color: white;
+        }
+        .slot-image-card .edit-btn:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
         }
         .slot-image-card .enhance-btn:hover {
             background: #e67e22;
@@ -8683,6 +8689,7 @@
         .card-macro-item-trigger { color: var(--accent); font-family: monospace; }
         .card-macro-item-text { color: var(--text-dim); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; }
     </style>
+    <link rel="stylesheet" href="/assets/editor.css">
 </head>
 <body>
     <!-- 초기화 완료 전 로딩 오버레이 -->
@@ -9409,6 +9416,11 @@
                     <button type="button" class="single-gallery-btn" id="singleSaveGalleryBtn" title="갤러리에 저장" style="display: none;">☆</button>
                 </div>
                 <div class="single-actions" id="singleActions" style="display: none;">
+                    <!-- 클리어/세이브: 좌측 끝 (줌 컨트롤 앞) -->
+                    <button type="button" class="single-action-btn" id="singleClearBtn" title="이 이미지 지우기">🧹</button>
+                    <!-- 세이브(미저장)/삭제(저장됨)는 같은 자리에서 상호 배타적으로 표시 -->
+                    <button type="button" class="single-action-btn" id="singleSavePreviewBtn" title="파일로 저장" style="display: none;">💾</button>
+                    <button type="button" class="single-action-btn" id="singleDeleteBtn" title="파일 삭제" style="display: none;">🗑️</button>
                     <!-- 확대/축소: 좌측 끝 고정 -->
                     <div class="single-zoom-ctrl" id="singleZoomCtrl">
                         <button type="button" class="single-action-btn" id="singleZoomOutBtn" title="축소" data-icon="minus"></button>
@@ -9417,9 +9429,7 @@
                     </div>
                     <!-- 시드는 버튼들보다 왼쪽에 두어 길이가 바뀌어도 버튼 위치가 흔들리지 않게 함 -->
                     <span class="single-seed" id="singleSeed" title="클릭하여 시드 적용"></span>
-                    <button type="button" class="single-action-btn" id="singleClearBtn" title="이 이미지 지우기">🧹</button>
-                    <button type="button" class="single-action-btn" id="singleSavePreviewBtn" title="파일로 저장" style="display: none;">💾</button>
-                    <button type="button" class="single-action-btn" id="singleDeleteBtn" title="파일 삭제" style="display: none;">🗑️</button>
+                    <button type="button" class="single-action-btn" id="singleEditBtn" title="편집"></button>
                     <button type="button" class="single-action-btn" id="singleInpaintBtn" title="Inpaint">🎨</button>
                     <button type="button" class="single-action-btn" id="singleEnhanceBtn" title="Enhance (NAI)" style="display: none;">✨</button>
                     <button type="button" class="single-action-btn" id="singleLoadSettingsBtn" title="전체 설정 불러오기">📋</button>
@@ -11634,6 +11644,7 @@
                         <button type="button" class="save-preview-btn" title="파일로 저장"${isPreviewOnly ? '' : ' style="display:none"'}>${ICONS.save}</button>
                         <button type="button" class="delete-file-btn" title="파일 삭제"${isPreviewOnly ? ' style="display:none"' : ''}>${ICONS.trash}</button>
                         ${filenameDisplay}
+                        <button type="button" class="edit-btn" title="편집">${ICONS.pencil}</button>
                         <button type="button" class="inpaint-btn" title="Inpaint">${ICONS.brush}</button>
                         <button type="button" class="enhance-btn" title="Enhance (NAI)" style="display: none;">${ICONS.sparkles}</button>
                         <button type="button" class="hiresfix-btn" title="HiresFix (Local)" style="display: none;">${ICONS.scaling}</button>
@@ -11821,6 +11832,18 @@
                     showGalleryDropModal(imageBase64, metadata, card._imageData.image_path || 'output.png');
                 } else {
                     showToast('이미지를 불러올 수 없습니다', 'error');
+                }
+            };
+
+            // 편집 버튼 → 이미지 편집기 (독립 모듈)
+            const editBtn = card.querySelector('.edit-btn');
+            if (editBtn) editBtn.onclick = async (e) => {
+                e.stopPropagation();
+                const b64 = await resolveImageBase64(card._imageData);
+                if (b64 && typeof openEditor === 'function') {
+                    openEditor(b64, card._imageData.metadata, { sourceMode: 'slot', sourceSlotIndex: card._imageData.slotIndex, seed: card._imageData.seed });
+                } else {
+                    showToast('이미지 데이터가 없습니다', 'error');
                 }
             };
 
@@ -12176,7 +12199,7 @@
         function applyStaticIcons() {
             const modeMap = { slotModeBtn: ['layoutGrid', '슬롯'], singleModeBtn: ['image', '싱글'], galleryModeBtn: ['images', '갤러리'], censorModeBtn: ['shield', '자동검열'], utilityModeBtn: ['wrench', '보조 도구'], cardEditorModeBtn: ['idCard', '캐릭터 카드'] };
             for (const id in modeMap) { const b = document.getElementById(id); if (b) b.innerHTML = ICONS[modeMap[id][0]] + `<span>${modeMap[id][1]}</span>`; }
-            const singleMap = { singleSaveGalleryBtn: 'star', singleClearBtn: 'eraser', singleSavePreviewBtn: 'save', singleDeleteBtn: 'trash', singleInpaintBtn: 'brush', singleEnhanceBtn: 'sparkles', singleLoadSettingsBtn: 'sliders' };
+            const singleMap = { singleSaveGalleryBtn: 'star', singleClearBtn: 'eraser', singleSavePreviewBtn: 'save', singleDeleteBtn: 'trash', singleEditBtn: 'pencil', singleInpaintBtn: 'brush', singleEnhanceBtn: 'sparkles', singleLoadSettingsBtn: 'sliders' };
             for (const id in singleMap) { const b = document.getElementById(id); if (b) b.innerHTML = ICONS[singleMap[id]]; }
             // data-icon 속성을 가진 모든 요소에 아이콘 주입 (앱 전체 정적 이모지 대체용, 텍스트 형제는 유지)
             document.querySelectorAll('[data-icon]').forEach(el => { const ic = ICONS[el.dataset.icon]; if (ic) el.innerHTML = ic; });
@@ -13333,7 +13356,8 @@
         // 슬롯/싱글 저장 폴더는 독립적으로 관리 (빈 문자열 = output 루트)
         let slotOutputFolder = '';
         let singleOutputFolder = '';
-        let activeFolderTarget = 'slot';  // 현재 열린 드롭다운 메뉴가 편집하는 대상('slot'|'single')
+        let editorOutputFolder = '';      // 이미지 편집기 전용 저장 폴더 (슬롯/싱글과 독립)
+        let activeFolderTarget = 'slot';  // 현재 열린 드롭다운 메뉴가 편집하는 대상('slot'|'single'|'editor')
 
         // 현재 생성 모드에 해당하는 저장 폴더 반환 (생성·저장 API 호출 시 사용)
         function getOutputFolder() {
@@ -13346,6 +13370,10 @@
             if (target === 'single') {
                 singleOutputFolder = folderName;
                 if (singleOutputFolderName) singleOutputFolderName.textContent = folderName || 'output';
+            } else if (target === 'editor') {
+                editorOutputFolder = folderName;
+                const _pxeName = document.getElementById('pxeOutputFolderName');
+                if (_pxeName) _pxeName.textContent = folderName || 'output';
             } else {
                 slotOutputFolder = folderName;
                 outputFolderName.textContent = folderName || 'output';
@@ -13399,7 +13427,8 @@
 
         // 폴더 목록 렌더링 (현재 활성 대상의 선택 폴더를 하이라이트)
         function renderOutputFolderList(folders) {
-            const activeFolder = activeFolderTarget === 'single' ? singleOutputFolder : slotOutputFolder;
+            const activeFolder = activeFolderTarget === 'single' ? singleOutputFolder
+                : activeFolderTarget === 'editor' ? editorOutputFolder : slotOutputFolder;
             const isRootSelected = activeFolder === '';
 
             let html = `
@@ -17229,20 +17258,22 @@
                 }
             }
 
-            // 크기
-            if (metadata.width) {
-                document.getElementById('width').value = metadata.width;
-                highlight('width');
+            // 크기 — 베이스 이미지 등록 시엔 사이즈가 베이스 해상도로 잠겨 있으므로 오버라이드 금지
+            if (!baseImageData.enabled) {
+                if (metadata.width) {
+                    document.getElementById('width').value = metadata.width;
+                    highlight('width');
+                }
+                if (metadata.height) {
+                    document.getElementById('height').value = metadata.height;
+                    highlight('height');
+                }
+                // 사이즈 프리셋 체크
+                const sizeValue = `${metadata.width}x${metadata.height}`;
+                const sizePreset = document.getElementById('sizePreset');
+                const matchingOption = [...sizePreset.options].find(o => o.value === sizeValue);
+                sizePreset.value = matchingOption ? sizeValue : 'custom';
             }
-            if (metadata.height) {
-                document.getElementById('height').value = metadata.height;
-                highlight('height');
-            }
-            // 사이즈 프리셋 체크
-            const sizeValue = `${metadata.width}x${metadata.height}`;
-            const sizePreset = document.getElementById('sizePreset');
-            const matchingOption = [...sizePreset.options].find(o => o.value === sizeValue);
-            sizePreset.value = matchingOption ? sizeValue : 'custom';
 
             // 생성 설정
             if (metadata.steps) {
@@ -17674,7 +17705,7 @@
                     }
                 }
             }
-            if (isCtrl && e.key === 'Enter' && currentMode !== 'cardeditor') {
+            if (isCtrl && e.key === 'Enter' && currentMode !== 'cardeditor' && currentMode !== 'editor') {
                 addToQueue();
             }
         });
@@ -21170,6 +21201,8 @@
             censorContainer.style.display = view === 'censor' ? 'flex' : 'none';
             utilityContainer.style.display = view === 'utility' ? 'flex' : 'none';
             cardEditorContainer.style.display = view === 'cardeditor' ? 'flex' : 'none';
+            const _pxeView = document.getElementById('pxeView');
+            if (_pxeView) _pxeView.style.display = view === 'editor' ? 'flex' : 'none';
 
             // 세그먼트 토글은 항상 genMode를, 보조 탭은 현재 뷰를 active 표시
             slotModeBtn.classList.toggle('active', genMode === 'slot');
@@ -21178,6 +21211,8 @@
             censorModeBtn.classList.toggle('active', view === 'censor');
             utilityModeBtn.classList.toggle('active', view === 'utility');
             cardEditorModeBtn.classList.toggle('active', view === 'cardeditor');
+            const _pxeChip = document.getElementById('pxeChip');
+            if (_pxeChip) _pxeChip.classList.toggle('active', view === 'editor');
             // 슬롯/싱글 세그먼트: 보조 탭(생성 뷰가 아님) 선택 시 비활성처럼 표시
             const genSwitch = document.querySelector('.gen-mode-switch');
             if (genSwitch) genSwitch.classList.toggle('inactive', view !== 'slot' && view !== 'single');
@@ -21187,6 +21222,7 @@
                 if (typeof cardRestoreSidebar === 'function') cardRestoreSidebar();
                 if (typeof cardToggleFindModal === 'function') cardToggleFindModal(false);
             }
+            // 이미지 편집기 뷰는 사이드바(좌측 패널)를 숨기지 않는다 — 다른 뷰처럼 콘텐츠 영역에 표시
 
             // Queue 버튼 라벨 (생성 대상 기준): 싱글은 슬롯 개수와 무관하므로 숫자 없이 표시
             generateBtn.textContent = genMode === 'single' ? 'Queue' : `Queue (${getUnlockedSlotCount() || 1})`;
@@ -21489,7 +21525,7 @@
                         <div class="seed${img.seed ? ' clickable' : ''}"${img.seed ? ` data-seed="${img.seed}" title="클릭하여 시드 적용"` : ''}>${img.seed ? 'Seed: ' + img.seed : '메타데이터 없음'}</div>
                     </div>
                     <div class="gallery-item-actions">
-                        <button class="inpaint-btn" title="인페인트">${ICONS.brush} Inpaint</button>
+                        <button class="edit-btn" title="편집">${ICONS.pencil} 편집</button>
                         <button class="apply-all-btn" title="설정 적용">${ICONS.clipboard} Apply</button>
                         <button class="delete-btn" title="삭제">${ICONS.trash}</button>
                     </div>
@@ -21639,20 +21675,23 @@
                     }
                 };
 
-                // 인페인트
-                item.querySelector('.inpaint-btn').onclick = async (e) => {
+                // 편집 (이미지 편집기 열기)
+                item.querySelector('.edit-btn').onclick = async (e) => {
                     e.stopPropagation();
                     try {
                         const response = await fetch(`${API_BASE}/api/gallery/${item._filename}${folderQuery}`);
                         const result = await response.json();
                         if (result.success && result.image) {
-                            setBaseImageForInpaint(result.image);
-                            showToast('인페인트 모드로 전환', 'success');
+                            if (typeof openEditor === 'function') {
+                                openEditor(result.image, result.metadata || null, { sourceMode: 'gallery', seed: img.seed });
+                            } else {
+                                showToast('편집기를 열 수 없습니다', 'error');
+                            }
                         } else {
                             showToast('이미지 로드 실패', 'error');
                         }
                     } catch (err) {
-                        showToast('인페인트 오류: ' + err.message, 'error');
+                        showToast('편집 오류: ' + err.message, 'error');
                     }
                 };
 
@@ -22521,11 +22560,9 @@
                         resizeCanvas.width = alignedW;
                         resizeCanvas.height = alignedH;
                         resizeCanvas.getContext('2d').drawImage(img, 0, 0, alignedW, alignedH);
-                        const resizedImg = new Image();
-                        resizedImg.src = resizeCanvas.toDataURL('image/png');
-                        sourceImage = resizedImg;
-                        sourceImage.width = alignedW;
-                        sourceImage.height = alignedH;
+                        // 캔버스를 originalImage 로 직접 사용(동기) — 비동기 Image 로딩 경합 제거.
+                        // (등록을 빨리 눌러도 originalImage 가 항상 완성돼 있어 브러시 편집이 누락되지 않음)
+                        sourceImage = resizeCanvas;
                         console.log(`[MaskEditor] Resized image for NAI: ${img.width}x${img.height} -> ${alignedW}x${alignedH}`);
                     }
                 }
@@ -22589,6 +22626,8 @@
                 // 설정 복원 (인페인트 모드 고정)
                 document.getElementById('maskEditorStrength').value = baseImageData.strength;
                 document.getElementById('maskEditorStrengthValue').textContent = baseImageData.strength;
+                // 프로그램적으로 value 를 바꿨으므로 게이지(fill)도 동기화 (핸들 위치와 일치)
+                if (typeof updateSliderFill === 'function') updateSliderFill(document.getElementById('maskEditorStrength'));
 
                 modal.classList.add('active');
             };
@@ -22905,6 +22944,18 @@
             const editMaskBtn = document.getElementById('editMaskBtn');
 
             if (baseImageData.enabled && baseImageData.image) {
+                // 베이스 이미지가 새로(또는 다른 이미지로) 등록됐는지 감지 (강도/노이즈 변경 시엔 스킵)
+                const _imgChanged = baseImageData.image !== updateBaseImageUI._lastImg;
+                updateBaseImageUI._lastImg = baseImageData.image;
+                // 사이즈 잠금: 최초 등록 시 현재 사이즈 상태 저장 (해제 시 복원용)
+                if (!updateBaseImageUI._sizeLocked) {
+                    updateBaseImageUI._savedSize = {
+                        preset: document.getElementById('sizePreset').value,
+                        width: document.getElementById('width').value,
+                        height: document.getElementById('height').value
+                    };
+                    updateBaseImageUI._sizeLocked = true;
+                }
                 // 이미지가 있을 때: 드롭존 숨기고 설정 표시
                 dropZone.style.display = 'none';
                 settings.style.display = 'block';
@@ -22925,6 +22976,11 @@
                 document.getElementById('baseImageStrengthValue').textContent = baseImageData.strength;
                 document.getElementById('baseImageNoise').value = baseImageData.noise;
                 document.getElementById('baseImageNoiseValue').textContent = baseImageData.noise;
+                // 프로그램적으로 value 를 바꿨으므로 게이지(fill)도 동기화 (핸들 위치와 일치)
+                if (typeof updateSliderFill === 'function') {
+                    updateSliderFill(document.getElementById('baseImageStrength'));
+                    updateSliderFill(document.getElementById('baseImageNoise'));
+                }
                 updateBaseImageNoiseVisibility();
 
                 // 마스크 수정 버튼: inpaint 모드일 때만 표시
@@ -22938,7 +22994,33 @@
                     document.getElementById('width').value = baseImageData.width;
                     document.getElementById('height').value = baseImageData.height;
                 }
+                // 드롭다운을 베이스 해상도에 맞춰 동기화(매칭 프리셋 없으면 Custom) + 사이즈 조작 잠금(읽기전용)
+                {
+                    const _sp = document.getElementById('sizePreset');
+                    const _sv = `${document.getElementById('width').value}x${document.getElementById('height').value}`;
+                    _sp.value = [..._sp.options].some(o => o.value === _sv) ? _sv : 'custom';
+                    _sp.disabled = true;
+                    document.getElementById('width').disabled = true;
+                    document.getElementById('height').disabled = true;
+                }
+
+                // 새 이미지 등록 시: 좌측 패널의 베이스 이미지 섹션 펼치고 스크롤
+                if (_imgChanged && typeof expandAndScrollToSection === 'function') {
+                    expandAndScrollToSection('baseImageContent', 'baseImageSection');
+                }
             } else {
+                updateBaseImageUI._lastImg = null;
+                // 사이즈 잠금 해제 + 등록 이전 상태로 복원
+                document.getElementById('sizePreset').disabled = false;
+                document.getElementById('width').disabled = false;
+                document.getElementById('height').disabled = false;
+                if (updateBaseImageUI._sizeLocked && updateBaseImageUI._savedSize) {
+                    const s = updateBaseImageUI._savedSize;
+                    document.getElementById('sizePreset').value = s.preset;
+                    document.getElementById('width').value = s.width;
+                    document.getElementById('height').value = s.height;
+                }
+                updateBaseImageUI._sizeLocked = false;
                 // 이미지가 없을 때: 드롭존 표시
                 dropZone.style.display = 'block';
                 settings.style.display = 'none';
@@ -35723,5 +35805,6 @@
             </div>
         </div>
     </div>
+    <script src="/assets/editor.js"></script>
 </body>
 </html>

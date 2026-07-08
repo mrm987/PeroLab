@@ -29,8 +29,18 @@ backend.py    - FastAPI 백엔드
 
 > **2026-07-04 서버 마이그레이션**: `/user/subscription`, `/user/information`, `/user/data` 등 user 엔드포인트가 `api.novelai.net` → `image.novelai.net`으로 이전됨. 구 `api.novelai.net` URL은 non-functional(유효 토큰도 400 반환). 근거: NAI 공식 changelog.
 
-### 참고 자료
-- **NAIS2**: https://github.com/sunanakgo/NAIS2 (가장 정확한 참고)
+### 근거 계층 (NAI API 개발 시)
+
+**참고는 아래 두 출처만. NAIA·NAIS2 등 3rd-party 레포는 신용도 낮아 제외.**
+
+1. **NAI 웹의 실제 네트워크 요청 캡처 = 와이어 정본.** 파라미터 이름·값·조합·엔드포인트의 최종 판정 기준.
+   - DevTools → Network → `generate-image` / `generate-image-stream` → `request`(JSON) 필드.
+   - 웹은 `generate-image-stream` + `multipart/form-data`(image/mask 바이너리 + request JSON) 사용.
+2. **공식 문서** (https://docs.novelai.net/en/image/) — "이 컨트롤이 무엇을 하는지" 개념 이해용. 개념은 정확하나 와이어 파라미터 이름/조합은 안 줌.
+
+> API 스키마(https://image.novelai.net/docs/ Swagger, aedial)는 필드 존재/타입만 나오고 의미가 불완전(`inpaintImg2ImgStrength`가 "???"). 개념은 2번, 실제 와이어는 1번으로 확정.
+
+> **교훈 (2026-07-08, 인페인트 강도 미작동)**: 3rd-party(NAIA)만 믿고 `add_original_image=True` + `request_type="NativeInfillingRequest"`로 5번 헛발질. 웹 실제 캡처는 `add_original_image=false`·`request_type` 미전송·강도를 `inpaintImg2ImgStrength`+`img2img.strength`+`strength` 세 곳에 넣고 있었음. 캡처대로 맞추니 1번에 해결.
 
 ### Action 타입
 | Action | 용도 | 모델 |
