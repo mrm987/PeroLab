@@ -3179,6 +3179,8 @@
         .slot-size-bar-btn:hover { border-color: var(--text-dim); color: #fff; }
         .slot-size-bar-btn.active { border-color: var(--accent); color: var(--accent); }  /* PIP 켜짐 */
         .slot-size-bar-btn .ic { width: 16px; height: 16px; color: currentColor; }
+        /* PIP 글리프를 아이콘과 같은 16px 박스로 → 버튼 너비 동일 */
+        .pip-glyph { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }
         /* 전체 인핸스 버튼은 NAI 전용 */
         #batchEnhanceBtn { display: none; }
         body[data-provider="nai"] #batchEnhanceBtn { display: inline-flex; }
@@ -9507,7 +9509,7 @@
                     <input type="range" id="slotSizeSlider" min="150" max="1200" value="280" title="슬롯 너비 조절">
                     <div class="slot-size-bar-actions">
                         <button type="button" class="slot-size-bar-btn" id="batchEnhanceBtn" title="슬롯 전체 인핸스 (NAI)" onclick="openBatchEnhanceModal()"><span data-icon="sparkles"></span></button>
-                        <button type="button" class="slot-size-bar-btn" id="pipBarBtn" title="PIP 미리보기" onclick="togglePip()">⧉</button>
+                        <button type="button" class="slot-size-bar-btn" id="pipBarBtn" title="PIP 미리보기" onclick="togglePip()"><span class="pip-glyph">⧉</span></button>
                     </div>
                 </div>
                 <!-- PIP Floating Button -->
