@@ -4458,6 +4458,21 @@ async def recent_gallery(req: RecentGalleryRequest):
     return {"success": False, "error": "seq not found"}
 
 
+class RecentEnhanceLinkRequest(BaseModel):
+    seq: int
+    group: int  # 인핸스 버전 그룹 식별자(=원본 seq). 같은 group끼리 새로고침 시 1/n으로 묶임
+
+
+@app.post("/api/recent/enhance-link")
+async def recent_enhance_link(req: RecentEnhanceLinkRequest):
+    """인핸스 버전 그룹을 복원 버퍼(recent_images)에 seq로 기록 → 새로고침 후에도 1/n 스택 유지."""
+    for img in gen_queue.recent_images:
+        if img.get("seq") == req.seq:
+            img["enhance_group"] = req.group
+            return {"success": True}
+    return {"success": False, "error": "seq not found"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, clientId: str = None):
     """WebSocket 연결 - 실시간 이미지 생성 업데이트"""
@@ -6190,8 +6205,73 @@ def _run_uv_install(uv_exe, python_exe, packages, index_url=None, progress_base=
 
 # 검열(YOLO) 의존성 고정 버전 - end-to-end 검증된 조합
 # opencv 4.13은 numpy 상한이 없어(numpy>=2) torch/로컬 엔진과 numpy를 공유해도 충돌 없음 → numpy는 비고정 유지
-CENSOR_DEPS = ["ultralytics==8.3.248", "opencv-python==4.13.0.92"]
+# ultralytics 8.4.0+ 필요: YOLO26 아키텍처(anime-nsfw-segm-yolo26 등)는 8.4.0부터 로드 가능. 8.3.x는 YOLO26 cfg 부재로 로드 실패.
+# opencv 4.13.0.92는 8.4.90과 호환(ultralytics가 제외하는 건 FIPS 크래시 버전인 4.13.0.90뿐).
+CENSOR_DEPS = ["ultralytics==8.4.90", "opencv-python==4.13.0.92"]
 CENSOR_OPENCV_DEP = "opencv-python==4.13.0.92"
+
+
+# ============================================================
+# 배포 제공 검열 모델 레지스트리 (단일 소스 오브 트루스)
+# ============================================================
+# 사용자 임의 .pt 선택 방식 폐기 — 여기 등록된 모델만 선택 가능(의존성 보장 목적).
+# requires_yolo26=True 모델은 ultralytics 8.4.0+ 필요(CENSOR_DEPS pin과 연동).
+#   → cfg/models/26 폴더 존재로 판정. 구버전이면 선택 시 자가치유 업그레이드.
+CENSOR_MODEL_HF_BASE = "https://huggingface.co/01miku/anime-nsfw-segm-yolo26/resolve/main"
+OFFICIAL_CENSOR_MODELS = [
+    {
+        "id": "ntd11-nsfw-segm-v5",
+        "filename": "ntd11_anime_nsfw_segm_v5-variant1.pt",
+        "name": "기본 (NTD11 Anime NSFW)",
+        "url": None,            # 번들 포함 — 다운로드 불필요
+        "size": None,
+        "requires_yolo26": False,
+        "classes": None,        # 파일에서 읽음 (항상 존재)
+    },
+    {
+        "id": "anime-nsfw-segm-yolo26-xl",
+        "filename": "nsfw-anime-xl-x1280.pt",
+        "name": "고급 (Anime NSFW YOLO26 XL)",
+        "url": f"{CENSOR_MODEL_HF_BASE}/nsfw-anime-xl-x1280.pt",
+        "size": 141836677,
+        "requires_yolo26": True,
+        # 미다운로드 상태에서도 UI가 타깃 체크박스를 그릴 수 있도록 하드코딩 (모델 카드 기준)
+        "classes": ["anus", "nipple", "penis", "vagina", "female face", "male face", "pubic hair"],
+    },
+]
+
+
+def _find_censor_model(ident: str):
+    """id 또는 filename으로 레지스트리 엔트리 조회 (없으면 None)"""
+    if not ident:
+        return None
+    for m in OFFICIAL_CENSOR_MODELS:
+        if ident in (m["id"], m["filename"]):
+            return m
+    return None
+
+
+def _ultralytics_supports_yolo26():
+    """설치된 ultralytics가 YOLO26을 로드할 수 있는지 판정.
+    cfg/models/26 폴더 존재 여부로 확인 → import 없이 빠름 (8.4.0+ 부터 존재)."""
+    return (_get_site_packages_dir() / "ultralytics" / "cfg" / "models" / "26").exists()
+
+
+def _censor_model_downloaded(entry: dict) -> bool:
+    return (CENSOR_MODELS_DIR / entry["filename"]).exists()
+
+
+# 검열 모델 설정(다운로드/자가치유) 진행 상태 — 프론트 모달이 폴링
+censor_setup_status = {
+    "running": False,
+    "progress": 0,
+    "message": "",
+    "stage": None,          # None | "upgrade" | "download" | "done"
+    "error": None,
+    "restart_required": False,
+    "done": False,
+    "model_id": None,
+}
 
 
 def _install_base_environment_sync():
@@ -6642,14 +6722,22 @@ censor_model_cache = {
 
 
 def get_censor_model(model_name: str = None):
-    """검열 모델 로드 (캐시됨)"""
-    # 모델 이름이 없으면 첫 번째 모델 사용
+    """검열 모델 로드 (캐시됨). 레지스트리에 등록된 모델만 허용."""
+    # 모델 이름이 없으면 레지스트리에서 다운로드된 첫 모델 사용
     if not model_name:
-        models = list(CENSOR_MODELS_DIR.glob("*.pt"))
-        if not models:
-            raise RuntimeError(f"검열 모델이 없습니다: {CENSOR_MODELS_DIR}")
-        model_name = models[0].name
-    
+        for m in OFFICIAL_CENSOR_MODELS:
+            if _censor_model_downloaded(m):
+                model_name = m["filename"]
+                break
+        if not model_name:
+            raise RuntimeError("사용 가능한 검열 모델이 없습니다")
+    else:
+        # 임의 모델 차단 — 레지스트리 화이트리스트만 허용
+        entry = _find_censor_model(model_name)
+        if entry is None:
+            raise RuntimeError(f"등록되지 않은 검열 모델: {model_name}")
+        model_name = entry["filename"]
+
     model_path = CENSOR_MODELS_DIR / model_name
     if not model_path.exists():
         raise RuntimeError(f"모델 파일 없음: {model_path}")
@@ -7015,29 +7103,152 @@ async def create_censor_folder(request: dict):
 
 @app.get("/api/censor/models")
 async def list_censor_models():
-    """사용 가능한 검열 모델 목록"""
+    """배포 제공 검열 모델 목록 (레지스트리 기반). 각 항목의 다운로드/업그레이드 필요 여부 포함."""
+    supports26 = _ultralytics_supports_yolo26()
     models = []
-    if CENSOR_MODELS_DIR.exists():
-        for f in sorted(CENSOR_MODELS_DIR.glob("*.pt")):
-            models.append(f.name)
+    for m in OFFICIAL_CENSOR_MODELS:
+        downloaded = _censor_model_downloaded(m)
+        needs_upgrade = bool(m["requires_yolo26"] and not supports26)
+        models.append({
+            "id": m["id"],
+            "filename": m["filename"],
+            "name": m["name"],
+            "downloaded": downloaded,
+            "downloadable": bool(m.get("url")),
+            "requires_yolo26": m["requires_yolo26"],
+            "needs_upgrade": needs_upgrade,          # 의존성 업그레이드 필요
+            "needs_setup": (not downloaded) or needs_upgrade,  # 모달 트리거 조건
+            "size": m.get("size"),
+        })
     return {"success": True, "models": models, "yolo_available": True}
 
 
 @app.get("/api/censor/model-info")
 async def get_censor_model_info(model: str = None):
-    """모델의 클래스 정보 조회"""
+    """모델의 클래스 정보 조회. 미다운로드 모델은 레지스트리의 하드코딩 클래스를 반환."""
+    entry = _find_censor_model(model)
+    # 등록되지 않은 임의 모델 거부
+    if model and entry is None:
+        return {"success": False, "error": f"등록되지 않은 모델: {model}"}
+
+    # 미다운로드 모델: 파일을 로드하지 않고 하드코딩 클래스로 응답 (타깃 UI 구성용)
+    if entry is not None and not _censor_model_downloaded(entry):
+        if entry.get("classes"):
+            return {"success": True, "model": entry["filename"], "classes": entry["classes"], "downloaded": False}
+        return {"success": False, "error": "모델 미다운로드", "downloaded": False}
+
     try:
-        _, classes = get_censor_model(model)
+        _, classes = get_censor_model(entry["filename"] if entry else None)
         return {
             "success": True,
-            "model": model or censor_model_cache["model_path"],
-            "classes": classes
+            "model": (entry["filename"] if entry else censor_model_cache["model_path"]),
+            "classes": classes,
+            "downloaded": True,
         }
     except Exception as e:
         import traceback
         print(f"[Censor] Model info error: {e}")
         traceback.print_exc()
         return {"success": False, "error": str(e)}
+
+
+# ---- 검열 모델 설정(다운로드 + ultralytics 자가치유) ----
+
+def _censor_model_setup_sync(model_id: str):
+    """미보유 모델 설정: (1) 필요 시 ultralytics 자가치유 업그레이드, (2) 모델 파일 다운로드."""
+    global censor_setup_status
+    try:
+        entry = _find_censor_model(model_id)
+        if entry is None:
+            raise Exception(f"등록되지 않은 모델: {model_id}")
+
+        need_upgrade = bool(entry["requires_yolo26"] and not _ultralytics_supports_yolo26())
+        need_download = bool(entry.get("url") and not _censor_model_downloaded(entry))
+
+        if not need_upgrade and not need_download:
+            censor_setup_status.update(progress=100, stage="done", message="이미 준비됨", done=True)
+            return
+
+        # 진행률 배분: 업그레이드+다운로드면 5→40 / 40→100, 하나뿐이면 5→100
+        upgrade_end = 40 if need_download else 100
+
+        if need_upgrade:
+            censor_setup_status.update(stage="upgrade", message="의존성 업그레이드 중... (ultralytics)", progress=5)
+            python_exe, uv_exe, _ = _setup_python_and_uv()
+            install_status["progress"] = 5  # 이전 설치 잔여값 초기화 (setup-status가 이 값을 반영)
+            ret = _run_uv_install(uv_exe, python_exe, CENSOR_DEPS, progress_base=5, progress_end=upgrade_end)
+            if ret != 0:
+                raise Exception(f"ultralytics 업그레이드 실패 (code {ret})")
+            censor_setup_status["progress"] = upgrade_end
+            # 이미 ultralytics가 메모리에 로드돼 있으면 새 버전 반영 위해 재시작 필요
+            if "ultralytics" in sys.modules:
+                censor_setup_status["restart_required"] = True
+
+        if need_download:
+            base = 40 if need_upgrade else 5
+            span = 100 - base
+            censor_setup_status.update(stage="download", message=f"{entry['name']} 다운로드 중...", progress=base)
+            CENSOR_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+            dest = CENSOR_MODELS_DIR / entry["filename"]
+            tmp = dest.with_suffix(dest.suffix + ".part")
+
+            def _cb(downloaded, total):
+                if total:
+                    censor_setup_status["progress"] = base + int((downloaded / total) * span)
+
+            ok = download_file(entry["url"], tmp, _cb)
+            if not ok:
+                tmp.unlink(missing_ok=True)
+                raise Exception("모델 다운로드 실패")
+            # 크기 검증 — 중단된 다운로드(연결 끊김)로 인한 손상 파일 설치 방지
+            expected = entry.get("size")
+            actual = tmp.stat().st_size if tmp.exists() else 0
+            if expected and actual != expected:
+                tmp.unlink(missing_ok=True)
+                raise Exception(f"다운로드 크기 불일치 (받음 {actual}B / 기대 {expected}B) — 다시 시도해주세요")
+            tmp.replace(dest)
+
+        censor_setup_status.update(progress=100, stage="done", message="완료", done=True)
+
+    except Exception as e:
+        censor_setup_status["error"] = str(e)
+        logger.error(f"검열 모델 설정 실패: {e}")
+    finally:
+        censor_setup_status["running"] = False
+
+
+async def _run_censor_setup_task(model_id: str):
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, _censor_model_setup_sync, model_id)
+
+
+@app.post("/api/censor/model/setup")
+async def start_censor_model_setup(request: dict):
+    """미보유 모델 설정 시작 (백그라운드). 프론트는 setup-status를 폴링."""
+    global censor_setup_status
+    model_id = request.get("model_id") or request.get("model")
+    entry = _find_censor_model(model_id)
+    if entry is None:
+        raise HTTPException(status_code=400, detail=f"등록되지 않은 모델: {model_id}")
+    if censor_setup_status["running"]:
+        raise HTTPException(status_code=400, detail="이미 설정이 진행 중입니다")
+
+    censor_setup_status = {
+        "running": True, "progress": 0, "message": "시작...", "stage": None,
+        "error": None, "restart_required": False, "done": False, "model_id": entry["id"],
+    }
+    asyncio.create_task(_run_censor_setup_task(entry["id"]))
+    return {"status": "started", "model_id": entry["id"]}
+
+
+@app.get("/api/censor/model/setup-status")
+async def get_censor_model_setup_status():
+    """검열 모델 설정 진행 상태."""
+    s = dict(censor_setup_status)
+    # 업그레이드 단계 진행률은 _run_uv_install이 install_status에 기록 → 반영
+    if s.get("stage") == "upgrade":
+        s["progress"] = max(s.get("progress", 0), install_status.get("progress", 0))
+    return s
 
 
 class CensorScanRequest(BaseModel):

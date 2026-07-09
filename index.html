@@ -2660,6 +2660,7 @@
         }
 
         /* PIP Floating Button */
+        /* PIP 미리보기 패널: 기본 숨김. 하단 바의 PIP 버튼으로 토글(펼침). */
         .pip-float {
             position: absolute;
             bottom: 12px;
@@ -2668,38 +2669,6 @@
             z-index: 1000;
             cursor: move;
             user-select: none;
-        }
-
-        .pip-float.collapsed {
-            width: 36px;
-            height: 36px;
-        }
-
-        .pip-float.collapsed .pip-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(60, 60, 70, 0.5);
-            border: 1px solid var(--border-light);
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: none;
-            transition: all 0.2s;
-            backdrop-filter: blur(4px);
-        }
-
-        .pip-float.collapsed .pip-btn:hover {
-            background: var(--accent);
-            color: white;
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-        .pip-float.collapsed .pip-content {
             display: none;
         }
 
@@ -2740,9 +2709,6 @@
             color: white;
         }
 
-        .pip-float.collapsed .pip-fit-btn {
-            display: none;
-        }
 
         .pip-float.expanded .pip-fit-btn {
             position: absolute;
@@ -2794,9 +2760,6 @@
             background-repeat: no-repeat;
         }
 
-        .pip-float.collapsed .pip-resize {
-            display: none;
-        }
 
         /* 검열중 탭 버튼 - 골드 색상 */
         #censorTabProcessing {
@@ -3187,6 +3150,98 @@
             margin: 0;
             padding: 0;
         }
+
+        /* 슬라이더 오른쪽 버튼 그룹 (전체 인핸스 + PIP). 절대 배치라 슬라이더는 항상 중앙 유지. */
+        .slot-size-bar-actions {
+            position: absolute;
+            left: calc(100% + 8px);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        /* 두 버튼 공통 규격 (동일 높이·스타일·호버) */
+        .slot-size-bar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-lighter);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            padding: 4px 7px;
+            font-size: 15px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .slot-size-bar-btn:hover { border-color: var(--text-dim); color: #fff; }
+        .slot-size-bar-btn.active { border-color: var(--accent); color: var(--accent); }  /* PIP 켜짐 */
+        .slot-size-bar-btn .ic { width: 16px; height: 16px; color: currentColor; }
+        /* 전체 인핸스 버튼은 NAI 전용 */
+        #batchEnhanceBtn { display: none; }
+        body[data-provider="nai"] #batchEnhanceBtn { display: inline-flex; }
+
+        /* 배치 인핸스 모달 */
+        .batch-enhance-list {
+            max-height: 260px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin: 8px 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 6px;
+        }
+        .batch-enhance-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .batch-enhance-item:hover { background: var(--bg-lighter); }
+        .batch-enhance-item input { margin: 0; cursor: pointer; }
+        .batch-enhance-cost {
+            text-align: right;
+            font-size: 0.9rem;
+            margin: 4px 2px 12px;
+            color: var(--text);
+        }
+        .batch-enhance-cost span { color: var(--accent-gold); font-weight: 700; }
+        .batch-excluded-notice {
+            font-size: 0.82rem;
+            color: var(--accent-gold);
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            margin: 4px 0 8px;
+        }
+        .batch-strength { margin: 6px 0 4px; }
+        .batch-strength-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+        .batch-strength-row label { font-size: 0.82rem; color: var(--text-dim); }
+        .batch-strength-row input[type="range"] { width: 100%; }
+        /* 배율 버튼 (Enhance 모달 Resolution 버튼과 동일 룩) */
+        .batch-res-btns { display: flex; gap: 6px; }
+        .batch-res-btn {
+            flex: 1; padding: 8px 12px; font-size: 0.85rem;
+            background: var(--bg-lighter); border: 1px solid var(--border); color: var(--text-dim);
+            border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition-fast);
+        }
+        .batch-res-btn:hover { border-color: var(--accent); color: var(--text); }
+        .batch-res-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        /* 전부 제외된 슬롯: 비활성 */
+        .batch-enhance-item.disabled { opacity: 0.5; }
+        .batch-enhance-item.disabled input { cursor: not-allowed; }
+        /* 슬롯의 현재 이미지 장수 */
+        .batch-item-count { font-size: 0.75rem; color: var(--text-dim); }
+        /* 항목 뒤 설명(일부/전부 제외) */
+        .batch-item-note { margin-left: auto; font-size: 0.72rem; color: var(--accent-gold); white-space: nowrap; }
 
         /* input, textarea는 선택 가능 */
         .slot input, .slot textarea {
@@ -7196,6 +7251,103 @@
             min-width: 0;
         }
 
+        /* 슬롯 최소화 시 버튼이 잘리지 않고 줄바꿈되어 항상 보이게 */
+        .slot-image-card .info-row { flex-wrap: wrap; }
+        .slot-prompt-header { flex-wrap: wrap; }
+
+        /* ===== 인핸스 버전 스택 UI ===== */
+        /* 골드 하이라이트는 '현재 인핸스 버전을 보는 중'(showing-enhanced)일 때만.
+           원본(v0)으로 전환하면 정상 상태로 복귀 — 슬롯/싱글/라이트박스 동일. */
+        /* 슬롯 카드: 하단 정보 바 배경을 골드로 */
+        .slot-image-card.showing-enhanced .info {
+            background: var(--accent-gold);
+            color: #1a1a1a;
+        }
+        .slot-image-card.showing-enhanced .info .filename,
+        .slot-image-card.showing-enhanced .info .filename.unsaved,
+        .slot-image-card.showing-enhanced .info .seed,
+        .slot-image-card.showing-enhanced .info .seed.clickable:hover {
+            color: #1a1a1a;
+        }
+        /* 슬롯 카드: 버전 전환 버튼 (n/N) — 기본은 골드 배경(정상 바 위에서 눈에 띔) */
+        .version-toggle-btn {
+            flex-shrink: 0;
+            background: var(--accent-gold);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            font-family: monospace;
+            line-height: 1;
+            padding: 3px 6px;
+            cursor: pointer;
+        }
+        .version-toggle-btn:hover { filter: brightness(1.12); }
+        /* 골드 정보 바(인핸스 표시 중) 안에서는 토글이 묻히지 않게 다크 배경으로 반전 */
+        .slot-image-card.showing-enhanced .version-toggle-btn {
+            background: #1a1a1a;
+            color: var(--accent-gold);
+        }
+        /* 라이트박스 버전 전환 버튼: 기본 중립색, 인핸스 버전일 때만 골드 */
+        .lightbox-version-btn { font-weight: 700; font-family: monospace; }
+        .lightbox-version-btn.on-enhanced { color: var(--accent-gold); }
+        /* 라이트박스: 인핸스 버전 볼 때 하단 액션 바 배경을 골드로 (슬롯/싱글과 통일) */
+        .lightbox-actions.showing-enhanced { background: var(--accent-gold); }
+        /* 버튼 배경이 반투명이라 골드가 비쳐 금색으로 보이는 것 방지 → 불투명 다크 버튼 유지 */
+        .lightbox-actions.showing-enhanced .lightbox-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: #f0f0f0;
+            border-color: rgba(0, 0, 0, 0.35);
+        }
+        .lightbox-actions.showing-enhanced .lightbox-counter { color: #1a1a1a; }
+        /* 버전 버튼만 다크 배경 + 골드 글자로 강조 */
+        .lightbox-actions.showing-enhanced .lightbox-version-btn {
+            background: #1a1a1a;
+            color: var(--accent-gold);
+        }
+        /* 싱글 썸네일: 하단 바 (n/N, 클릭 시 전환) — 기본 중립, 인핸스 버전일 때만 금색 */
+        .single-thumb .version-bar {
+            position: absolute;
+            left: 0; right: 0; bottom: 0;
+            height: 15px;
+            background: rgba(20, 20, 20, 0.72);
+            color: #e6e6e6;
+            font-size: 0.6rem;
+            font-weight: 700;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .single-thumb.showing-enhanced .version-bar {
+            background: var(--accent-gold);
+            color: #1a1a1a;
+        }
+        .single-thumb .version-bar:hover { filter: brightness(1.12); }
+        /* 강화 대기/진행 오버레이 (플레이스홀더 대신 카드/썸네일 위에 표시) */
+        .slot-image-card.enhancing::after,
+        .single-thumb.enhancing::after,
+        .slot-image-card.enhance-queued::after,
+        .single-thumb.enhance-queued::after {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--accent-gold);
+            font-weight: 600;
+            font-size: 0.75rem;
+            pointer-events: none;
+            z-index: 4;
+        }
+        .slot-image-card.enhancing::after, .single-thumb.enhancing::after { content: '✨ 강화중…'; }
+        .slot-image-card.enhance-queued::after, .single-thumb.enhance-queued::after { content: '⏳ 대기중…'; }
+
         /* Load settings button */
         .slot-image-card .load-settings-btn,
         .slot-image-card .edit-btn,
@@ -9350,12 +9502,16 @@
                 <div class="slots-container" id="slotsContainer">
                     <!-- 슬롯들이 가로로 배치됨 -->
                 </div>
-                <!-- 슬롯 사이즈 조절 플로팅 바 -->
+                <!-- 슬롯 사이즈 조절 플로팅 바 (+ 전체 인핸스 버튼, NAI 전용) -->
                 <div class="slot-size-bar" id="slotSizeBar">
                     <input type="range" id="slotSizeSlider" min="150" max="1200" value="280" title="슬롯 너비 조절">
+                    <div class="slot-size-bar-actions">
+                        <button type="button" class="slot-size-bar-btn" id="batchEnhanceBtn" title="슬롯 전체 인핸스 (NAI)" onclick="openBatchEnhanceModal()"><span data-icon="sparkles"></span></button>
+                        <button type="button" class="slot-size-bar-btn" id="pipBarBtn" title="PIP 미리보기" onclick="togglePip()">⧉</button>
+                    </div>
                 </div>
                 <!-- PIP Floating Button -->
-                <div class="pip-float collapsed" id="pipFloat">
+                <div class="pip-float" id="pipFloat">
                     <button type="button" class="pip-btn" id="pipBtn" title="PIP 모드">⧉</button>
                     <button type="button" class="pip-fit-btn" id="pipFitBtn" title="이미지 크기에 맞추기">⊡</button>
                     <div class="pip-content">
@@ -9552,6 +9708,14 @@
                             <div class="side-section-title"><span data-icon="target"></span> 감지 대상</div>
                             <div class="censor-targets" id="censorTargets">
                                 <div class="censor-target-loading">모델을 선택하세요</div>
+                            </div>
+                            <!-- 미리보기 낮은 신뢰도 숨김 (표시 전용, 실제 검열엔 영향 없음) -->
+                            <div style="padding: 8px 4px 2px; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.08);">
+                                <label style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-dim); margin-bottom: 6px;">
+                                    <span>낮은 신뢰도 숨김</span>
+                                    <span id="censorPreviewFloorValue" style="font-weight: 500;">10% 미만</span>
+                                </label>
+                                <input type="range" id="censorPreviewFloor" min="0" max="50" value="10">
                             </div>
                         </div>
 
@@ -10131,6 +10295,7 @@
             <div class="lightbox-main">
             <img src="" alt="">
             <div class="lightbox-actions" id="lightboxActions">
+                <button type="button" class="lightbox-btn lightbox-version-btn" title="인핸스 버전 전환 (원본 ↔ 강화)" style="display:none;"></button>
                 <button type="button" class="lightbox-btn lightbox-clear-btn" title="미리보기 지우기"><span data-icon="eraser"></span><span class="lightbox-key">Del</span></button>
                 <button type="button" class="lightbox-btn lightbox-save-btn" title="파일로 저장"><span data-icon="save"></span> Save<span class="lightbox-key">Enter</span></button>
                 <button type="button" class="lightbox-btn lightbox-delete-btn" title="파일 삭제"><span data-icon="trash"></span> Delete<span class="lightbox-key">Enter</span></button>
@@ -10448,7 +10613,86 @@
             </small>
         </div>
     </div>
-    
+
+    <!-- Censor Model Setup Modal (다운로드 + 의존성 자가치유) -->
+    <div class="modal" id="censorModelSetupModal">
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h2><span data-icon="download"></span> 검열 모델 설치</h2>
+                <button class="modal-close" id="censorSetupModalClose" onclick="closeCensorModelSetupModal()">&times;</button>
+            </div>
+
+            <p class="modal-desc" id="censorSetupDesc">
+                이 모델을 사용하려면 설치가 필요합니다.
+            </p>
+
+            <div class="input-group">
+                <div id="censorSetupStatus" class="local-env-status">
+                    <span class="status-text" id="censorSetupStatusText">대기 중...</span>
+                </div>
+                <div id="censorSetupProgress" class="local-env-progress" style="display: none;">
+                    <div class="local-env-progress-bar">
+                        <div class="local-env-progress-fill" id="censorSetupProgressFill"></div>
+                    </div>
+                    <span class="local-env-progress-text" id="censorSetupProgressText">0%</span>
+                </div>
+            </div>
+
+            <div class="modal-btn-row">
+                <button class="btn" id="censorSetupStartBtn" onclick="startCensorModelSetup()" style="flex: 1;">
+                    ⬇️ 설치 시작
+                </button>
+                <button class="btn" id="censorSetupCancelBtn" onclick="closeCensorModelSetupModal()" style="flex: 1; background: var(--bg-lighter);">
+                    취소
+                </button>
+            </div>
+
+            <small class="modal-note" id="censorSetupNote"></small>
+        </div>
+    </div>
+
+    <!-- Batch Enhance Modal (슬롯 전체 인핸스, NAI) -->
+    <div class="modal" id="batchEnhanceModal">
+        <div class="modal-content modal-md">
+            <div class="modal-header">
+                <h2><span data-icon="sparkles"></span> 슬롯 전체 인핸스</h2>
+                <button class="modal-close" onclick="closeBatchEnhanceModal()">&times;</button>
+            </div>
+            <p class="modal-desc">인핸스할 슬롯을 선택하세요. 각 슬롯의 아직 강화되지 않은 이미지가 강화됩니다.</p>
+            <div id="batchExcludedNotice" class="batch-excluded-notice" style="display:none;"></div>
+            <div id="batchEnhanceList" class="batch-enhance-list"></div>
+            <div class="batch-strength">
+                <div class="batch-strength-row">
+                    <label>배율 (Resolution)</label>
+                    <div class="batch-res-btns">
+                        <button type="button" class="btn batch-res-btn active" data-scale="1">Normal (1x)</button>
+                        <button type="button" class="btn batch-res-btn" data-scale="1.5">Large (1.5x)</button>
+                    </div>
+                </div>
+                <div id="batchMagnitudeSection" class="batch-strength-row">
+                    <label>Magnitude: <span id="batchMagnitudeValue">3</span></label>
+                    <input type="range" id="batchMagnitudeSlider" min="1" max="5" step="1" value="3">
+                </div>
+                <div id="batchAdvancedSection" style="display:none;">
+                    <div class="batch-strength-row">
+                        <label>Strength: <span id="batchStrengthValue">0.5</span></label>
+                        <input type="range" id="batchStrengthSlider" min="0" max="1" step="0.01" value="0.5">
+                    </div>
+                    <div class="batch-strength-row">
+                        <label>Noise: <span id="batchNoiseValue">0</span></label>
+                        <input type="range" id="batchNoiseSlider" min="0" max="1" step="0.01" value="0">
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost" id="batchAdvancedToggle" style="font-size:0.8rem; padding:4px 12px; margin-top:4px;">Show Advanced</button>
+            </div>
+            <div class="batch-enhance-cost">총 소모: <span id="batchEnhanceCost">-</span></div>
+            <div class="modal-btn-row">
+                <button class="btn" onclick="closeBatchEnhanceModal()" style="flex: 1; background: var(--bg-lighter);">취소</button>
+                <button class="btn btn-primary" id="batchEnhanceStartBtn" onclick="startBatchEnhance()" style="flex: 1;"><span data-icon="sparkles"></span> 시작</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Restart Confirmation Modal -->
     <div class="modal" id="restartModal">
         <div class="modal-content modal-sm">
@@ -10827,6 +11071,7 @@
             const saveBtn = lightboxActions.querySelector('.lightbox-save-btn');
             const deleteBtn = lightboxActions.querySelector('.lightbox-delete-btn');
             const clearBtn = lightboxActions.querySelector('.lightbox-clear-btn');
+            const versionBtn = lightboxActions.querySelector('.lightbox-version-btn');
 
             // Empty slot — hide all action buttons
             if (!card) {
@@ -10834,6 +11079,8 @@
                 saveBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
                 clearBtn.style.display = 'none';
+                versionBtn.style.display = 'none';
+                lightboxActions.classList.remove('showing-enhanced');
                 return;
             }
 
@@ -10843,6 +11090,18 @@
             const idx = cards.indexOf(card);
 
             lightboxCounter.textContent = `${idx + 1} / ${cards.length}`;
+
+            // 인핸스 버전 전환 버튼 (버전 2개 이상일 때만 노출). 골드는 인핸스 버전 볼 때만.
+            if (card._versions && card._versions.length > 1) {
+                versionBtn.style.display = '';
+                versionBtn.textContent = `${(card._versionIndex || 0) + 1}/${card._versions.length}`;
+                const onEnhanced = (card._versionIndex || 0) > 0;
+                versionBtn.classList.toggle('on-enhanced', onEnhanced);
+                lightboxActions.classList.toggle('showing-enhanced', onEnhanced);  // 하단 바 골드
+            } else {
+                versionBtn.style.display = 'none';
+                lightboxActions.classList.remove('showing-enhanced');
+            }
 
             // Show save btn only for unsaved previews, delete btn only for saved files
             const isPreviewOnly = !card._imageData?.image_path;
@@ -11574,6 +11833,20 @@
             generateBtn.textContent = `Queue (${count})`;
         }
         
+        // 카드를 _sortSeq(첫 버전 seq) 내림차순 위치에 삽입. 플레이스홀더는 맨 위 유지.
+        // (비동기 로드 순서와 무관하게 슬롯 내 순서를 항상 생성순으로 고정 — 인핸스 버전 seq에 밀리지 않음)
+        function insertSlotCardSorted(container, card) {
+            const seq = card._sortSeq ?? Infinity;
+            const existing = [...container.querySelectorAll('.slot-image-card:not(.placeholder)')];
+            const ref = existing.find(c => (c._sortSeq ?? Infinity) < seq);  // 더 오래된 첫 카드
+            if (ref) { container.insertBefore(card, ref); return; }
+            if (existing.length) { container.appendChild(card); return; }  // 이 카드가 가장 오래됨 → 맨 뒤
+            // 실제 카드 없음 → 플레이스홀더 다음(또는 맨 앞)
+            const ph = container.querySelector('.slot-image-card.placeholder');
+            if (ph) container.insertBefore(card, ph.nextSibling);
+            else container.insertBefore(card, container.firstChild);
+        }
+
         function addImageToSlot(slotIndex, data) {
             // slotIndex로 슬롯 찾기
             const slots = slotsContainer.querySelectorAll('.slot');
@@ -11684,6 +11957,8 @@
                 slotIndex: slotIndex,
                 seq: data.seq
             };
+            // 슬롯 내 정렬 기준 = 생성 시점 seq (첫 버전). 인핸스로 버전이 바뀌어도 고정.
+            card._sortSeq = (data.seq != null) ? data.seq : Infinity;
 
             // 미리보기 저장 버튼 핸들러
             const savePreviewBtn = card.querySelector('.save-preview-btn');
@@ -11900,7 +12175,7 @@
                     }
                 }
                 if (imageBase64) {
-                    openEnhanceModal('data:image/png;base64,' + imageBase64, card._imageData.metadata, card._imageData.slotIndex);
+                    openEnhanceModal('data:image/png;base64,' + imageBase64, card._imageData.metadata, card._imageData.slotIndex, card);
                 } else {
                     showToast('이미지 데이터가 없습니다', 'error');
                 }
@@ -12035,6 +12310,7 @@
             const clearCardBtn = card.querySelector('.clear-card-btn');
             clearCardBtn.onclick = (e) => {
                 e.stopPropagation();
+                if (clearCurrentVersion(card)) return;  // 버전 스택이면 현재 보는 버전만 제거
                 forgetImages([card._imageData?.seq]);
                 card.remove();
             };
@@ -12084,7 +12360,7 @@
                 const dy = Math.abs(e.clientY - imgMouseDownY);
                 // 5px 이내면 클릭으로 간주
                 if (dx < 5 && dy < 5) {
-                    openSlotLightbox(targetSlot, card, imgSrc);
+                    openSlotLightbox(targetSlot, card, card._fullSrc || imgSrc);  // 활성 버전 반영
                 }
             });
 
@@ -12095,8 +12371,7 @@
                     card._thumbNatW = img.naturalWidth;
                 }
                 const ph = imagesContainer.querySelector('.slot-image-card.placeholder');
-                if (ph) imagesContainer.insertBefore(card, ph.nextSibling);
-                else imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                insertSlotCardSorted(imagesContainer, card);
                 consumePlaceholder(ph);
                 // 이 슬롯 이미지가 도착 → 다음 순서 슬롯이 '생성중'이 되도록 이동
                 genSlotIdx = computeNextGenSlot([...slotsContainer.querySelectorAll('.slot')].indexOf(targetSlot));
@@ -12108,14 +12383,15 @@
             };
             img.onerror = () => {
                 const ph = imagesContainer.querySelector('.slot-image-card.placeholder');
-                if (ph) imagesContainer.insertBefore(card, ph.nextSibling);
-                else imagesContainer.insertBefore(card, imagesContainer.firstChild);
+                insertSlotCardSorted(imagesContainer, card);
                 consumePlaceholder(ph);
                 genSlotIdx = computeNextGenSlot([...slotsContainer.querySelectorAll('.slot')].indexOf(targetSlot));
                 refreshPlaceholderStatus();
                 img.onload = null;
                 img.onerror = null;
             };
+            // 카드 객체 반환 (DOM 삽입은 img.onload에서 비동기로 일어나므로, 복원 그룹핑은 이 참조를 사용)
+            return card;
         }
 
         // ============================================================
@@ -12336,6 +12612,13 @@
             refreshPlaceholderStatus();
         }
 
+        // 카드/썸네일이 가진 모든 버전의 seq (인핸스 스택이면 전 버전, 아니면 현재 1개).
+        // 전체 클리어 시 현재 버전만 지워 나머지가 복구되는 문제 방지.
+        function allSeqsOf(el) {
+            if (el && el._versions && el._versions.length) return el._versions.map(v => v.seq).filter(s => s != null);
+            return (el && el._imageData && el._imageData.seq != null) ? [el._imageData.seq] : [];
+        }
+
         // clear(미리보기 지우기)로 지운 이미지를 백엔드 복원 버퍼에서도 제거 → 새로고침해도 복원 안 됨
         async function forgetImages(seqs) {
             const list = (seqs || []).filter(s => s != null);
@@ -12468,6 +12751,7 @@
             if (!currentSingleImageData) selectSingleImage(imageData, thumb);
             consumePlaceholder(ph);
             refreshPlaceholderStatus();
+            return thumb;  // 복원 그룹핑이 앵커로 사용
         }
 
         // 싱글 뷰어를 빈 상태로 되돌린다 (현재 표시 이미지 없음)
@@ -12490,7 +12774,7 @@
             if (!strip) return;
             const thumbs = [...strip.querySelectorAll('.single-thumb:not(.placeholder)')];
             if (!thumbs.length) { showToast('지울 미리보기가 없습니다', 'info'); return; }
-            forgetImages(thumbs.map(t => t._imageData?.seq));
+            forgetImages(thumbs.flatMap(allSeqsOf));
             thumbs.forEach(t => t.remove());
             resetSingleViewer();
             showToast('미리보기 전체 제거됨', 'success');
@@ -12631,7 +12915,8 @@
                 const d = currentSingleImageData;
                 if (!d) return;
                 const b64 = await resolveImageBase64(d);
-                if (b64) openEnhanceModal('data:image/png;base64,' + b64, d.metadata, 0);
+                const srcThumb = document.querySelector('#singleStrip .single-thumb.selected');
+                if (b64) openEnhanceModal('data:image/png;base64,' + b64, d.metadata, 0, srcThumb);
                 else showToast('이미지 데이터가 없습니다', 'error');
             };
 
@@ -12686,6 +12971,7 @@
             if (clearBtn) clearBtn.onclick = () => {
                 const cur = strip.querySelector('.single-thumb.selected');
                 if (!cur) return;
+                if (clearCurrentVersion(cur)) return;  // 버전 스택이면 현재 보는 버전만 제거
                 forgetImages([cur._imageData?.seq]);
                 const realFwd = (el) => { while (el && (el.classList.contains('placeholder') || !el._imageData)) el = el.nextElementSibling; return el; };
                 const realBwd = (el) => { while (el && (el.classList.contains('placeholder') || !el._imageData)) el = el.previousElementSibling; return el; };
@@ -12846,7 +13132,7 @@
             // 이미지 클릭 시 라이트박스
             const img = card.querySelector('img');
             img.addEventListener('click', () => {
-                openSlotLightbox(targetSlot, card, imgSrc);
+                openSlotLightbox(targetSlot, card, card._fullSrc || imgSrc);  // 활성 버전 반영
             });
 
             // 이미지 데이터 저장 (미리보기용)
@@ -12990,7 +13276,7 @@
             // 이미지 클릭 시 라이트박스
             const img = card.querySelector('img');
             img.addEventListener('click', () => {
-                openSlotLightbox(targetSlot, card, imgSrc);
+                openSlotLightbox(targetSlot, card, card._fullSrc || imgSrc);  // 활성 버전 반영
             });
 
             // 인페인트 버튼
@@ -13515,59 +13801,52 @@
         // PIP 버튼 - 드래그로 이동, 클릭으로 펼치기/접기
         let pipBtnStartPos = { x: 0, y: 0 };
         let pipBtnMoved = false;
+        let pipExpandedPos = null;  // 마지막 확장 위치 {left, top} (wrapper 기준). null이면 기본 우하단.
+
+        // 현재 pipFloat의 wrapper 기준 좌상단 좌표
+        function readPipPos() {
+            const wr = slotsWrapper.getBoundingClientRect();
+            const r = pipFloat.getBoundingClientRect();
+            return { left: r.left - wr.left, top: r.top - wr.top };
+        }
+
+        const pipBarBtn = document.getElementById('pipBarBtn');
 
         function togglePip() {
-            if (pipFloat.classList.contains('collapsed')) {
-                // 펼치기 - 버튼(우하단)을 고정점으로 좌상단 방향으로 확장
+            if (!pipFloat.classList.contains('expanded')) {
+                // 펼치기 - 마지막 확장 위치에서 열기 (없으면 우하단 끝). 바 버튼은 그대로 유지.
                 const wrapperRect = slotsWrapper.getBoundingClientRect();
-                const floatRect = pipFloat.getBoundingClientRect();
+                let pos = pipExpandedPos || {
+                    left: wrapperRect.width - pipSize.width - 12,
+                    top: wrapperRect.height - pipSize.height - 12
+                };
+                const left = Math.min(Math.max(0, pos.left), Math.max(0, wrapperRect.width - pipSize.width));
+                const top = Math.min(Math.max(0, pos.top), Math.max(0, wrapperRect.height - pipSize.height));
 
-                // 현재 우하단 위치 계산
-                const currentRight = floatRect.right - wrapperRect.left;
-                const currentBottom = floatRect.bottom - wrapperRect.top;
-
-                // 새 좌상단 위치 계산 (우하단 고정)
-                const newLeft = Math.max(0, currentRight - pipSize.width);
-                const newTop = Math.max(0, currentBottom - pipSize.height);
-
-                pipFloat.classList.remove('collapsed');
                 pipFloat.classList.add('expanded');
-                pipFloat.style.left = newLeft + 'px';
-                pipFloat.style.top = newTop + 'px';
+                pipFloat.style.left = left + 'px';
+                pipFloat.style.top = top + 'px';
                 pipFloat.style.right = 'auto';
                 pipFloat.style.bottom = 'auto';
                 pipFloat.style.width = pipSize.width + 'px';
                 pipFloat.style.height = pipSize.height + 'px';
                 pipModeEnabled = true;
                 pipExpanded = true;
-                pipBtn.textContent = '⧉';
                 pipBtn.title = '접기';
+                if (pipBarBtn) pipBarBtn.classList.add('active');
             } else {
-                // 접기 - 버튼(우하단) 위치로 이동
-                const wrapperRect = slotsWrapper.getBoundingClientRect();
-                const floatRect = pipFloat.getBoundingClientRect();
-
-                // 현재 우하단 위치 계산
-                const currentRight = floatRect.right - wrapperRect.left;
-                const currentBottom = floatRect.bottom - wrapperRect.top;
-
-                // 접힌 버튼 크기 (36px)
-                const collapsedSize = 36;
-                const newLeft = currentRight - collapsedSize;
-                const newTop = currentBottom - collapsedSize;
-
+                // 접기 - 현재 확장 위치 기억, 패널 숨김. (바 버튼·패널 버튼 어디서든 호출 가능)
+                pipExpandedPos = readPipPos();
                 pipFloat.classList.remove('expanded');
-                pipFloat.classList.add('collapsed');
-                pipFloat.style.left = newLeft + 'px';
-                pipFloat.style.top = newTop + 'px';
-                pipFloat.style.right = 'auto';
-                pipFloat.style.bottom = 'auto';
+                pipFloat.style.left = '';
+                pipFloat.style.top = '';
+                pipFloat.style.right = '';
+                pipFloat.style.bottom = '';
                 pipFloat.style.width = '';
                 pipFloat.style.height = '';
                 pipModeEnabled = false;
                 pipExpanded = false;
-                pipBtn.textContent = '⧉';
-                pipBtn.title = 'PIP 모드';
+                if (pipBarBtn) pipBarBtn.classList.remove('active');
                 pipPreviewImg.style.display = 'none';
                 pipEmpty.style.display = '';
             }
@@ -13577,6 +13856,8 @@
         const pipContent = pipFloat.querySelector('.pip-content');
 
         function startPipDrag(e) {
+            // 확장된 패널일 때만 드래그로 이동 (접혀 있으면 숨김 상태)
+            if (!pipFloat.classList.contains('expanded')) return;
             pipBtnStartPos = { x: e.clientX, y: e.clientY };
             pipBtnMoved = false;
             pipDragging = true;
@@ -13643,7 +13924,7 @@
 
         // PIP 리사이즈
         pipResize.addEventListener('mousedown', (e) => {
-            if (pipFloat.classList.contains('collapsed')) return;
+            if (!pipFloat.classList.contains('expanded')) return;
             pipResizing = true;
             e.stopPropagation();
             e.preventDefault();
@@ -15691,10 +15972,19 @@
                     console.log(`[WS] Sync: received ${data.images?.length || 0} missed images`);
                     if (data.images) {
                         const hadSelection = !!currentSingleImageData;
+                        const groupAnchor = {};  // enhance_group -> 앵커 요소 (인핸스 스택 복원용)
                         data.images.forEach(img => {
-                            if (img.gen_mode === 'single') addImageToSingle(img);
-                            else addImageToSlot(img.slot_idx, img);
                             if (img.seq) lastImageSeq = Math.max(lastImageSeq, img.seq);
+                            const g = img.enhance_group;
+                            // 그룹 앵커가 이미 있으면 새 카드 대신 버전으로 묶음 (1/n 복원)
+                            if (g != null && groupAnchor[g]) {
+                                attachRestoredVersion(groupAnchor[g], img);
+                                return;
+                            }
+                            // 앵커(그룹 첫 등장) 또는 일반 이미지: 카드/썸네일 생성 후 반환된 요소를 앵커로 등록
+                            // (addImageToSlot은 img.onload에서 비동기 삽입하므로 DOM 스캔 대신 반환값 사용)
+                            const el = (img.gen_mode === 'single') ? addImageToSingle(img) : addImageToSlot(img.slot_idx, img);
+                            if (g != null && el) groupAnchor[g] = el;
                         });
                         // 새로고침 복원 시(기존 선택 없음) 싱글 뷰어는 최신(최상단) 이미지 표시
                         if (!hadSelection) {
@@ -15752,6 +16042,8 @@
                     updateProgressFromServer(data.progress);
                     // HiresFix 버튼 상태 업데이트: 대기중 -> 처리중
                     updateHiresFixButtonState(data.job_id, 'processing');
+                    // 인핸스 job 시작 시 '대기중' -> '강화중'
+                    if (data.job_id && enhanceJobs[data.job_id]) setEnhanceState(enhanceJobs[data.job_id].el, 'processing');
                     break;
 
                 case 'image':
@@ -15759,6 +16051,13 @@
                     if (data.seq) lastImageSeq = Math.max(lastImageSeq, data.seq);
                     updateProgressFromServer(data.progress);
                     batchImageCount++;
+                    // 인핸스 결과면 새 카드 대신 원본 카드/썸네일에 버전으로 붙임
+                    if (data.job_id && enhanceJobs[data.job_id]) {
+                        const entry = enhanceJobs[data.job_id];
+                        delete enhanceJobs[data.job_id];
+                        attachEnhanceVersion(entry, data);
+                        break;
+                    }
                     if (data.gen_mode === 'single') addImageToSingle(data);
                     else addImageToSlot(data.slot_idx, data);
                     break;
@@ -15769,6 +16068,11 @@
                     updateProgressFromServer(data.progress);
                     // HiresFix 버튼 상태 초기화 (완료)
                     updateHiresFixButtonState(data.job_id, 'done');
+                    // 인핸스 job이 이미지 없이 끝났으면(실패 등) 상태 표시 정리
+                    if (data.job_id && enhanceJobs[data.job_id]) {
+                        setEnhanceState(enhanceJobs[data.job_id].el, 'none');
+                        delete enhanceJobs[data.job_id];
+                    }
 
                     // Anlas 잔액 및 비용 갱신 (생성 완료 시)
                     if (currentProvider === 'nai') {
@@ -15862,6 +16166,11 @@
                         });
                         // HiresFix 버튼 상태 초기화 (취소)
                         updateHiresFixButtonState(data.job_id, 'cancelled');
+                        // 인핸스 job 취소 시 상태 표시 정리
+                        if (enhanceJobs[data.job_id]) {
+                            setEnhanceState(enhanceJobs[data.job_id].el, 'none');
+                            delete enhanceJobs[data.job_id];
+                        }
                     }
                     // 실제로 취소된 이미지가 있을 때만 토스트 표시
                     if (data.cancelled_images > 0) {
@@ -15899,8 +16208,8 @@
         }
         
         function clearResults() {
-            // 지우는 슬롯 이미지들을 백엔드 복원 버퍼에서도 제거
-            forgetImages([...document.querySelectorAll('.slot-image-card')].map(c => c._imageData?.seq));
+            // 지우는 슬롯 이미지들을 백엔드 복원 버퍼에서도 제거 (인핸스 스택은 전 버전 seq 모두)
+            forgetImages([...document.querySelectorAll('.slot-image-card')].flatMap(allSeqsOf));
             clearSlotImages();
             statusText.textContent = '준비';
             progressFill.style.width = '0%';
@@ -15924,6 +16233,14 @@
             e.stopPropagation();
             if (!lightboxCurrentCard) return;
             const card = lightboxCurrentCard;
+            // 버전 스택이면 현재 보는 버전만 제거하고 라이트박스 유지
+            if (card._versions && card._versions.length > 1) {
+                clearCurrentVersion(card);
+                lightboxImg.src = card._fullSrc || card.querySelector('img')?.src || '';
+                updateLightboxActions();
+                showToast('현재 버전 제거됨', 'success');
+                return;
+            }
             const slot = lightboxCurrentSlot;
             const imagesContainer = slot.querySelector('.slot-images');
             const cards = Array.from(imagesContainer.querySelectorAll('.slot-image-card'));
@@ -15942,6 +16259,16 @@
                 openSlotLightbox(slot, newCard, newCard._fullSrc || newCard.querySelector('img')?.src);
             }
             showToast('미리보기 제거됨', 'success');
+        };
+
+        // 라이트박스: 인핸스 버전 전환 (n/N)
+        lightboxActions.querySelector('.lightbox-version-btn').onclick = (e) => {
+            e.stopPropagation();
+            const card = lightboxCurrentCard;
+            if (!card || !card._versions || card._versions.length < 2) return;
+            cycleVersion(card);
+            lightboxImg.src = card._fullSrc || card.querySelector('img')?.src || '';
+            updateLightboxActions();
         };
 
         lightboxActions.querySelector('.lightbox-save-btn').onclick = async (e) => {
@@ -20352,10 +20679,8 @@
                 pipState: {
                     expanded: pipExpanded,
                     size: pipSize,
-                    position: pipFloat.style.left ? {
-                        left: pipFloat.style.left,
-                        top: pipFloat.style.top
-                    } : null
+                    // 마지막 확장 위치 (확장 중이면 현재값, 아니면 기억된 값)
+                    expandedPos: (pipExpanded ? readPipPos() : pipExpandedPos)
                 },
                 currentCharPreset: currentCharPreset,
                 utilityTab: utilityState.currentTab || 'convert',
@@ -20451,27 +20776,9 @@
                         document.querySelector('[data-target="charactersContent"]').classList.add('collapsed');
                     }
                     if (settings.pipState) {
-                        if (settings.pipState.expanded) {
-                            pipFloat.classList.remove('collapsed');
-                            pipFloat.classList.add('expanded');
-                            pipModeEnabled = true;
-                            pipExpanded = true;
-                            pipBtn.textContent = '⧉';
-                            pipBtn.title = '접기';
-                        }
-                        if (settings.pipState.size) {
-                            pipSize = settings.pipState.size;
-                            if (pipExpanded) {
-                                pipFloat.style.width = pipSize.width + 'px';
-                                pipFloat.style.height = pipSize.height + 'px';
-                            }
-                        }
-                        if (settings.pipState.position) {
-                            pipFloat.style.left = settings.pipState.position.left;
-                            pipFloat.style.top = settings.pipState.position.top;
-                            pipFloat.style.right = 'auto';
-                            pipFloat.style.bottom = 'auto';
-                        }
+                        // 재실행 시 PIP는 항상 접힘 (확장 상태는 복원하지 않음). 크기·확장위치 값만 로드.
+                        if (settings.pipState.size) pipSize = settings.pipState.size;
+                        if (settings.pipState.expandedPos) pipExpandedPos = settings.pipState.expandedPos;
                     }
                     if (settings.currentCharPreset) {
                         currentCharPreset = settings.currentCharPreset;
@@ -23208,10 +23515,201 @@
             scale: 1,       // 1 또는 1.5
             magnitude: 3,   // 1-5
             slotIndex: 0,   // 결과를 표시할 슬롯 인덱스
+            sourceEl: null, // 인핸스 대상 카드/썸네일 (결과를 버전으로 붙일 원본)
             advancedMode: false,
             strength: 0.5,
             noise: 0
         };
+
+        // ===== 인핸스 버전 스택 =====
+        // job_id -> { el }. 인핸스 결과가 오면 새 카드 대신 원본(el)에 버전으로 추가.
+        // 핵심: el._imageData === el._versions[el._versionIndex] (동일 참조).
+        //  → 저장/갤러리/삭제가 _imageData를 바꾸면 그 버전 객체에 그대로 남아 버전별 독립 동작.
+        // 지속성: 각 버전 seq를 enhance_group(=원본 seq)으로 백엔드에 태깅 → 새로고침 시 1/n 스택 복원.
+        const enhanceJobs = {};
+
+        function versionMode(el) { return el.classList.contains('single-thumb') ? 'single' : 'slot'; }
+
+        // 인핸스 진행 상태 표시: 'queued'(대기중) | 'processing'(강화중) | 'none'
+        function setEnhanceState(el, state) {
+            if (!el) return;
+            el.classList.toggle('enhance-queued', state === 'queued');
+            el.classList.toggle('enhancing', state === 'processing');
+        }
+
+        // WS image 결과 → 버전 객체 (imageData와 동일 형태 + _fullSrc)
+        function versionFromResult(data) {
+            const cb = Date.now();
+            const fullSrc = data.image_path
+                ? `${API_BASE}/api/outputs/${data.image_path}?t=${cb}`
+                : (data.image_base64 ? `data:image/png;base64,${data.image_base64}` : `data:image/png;base64,${data.image}`);
+            const hasMeta = !!data.metadata;
+            return {
+                image_path: data.image_path || null, image: data.image || null, image_base64: data.image_base64 || null,
+                filename: data.filename, seed: hasMeta ? data.seed : null, prompt: hasMeta ? (data.prompt || '') : null,
+                metadata: data.metadata || null, save_format: data.save_format || 'png', output_folder: data.output_folder || '',
+                galleryFilename: data.galleryFilename || null,
+                seq: data.seq, _fullSrc: fullSrc,
+            };
+        }
+
+        // 버전 스택 초기화: 현재 _imageData(원본)를 v0로 (참조 그대로 유지 → 저장상태 보존)
+        function ensureVersions(el) {
+            if (!el._versions) {
+                if (el._imageData && el._imageData._fullSrc == null && el._fullSrc) el._imageData._fullSrc = el._fullSrc;
+                el._versions = [el._imageData];
+                el._versionIndex = 0;
+                // 그룹 식별자: 복원 항목은 기존 enhance_group, 신규는 원본 seq
+                const d = el._imageData || {};
+                el._enhanceGroup = (d.enhance_group != null ? d.enhance_group : (d.seq != null ? d.seq : null));
+            }
+        }
+
+        // 슬롯 카드: 활성 버전의 저장 상태를 버튼/파일명/배지에 반영 (버전 전환 시 UI 동기화)
+        function syncSlotCardSaveUI(el) {
+            const d = el._imageData || {};
+            const isPreviewOnly = !d.image_path;
+            el.classList.toggle('is-saved', !isPreviewOnly);
+            const saveBtn = el.querySelector('.save-preview-btn');
+            const deleteBtn = el.querySelector('.delete-file-btn');
+            if (saveBtn) saveBtn.style.display = isPreviewOnly ? '' : 'none';
+            if (deleteBtn) deleteBtn.style.display = isPreviewOnly ? 'none' : '';
+            const fn = el.querySelector('.filename');
+            if (fn) {
+                if (isPreviewOnly) { fn.classList.add('unsaved'); fn.title = '저장되지 않음'; fn.textContent = '미저장'; }
+                else { fn.classList.remove('unsaved'); fn.title = d.filename || ''; fn.textContent = d.filename || ''; }
+            }
+            const galBtn = el.querySelector('.save-gallery-btn');
+            if (galBtn) galBtn.classList.toggle('saved', !!d.galleryFilename);
+            // 시드 표시/적용값도 활성 버전 기준으로 갱신 (강화 버전은 시드가 다름)
+            const seedDiv = el.querySelector('.seed');
+            if (seedDiv) {
+                if (d.seed != null) { seedDiv.textContent = 'Seed: ' + d.seed; seedDiv.dataset.seed = d.seed; }
+                else seedDiv.textContent = d.metadata ? 'Seed:' : '메타데이터 없음';
+            }
+        }
+
+        // 활성 버전을 카드/썸네일에 적용 (참조 재지정 + 이미지 스왑 + 저장상태 UI 동기화)
+        // opts.silent: 싱글에서 뷰어 자동 선택 생략 (복원 벌크 처리용)
+        function applyVersion(el, opts) {
+            const mode = versionMode(el);
+            el._imageData = el._versions[el._versionIndex];  // 참조 재지정 → 이후 액션은 이 버전을 대상
+            const d = el._imageData;
+            const cb = Date.now();
+            el._fullSrc = d._fullSrc;
+            const thumbSrc = d.image_path ? `${API_BASE}/api/outputs/${d.image_path}?thumb=640&t=${cb}` : d._fullSrc;
+            const img = el.querySelector('img');
+            if (img) img.src = thumbSrc;
+            if (mode === 'slot') {
+                el._thumbSrc = d.image_path ? thumbSrc : null;
+                el._lod = d.image_path ? 'thumb' : 'full';
+                syncSlotCardSaveUI(el);
+            }
+            el.classList.toggle('has-versions', el._versions.length > 1);  // 토글 UI 표시 여부(스택 존재)
+            // 골드 하이라이트는 '현재 인핸스 버전을 보는 중'일 때만 (원본 v0 보면 정상으로 복귀)
+            el.classList.toggle('showing-enhanced', el._versions.length > 1 && (el._versionIndex || 0) > 0);
+            updateVersionToggle(el);
+            if (mode === 'single') {
+                el.classList.toggle('starred', !!d.galleryFilename);
+                if (!(opts && opts.silent)) selectSingleImage(el._imageData, el);  // 뷰어에 활성 버전 반영 + 이 썸네일 선택
+            }
+        }
+
+        function updateVersionToggle(el) {
+            const n = el._versions ? el._versions.length : 1;
+            // 버전이 1개뿐이면 토글/바 제거
+            if (n <= 1) {
+                const t0 = el.querySelector('.version-toggle-btn'); if (t0) t0.remove();
+                const b0 = el.querySelector('.version-bar'); if (b0) b0.remove();
+                return;
+            }
+            const label = `${(el._versionIndex || 0) + 1}/${n}`;
+            if (versionMode(el) === 'slot') {
+                const row = el.querySelector('.info-row');
+                let btn = el.querySelector('.version-toggle-btn');
+                if (!btn && row) {
+                    btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'version-toggle-btn';
+                    btn.title = '인핸스 버전 전환 (원본 ↔ 강화)';
+                    btn.onclick = (e) => { e.stopPropagation(); cycleVersion(el); };
+                    row.insertBefore(btn, row.firstChild);
+                }
+                if (btn) btn.textContent = label;
+            } else {
+                let bar = el.querySelector('.version-bar');
+                if (!bar) {
+                    bar = document.createElement('div');
+                    bar.className = 'version-bar';
+                    bar.title = '인핸스 버전 전환 (원본 ↔ 강화)';
+                    bar.onclick = (e) => { e.stopPropagation(); cycleVersion(el); };
+                    el.appendChild(bar);
+                }
+                bar.textContent = label;
+            }
+        }
+
+        function cycleVersion(el) {
+            if (!el._versions || el._versions.length < 2) return;
+            el._versionIndex = (el._versionIndex + 1) % el._versions.length;
+            applyVersion(el);
+        }
+
+        // 현재 보고 있는 버전만 제거. 버전 스택이 아니면 false(호출측이 기존 '카드 통째 제거' 수행).
+        function clearCurrentVersion(el) {
+            if (!el._versions || el._versions.length <= 1) return false;
+            const removed = el._versions.splice(el._versionIndex, 1)[0];
+            if (removed && removed.seq != null) forgetImages([removed.seq]);
+            if (el._versionIndex >= el._versions.length) el._versionIndex = el._versions.length - 1;
+            applyVersion(el);
+            return true;
+        }
+
+        // 인핸스 결과를 원본에 새 버전으로 붙임 (새 카드 생성 안 함)
+        function attachEnhanceVersion(entry, data) {
+            const el = entry && entry.el;
+            if (!el || !el.isConnected) {
+                // 원본이 사라졌으면 결과 유실 방지를 위해 일반 경로로 폴백
+                if (data.gen_mode === 'single') addImageToSingle(data);
+                else addImageToSlot(data.slot_idx, data);
+                return;
+            }
+            const isNewStack = !el._versions;
+            ensureVersions(el);
+            // 새 스택이면 원본(v0)도 그룹 태깅 → 새로고침 시 앵커로 인식됨
+            if (isNewStack && el._enhanceGroup != null && el._imageData.seq != null) {
+                el._imageData.enhance_group = el._enhanceGroup;
+                persistEnhanceLink(el._imageData.seq, el._enhanceGroup);
+            }
+            const v = versionFromResult(data);
+            v.slotIndex = el._imageData.slotIndex;  // 원본 슬롯 인덱스 유지
+            v.enhance_group = el._enhanceGroup;
+            el._versions.push(v);
+            el._versionIndex = el._versions.length - 1;
+            setEnhanceState(el, 'none');
+            applyVersion(el);
+            // 자식 버전도 그룹 태깅 (새로고침 지속)
+            if (v.seq != null && el._enhanceGroup != null) persistEnhanceLink(v.seq, el._enhanceGroup);
+        }
+
+        // enhance_group을 복원 버퍼에 기록 (새로고침 후 1/n 복원용)
+        function persistEnhanceLink(seq, group) {
+            fetch(`${API_BASE}/api/recent/enhance-link`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ seq, group })
+            }).catch(() => {});
+        }
+
+        // 복원(sync) 시 인핸스 자식을 앵커에 버전으로 붙임 (뷰어 이동/재persist 없음)
+        function attachRestoredVersion(anchorEl, img) {
+            ensureVersions(anchorEl);
+            const v = versionFromResult(img);
+            v.slotIndex = anchorEl._imageData.slotIndex;
+            v.enhance_group = img.enhance_group;
+            anchorEl._versions.push(v);
+            anchorEl._versionIndex = anchorEl._versions.length - 1;
+            applyVersion(anchorEl, { silent: true });
+        }
 
         // Magnitude별 strength/noise 매핑
         const magnitudePresets = {
@@ -23222,7 +23720,7 @@
             5: { strength: 0.7, noise: 0.1 }
         };
 
-        function openEnhanceModal(imageBase64, metadata = null, slotIndex = 0) {
+        function openEnhanceModal(imageBase64, metadata = null, slotIndex = 0, sourceEl = null) {
             if (currentProvider !== 'nai') {
                 showToast('Enhance는 NAI 전용 기능입니다', 'error');
                 return;
@@ -23237,6 +23735,7 @@
                 enhanceState.scale = 1;
                 enhanceState.magnitude = 3;
                 enhanceState.slotIndex = slotIndex;
+                enhanceState.sourceEl = sourceEl;  // 결과를 버전으로 붙일 원본 카드/썸네일
                 enhanceState.advancedMode = false;
                 enhanceState.strength = 0.5;
                 enhanceState.noise = 0;
@@ -23312,13 +23811,31 @@
             return closest;
         }
 
+        // 배율 적용 목표 해상도 (1.5x면 가장 가까운 NAI Large 해상도로 스냅). 단일·배치 공용.
+        function computeEnhanceTargetSize(w, h, scale) {
+            if (scale > 1) return findClosestNAIResolution(Math.round(w * scale), Math.round(h * scale));
+            return [w, h];
+        }
+
+        // base64 이미지를 Canvas로 리사이즈 (1.5x 업스케일용). 실패 시 원본 반환.
+        function upscaleBase64(b64, w, h) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(c.toDataURL('image/png').split(',')[1]);
+                    } catch { resolve(b64); }
+                };
+                img.onerror = () => resolve(b64);
+                img.src = 'data:image/png;base64,' + b64;
+            });
+        }
+
         function getEnhanceTargetSize() {
-            if (enhanceState.scale > 1) {
-                const targetW = Math.round(enhanceState.width * enhanceState.scale);
-                const targetH = Math.round(enhanceState.height * enhanceState.scale);
-                return findClosestNAIResolution(targetW, targetH);
-            }
-            return [enhanceState.width, enhanceState.height];
+            return computeEnhanceTargetSize(enhanceState.width, enhanceState.height, enhanceState.scale);
         }
 
         function updateEnhanceResInfo() {
@@ -23368,6 +23885,55 @@
             }
         }
 
+        // 인핸스 요청 파라미터 구성 (단일 모달·배치 공용). 메타데이터 없으면 사이드바 설정 사용.
+        function buildEnhanceRequest({ imageBase64, metadata, slotIndex, width, height, strength, noise }) {
+            const normalized = metadata ? normalizeMetadata(metadata) : null;
+            const prompt = normalized?.prompt || document.getElementById('prompt').value || '';
+            const negativePrompt = normalized?.negative_prompt || document.getElementById('negativePrompt').value || '';
+            const charPrompts = (normalized?.character_prompts) || [];  // 원본의 캐릭터 프롬프트 보존·기록
+            const params = {
+                provider: 'nai',
+                nai_model: normalized?.nai_model || document.getElementById('naiModel').value,
+                base_prompt: prompt,
+                negative_prompt: negativePrompt,
+                character_prompts: charPrompts,
+                character_prompts_with_coords: charPrompts.map(p => ({ prompt: p })),
+                width, height,
+                steps: normalized?.steps || parseInt(document.getElementById('steps').value) || 28,
+                cfg: normalized?.cfg || parseFloat(document.getElementById('cfg').value) || 5,
+                seed: Math.floor(Math.random() * 2147483647),
+                sampler: normalized?.sampler || document.getElementById('sampler').value || 'k_euler_ancestral',
+                scheduler: normalized?.scheduler || document.getElementById('scheduler').value || 'karras',
+                smea: normalized?.smea || document.getElementById('smea').value || 'none',
+                uc_preset: normalized?.uc_preset || document.getElementById('ucPreset').value || 'Heavy',
+                quality_tags: normalized?.quality_tags !== undefined ? normalized.quality_tags : document.getElementById('qualityTags').checked,
+                cfg_rescale: normalized?.cfg_rescale || parseFloat(document.getElementById('cfgRescale').value) || 0,
+                variety_plus: normalized?.variety_plus || false,
+                base_image: imageBase64,
+                base_mode: 'img2img',
+                base_strength: strength,
+                base_noise: noise,
+                gen_mode: genMode,
+                prompt_list: [{ name: '', content: '', slotIndex }],
+                auto_save: document.getElementById('autoSaveToggle').checked,
+                save_format: document.getElementById('saveFormat').value || 'png',
+                jpg_quality: parseInt(document.getElementById('jpgQuality')?.value) || 95,
+                output_folder: getOutputFolder(),
+            };
+            if (document.getElementById('enableVibeTransfer').checked && vibeList.length > 0) {
+                params.vibe_transfer = vibeList.map(v => ({
+                    image: v.image, info_extracted: v.info_extracted, strength: v.strength,
+                    name: v.name || 'vibe', encoded: v.encoded, encoded_model: v.encoded_model
+                }));
+            }
+            if (document.getElementById('enablePreciseRef').checked && preciseRefList.length > 0) {
+                params.precise_references = preciseRefList.map(ref => ({
+                    image: ref.processedImage || ref.image, mode: ref.mode, strength: ref.strength, fidelity: ref.fidelity
+                }));
+            }
+            return params;
+        }
+
         async function executeEnhance() {
             if (!enhanceState.imageBase64) {
                 showToast('이미지가 없습니다', 'error');
@@ -23399,66 +23965,18 @@
                 imageBase64 = canvas.toDataURL('image/png').split(',')[1];
             }
 
-            // 메타데이터에서 원본 생성 설정 복원
-            const normalized = enhanceState.metadata ? normalizeMetadata(enhanceState.metadata) : null;
-
-            let prompt = normalized?.prompt || document.getElementById('prompt').value || '';
-            let negativePrompt = normalized?.negative_prompt || document.getElementById('negativePrompt').value || '';
-
-            const enhanceParams = {
-                provider: 'nai',
-                nai_model: normalized?.nai_model || document.getElementById('naiModel').value,
-                base_prompt: prompt,
-                negative_prompt: negativePrompt,
+            // 요청 파라미터 구성 (단일·배치 공용 헬퍼)
+            const enhanceParams = buildEnhanceRequest({
+                imageBase64,
+                metadata: enhanceState.metadata,
+                slotIndex: enhanceState.slotIndex,
                 width: w,
                 height: h,
-                steps: normalized?.steps || parseInt(document.getElementById('steps').value) || 28,
-                cfg: normalized?.cfg || parseFloat(document.getElementById('cfg').value) || 5,
-                seed: Math.floor(Math.random() * 2147483647),
-                sampler: normalized?.sampler || document.getElementById('sampler').value || 'k_euler_ancestral',
-                scheduler: normalized?.scheduler || document.getElementById('scheduler').value || 'karras',
-                smea: normalized?.smea || document.getElementById('smea').value || 'none',
-                uc_preset: normalized?.uc_preset || document.getElementById('ucPreset').value || 'Heavy',
-                quality_tags: normalized?.quality_tags !== undefined ? normalized.quality_tags : document.getElementById('qualityTags').checked,
-                cfg_rescale: normalized?.cfg_rescale || parseFloat(document.getElementById('cfgRescale').value) || 0,
-                variety_plus: normalized?.variety_plus || false,
-                base_image: imageBase64,
-                base_mode: 'img2img',
-                base_strength: strength,
-                base_noise: noise,
-                // 결과를 현재 생성 대상(슬롯/싱글)으로 라우팅 (일반 생성과 동일)
-                gen_mode: genMode,
-                // 결과를 원본 슬롯에 표시 (슬롯 모드일 때)
-                prompt_list: [{ name: '', content: '', slotIndex: enhanceState.slotIndex }],
-                // 저장 옵션 (자동저장 설정 반영)
-                auto_save: document.getElementById('autoSaveToggle').checked,
-                save_format: document.getElementById('saveFormat').value || 'png',
-                jpg_quality: parseInt(document.getElementById('jpgQuality')?.value) || 95,
-                output_folder: getOutputFolder(),
-            };
+                strength,
+                noise,
+            });
 
-            // Vibe Transfer 추가 (활성화되어 있고 바이브가 있으면)
-            if (document.getElementById('enableVibeTransfer').checked && vibeList.length > 0) {
-                enhanceParams.vibe_transfer = vibeList.map(v => ({
-                    image: v.image,
-                    info_extracted: v.info_extracted,
-                    strength: v.strength,
-                    name: v.name || 'vibe',
-                    encoded: v.encoded,
-                    encoded_model: v.encoded_model
-                }));
-            }
-
-            // Precise Reference 추가 (V4.5 전용, 활성화되어 있고 데이터가 있으면)
-            if (document.getElementById('enablePreciseRef').checked && preciseRefList.length > 0) {
-                enhanceParams.precise_references = preciseRefList.map(ref => ({
-                    image: ref.processedImage || ref.image,
-                    mode: ref.mode,
-                    strength: ref.strength,
-                    fidelity: ref.fidelity
-                }));
-            }
-
+            const sourceEl = enhanceState.sourceEl;  // 모달 닫기 전에 원본 참조 확보
             closeEnhanceModal();
 
             try {
@@ -23469,17 +23987,217 @@
                     body: JSON.stringify(enhanceParams)
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Enhance 큐 등록 실패');
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || result.success === false) {
+                    throw new Error(result.detail || result.error || 'Enhance 큐 등록 실패');
                 }
 
-                showToast('Enhance 큐에 추가됨', 'success');
+                // 결과가 도착하면 새 카드 대신 원본에 버전으로 붙이도록 job_id 상관 + '대기중' 표시
+                // (job_start 수신 시 '강화중'으로 전환)
+                if (result.job_id && sourceEl) {
+                    enhanceJobs[result.job_id] = { el: sourceEl };
+                    setEnhanceState(sourceEl, 'queued');
+                }
+
+                showToast('Enhance 시작됨', 'success');
 
             } catch (error) {
                 console.error('Enhance error:', error);
                 showToast('Enhance 실패: ' + error.message, 'error');
             }
+        }
+
+        // ===== 슬롯 전체(배치) 인핸스 (NAI 전용) =====
+        let batchEnhanceEntries = [];  // [{ slotIndex, card, label }]
+        let batchCostToken = 0;        // 비용 계산 경쟁 방지
+        const batchEnhanceSettings = { magnitude: 3, advancedMode: false, strength: 0.5, noise: 0, scale: 1 };
+
+        // 현재 배치 강도(strength, noise) — advanced면 직접값, 아니면 magnitude preset
+        function getBatchStrengthNoise() {
+            if (batchEnhanceSettings.advancedMode) return [batchEnhanceSettings.strength, batchEnhanceSettings.noise];
+            const p = magnitudePresets[batchEnhanceSettings.magnitude];
+            return [p.strength, p.noise];
+        }
+
+        // 슬롯별 인핸스 정보 수집. 제외 = 현재 '인핸스 버전'을 보고 있는 카드
+        // (원본을 보고 있으면 다시 대상에 포함). 반환: [{ slotIndex, label, pendingCards, excludedInSlot, total }]
+        function getSlotEnhanceInfo() {
+            const slots = [...slotsContainer.querySelectorAll('.slot')];
+            const entries = [];
+            slots.forEach((slot, idx) => {
+                const cards = [...slot.querySelectorAll('.slot-images .slot-image-card:not(.placeholder)')].filter(c => c._imageData);
+                if (!cards.length) return;
+                const pendingCards = cards.filter(c => (c._versionIndex || 0) === 0);  // 원본 보는 중 = 인핸스 대상
+                const num = slot.querySelector('.slot-number')?.textContent || String(idx + 1).padStart(3, '0');
+                const name = slot.querySelector('.slot-name')?.value?.trim() || '';
+                entries.push({ slotIndex: idx, label: name ? `${num} · ${name}` : num, pendingCards, excludedInSlot: cards.length - pendingCards.length, total: cards.length });
+            });
+            return entries;
+        }
+
+        // 원본 해상도 실측 (풀 이미지 로드)
+        function getSlotImageDims(card) {
+            return new Promise(res => {
+                const src = card._fullSrc || card.querySelector('img')?.src || '';
+                if (!src) return res([1024, 1024]);
+                const im = new Image();
+                im.onload = () => res([im.naturalWidth || 1024, im.naturalHeight || 1024]);
+                im.onerror = () => res([1024, 1024]);
+                im.src = src;
+            });
+        }
+
+        // 한 카드를 인핸스 큐에 등록 (배율 적용). 결과는 job_id로 해당 카드에 버전으로 붙음.
+        async function queueEnhanceForCard(card, slotIndex, strength, noise, scale) {
+            let imageBase64 = await resolveImageBase64(card._imageData);
+            if (!imageBase64) return false;
+            const [ow, oh] = await getSlotImageDims(card);
+            const [w, h] = computeEnhanceTargetSize(ow, oh, scale || 1);
+            if ((scale || 1) > 1 && (w !== ow || h !== oh)) imageBase64 = await upscaleBase64(imageBase64, w, h);
+            const params = buildEnhanceRequest({ imageBase64, metadata: card._imageData.metadata, slotIndex, width: w, height: h, strength, noise });
+            try {
+                const resp = await fetch(`${API_BASE}/api/generate/multi`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params)
+                });
+                const result = await resp.json().catch(() => ({}));
+                if (!resp.ok || result.success === false) return false;
+                if (result.job_id) { enhanceJobs[result.job_id] = { el: card }; setEnhanceState(card, 'queued'); }
+                return true;
+            } catch { return false; }
+        }
+
+        // 체크된 슬롯 엔트리 (indeterminate 무관, checked 기준)
+        function getCheckedBatchEntries() {
+            return [...document.querySelectorAll('#batchEnhanceList input:checked')]
+                .map(cb => batchEnhanceEntries[parseInt(cb.dataset.idx)])
+                .filter(Boolean);
+        }
+        // 체크된 슬롯들의 인핸스 대상 카드 전체
+        function getBatchTargetCards() {
+            return getCheckedBatchEntries().flatMap(e => e.pendingCards);
+        }
+
+        function openBatchEnhanceModal() {
+            if (currentProvider !== 'nai') { showToast('전체 인핸스는 NAI 전용입니다', 'error'); return; }
+            const entries = getSlotEnhanceInfo();
+            if (!entries.length) { showToast('인핸스할 이미지가 있는 슬롯이 없습니다', 'error'); return; }
+            batchEnhanceEntries = entries;
+
+            // 이미 강화된(=현재 인핸스 버전 보는 중) 이미지 제외 안내
+            const totalExcluded = entries.reduce((s, e) => s + e.excludedInSlot, 0);
+            const notice = document.getElementById('batchExcludedNotice');
+            if (totalExcluded > 0) {
+                notice.style.display = '';
+                notice.textContent = `이미 강화된 이미지 ${totalExcluded}장 제외됨 (원본 보기로 전환하면 다시 대상)`;
+            } else {
+                notice.style.display = 'none';
+            }
+
+            const list = document.getElementById('batchEnhanceList');
+            list.innerHTML = entries.map((e, i) => {
+                const fully = e.pendingCards.length === 0;        // 슬롯의 모든 카드가 강화 상태
+                const partial = e.excludedInSlot > 0 && !fully;   // 일부만 강화
+                let note = '';
+                if (fully) note = `<span class="batch-item-note">모두 강화됨</span>`;
+                else if (partial) note = `<span class="batch-item-note">${e.excludedInSlot}장 제외</span>`;
+                return `<label class="batch-enhance-item${fully ? ' disabled' : ''}"><input type="checkbox" ${fully ? 'disabled' : 'checked'} data-idx="${i}" data-partial="${partial}"><span>${e.label}</span><span class="batch-item-count">${e.total}장</span>${note}</label>`;
+            }).join('');
+            list.querySelectorAll('input').forEach(cb => {
+                if (cb.dataset.partial === 'true') cb.indeterminate = true;  // 반체크(일부 제외) 표시
+                cb.onchange = () => { cb.indeterminate = false; refreshBatchEnhanceCost(); };
+            });
+
+            setupBatchStrengthControls();
+            document.getElementById('batchEnhanceModal').classList.add('active');
+            refreshBatchEnhanceCost();
+        }
+
+        // 강도(magnitude/advanced) 컨트롤 초기화·배선
+        function setupBatchStrengthControls() {
+            const magSlider = document.getElementById('batchMagnitudeSlider');
+            const magVal = document.getElementById('batchMagnitudeValue');
+            const strSlider = document.getElementById('batchStrengthSlider');
+            const strVal = document.getElementById('batchStrengthValue');
+            const noiseSlider = document.getElementById('batchNoiseSlider');
+            const noiseVal = document.getElementById('batchNoiseValue');
+            const advToggle = document.getElementById('batchAdvancedToggle');
+            const advSection = document.getElementById('batchAdvancedSection');
+            const magSection = document.getElementById('batchMagnitudeSection');
+
+            const syncMode = () => {
+                advSection.style.display = batchEnhanceSettings.advancedMode ? '' : 'none';
+                magSection.style.display = batchEnhanceSettings.advancedMode ? 'none' : '';
+                advToggle.textContent = batchEnhanceSettings.advancedMode ? 'Hide Advanced' : 'Show Advanced';
+            };
+            magSlider.value = batchEnhanceSettings.magnitude; magVal.textContent = batchEnhanceSettings.magnitude;
+            strSlider.value = batchEnhanceSettings.strength; strVal.textContent = batchEnhanceSettings.strength;
+            noiseSlider.value = batchEnhanceSettings.noise; noiseVal.textContent = batchEnhanceSettings.noise;
+            syncMode();
+            updateSliderFill(magSlider); updateSliderFill(strSlider); updateSliderFill(noiseSlider);
+
+            magSlider.oninput = () => { batchEnhanceSettings.magnitude = parseInt(magSlider.value); magVal.textContent = magSlider.value; updateSliderFill(magSlider); refreshBatchEnhanceCost(); };
+            strSlider.oninput = () => { batchEnhanceSettings.strength = parseFloat(strSlider.value); strVal.textContent = strSlider.value; updateSliderFill(strSlider); refreshBatchEnhanceCost(); };
+            noiseSlider.oninput = () => { batchEnhanceSettings.noise = parseFloat(noiseSlider.value); noiseVal.textContent = noiseSlider.value; updateSliderFill(noiseSlider); };
+            advToggle.onclick = () => { batchEnhanceSettings.advancedMode = !batchEnhanceSettings.advancedMode; syncMode(); refreshBatchEnhanceCost(); };
+
+            // 배율(Resolution) 버튼 1x/1.5x
+            document.querySelectorAll('#batchEnhanceModal .batch-res-btn').forEach(btn => {
+                btn.classList.toggle('active', parseFloat(btn.dataset.scale) === batchEnhanceSettings.scale);
+                btn.onclick = () => {
+                    batchEnhanceSettings.scale = parseFloat(btn.dataset.scale);
+                    document.querySelectorAll('#batchEnhanceModal .batch-res-btn').forEach(b => b.classList.toggle('active', b === btn));
+                    refreshBatchEnhanceCost();
+                };
+            });
+        }
+
+        function closeBatchEnhanceModal() {
+            document.getElementById('batchEnhanceModal').classList.remove('active');
+        }
+
+        // 선택된 대상 카드 전체의 총 Anlas 비용 계산 (강도·배율 반영)
+        async function refreshBatchEnhanceCost() {
+            const costEl = document.getElementById('batchEnhanceCost');
+            const startBtn = document.getElementById('batchEnhanceStartBtn');
+            const cards = getBatchTargetCards();
+            if (startBtn) startBtn.disabled = cards.length === 0;
+            if (!cards.length) { costEl.textContent = '0 (선택된 대상 없음)'; return; }
+            costEl.textContent = '계산 중...';
+            const token = ++batchCostToken;
+            const steps = parseInt(document.getElementById('steps').value) || 28;
+            const [strength] = getBatchStrengthNoise();
+            const scale = batchEnhanceSettings.scale;
+            let total = 0, allFree = true;
+            for (const card of cards) {
+                const [ow, oh] = await getSlotImageDims(card);
+                const [w, h] = computeEnhanceTargetSize(ow, oh, scale);
+                try {
+                    const r = await fetch(`${API_BASE}/api/nai/calculate-cost`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ width: w, height: h, steps, is_opus: isOpusTier, vibe_count: 0, has_char_ref: false, count: 1, strength })
+                    });
+                    const d = await r.json();
+                    if (!d.is_free) { allFree = false; total += (d.cost_per_image || d.total_cost || 0); }
+                } catch { /* 무시 */ }
+                if (token !== batchCostToken) return;  // 더 최신 계산이 시작됨 → 폐기
+            }
+            costEl.textContent = allFree ? 'Free' : `${total.toLocaleString()} Anlas (${cards.length}장)`;
+        }
+
+        async function startBatchEnhance() {
+            const entries = getCheckedBatchEntries();
+            const targets = getBatchTargetCards();
+            if (!targets.length) { showToast('선택된 대상이 없습니다', 'error'); return; }
+            closeBatchEnhanceModal();
+            const [strength, noise] = getBatchStrengthNoise();
+            const scale = batchEnhanceSettings.scale;
+            let ok = 0;
+            for (const e of entries) {
+                for (const card of e.pendingCards) {
+                    if (await queueEnhanceForCard(card, e.slotIndex, strength, noise, scale)) ok++;
+                }
+            }
+            showToast(ok ? `${ok}장 인핸스 큐에 추가됨` : '인핸스 큐 등록 실패', ok ? 'success' : 'error');
         }
 
         // Enhance 모달 이벤트 설정
@@ -26762,6 +27480,7 @@
             editBoxes: [],         // 편집용 박스들 [{box: [x1,y1,x2,y2], method: string}]
             modelClasses: [],      // 현재 모델의 클래스 목록
             labelConf: {},         // 클래스별 confidence
+            previewIgnoreBelow: 0.1, // 미리보기에서 이 신뢰도 미만 감지 박스 숨김 (표시 전용)
             selectedBoxIndex: -1,
             hoverBoxIndex: -1,     // 마우스 호버 중인 박스 인덱스
             isScanning: false,
@@ -27215,6 +27934,7 @@
                 censorModel: document.getElementById('censorModel')?.value || '',
                 censorMethod: document.getElementById('censorMethod')?.value || 'black',
                 labelConf: censorState.labelConf,
+                previewIgnoreBelow: censorState.previewIgnoreBelow,
                 selectedTargets: Array.from(document.querySelectorAll('#censorTargets input[type="checkbox"]:checked'))
                     .map(cb => cb.dataset.class),
                 expandPixels: censorState.expandPixels,
@@ -27300,20 +28020,31 @@
                 const result = await response.json();
                 
                 if (result.models && result.models.length > 0) {
-                    // 저장된 모델 또는 기본 모델 선택
+                    // 레지스트리 맵 구성 (filename -> entry). 배포 제공 모델만 노출됨.
+                    censorState.modelRegistry = {};
+                    result.models.forEach(m => { censorState.modelRegistry[m.filename] = m; });
+
+                    // 준비된(다운로드+의존성 충족) 모델을 우선 선택 — 시작 시 모달이 뜨지 않게
                     const defaultModel = 'ntd11_anime_nsfw_segm_v5-variant1.pt';
+                    const isReady = (fn) => censorState.modelRegistry[fn] && !censorState.modelRegistry[fn].needs_setup;
+                    const readyModels = result.models.filter(m => !m.needs_setup);
                     let selectedModel;
-                    if (savedSettings?.censorModel && result.models.includes(savedSettings.censorModel)) {
+                    if (savedSettings?.censorModel && isReady(savedSettings.censorModel)) {
                         selectedModel = savedSettings.censorModel;
-                    } else if (result.models.includes(defaultModel)) {
+                    } else if (isReady(defaultModel)) {
                         selectedModel = defaultModel;
+                    } else if (readyModels.length) {
+                        selectedModel = readyModels[0].filename;
                     } else {
-                        selectedModel = result.models[0];
+                        selectedModel = result.models[0].filename;
                     }
-                    
-                    modelSelect.innerHTML = result.models.map(m => 
-                        `<option value="${m}" ${m === selectedModel ? 'selected' : ''}>${m}</option>`
-                    ).join('');
+                    censorState.currentModel = selectedModel;  // 취소 시 되돌릴 기준
+
+                    modelSelect.innerHTML = result.models.map(m => {
+                        const marker = m.needs_setup ? ' — 설치 필요' : '';
+                        const sel = m.filename === selectedModel ? 'selected' : '';
+                        return `<option value="${m.filename}" ${sel}>${m.name}${marker}</option>`;
+                    }).join('');
                     
                     // 저장된 검열 방식 복원
                     if (savedSettings?.censorMethod && methodSelect) {
@@ -27339,6 +28070,14 @@
                         featherEl.value = savedSettings.feather;
                         document.getElementById('censorFeatherValue').textContent = savedSettings.feather;
                         updateSliderFill(featherEl);
+                    }
+                    if (savedSettings?.previewIgnoreBelow !== undefined) {
+                        censorState.previewIgnoreBelow = savedSettings.previewIgnoreBelow;
+                        const pct = Math.round((savedSettings.previewIgnoreBelow || 0) * 100);
+                        const floorEl = document.getElementById('censorPreviewFloor');
+                        floorEl.value = pct;
+                        document.getElementById('censorPreviewFloorValue').textContent = pct + '% 미만';
+                        updateSliderFill(floorEl);
                     }
                     if (savedSettings?.steamOpacity !== undefined) {
                         censorState.steamOpacity = savedSettings.steamOpacity;
@@ -27397,6 +28136,147 @@
                 console.error('Failed to load model classes:', err);
                 targetsContainer.innerHTML = `<div class="censor-target-loading">클래스 로드 실패: ${err.message}</div>`;
             }
+        }
+
+        // ===== 검열 모델 설치(다운로드 + 의존성 자가치유) 모달 =====
+        let censorSetupPollTimer = null;
+
+        function openCensorModelSetupModal(entry) {
+            censorState.pendingSetupModel = entry;
+            const descEl = document.getElementById('censorSetupDesc');
+            const noteEl = document.getElementById('censorSetupNote');
+            const startBtn = document.getElementById('censorSetupStartBtn');
+            const cancelBtn = document.getElementById('censorSetupCancelBtn');
+            const progWrap = document.getElementById('censorSetupProgress');
+            const statusText = document.getElementById('censorSetupStatusText');
+
+            // 초기 상태로 리셋
+            progWrap.style.display = 'none';
+            document.getElementById('censorSetupProgressFill').style.width = '0%';
+            document.getElementById('censorSetupProgressText').textContent = '0%';
+            startBtn.style.display = '';
+            startBtn.disabled = false;
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = '취소';
+            statusText.textContent = '대기 중...';
+
+            // 필요한 작업 안내
+            const steps = [];
+            if (entry.needs_upgrade) steps.push('의존성 업그레이드 (ultralytics)');
+            if (!entry.downloaded && entry.downloadable) {
+                const mb = entry.size ? Math.round(entry.size / 1024 / 1024) : null;
+                steps.push('모델 다운로드' + (mb ? ` (약 ${mb}MB)` : ''));
+            }
+            descEl.innerHTML = `<b>${entry.name}</b> 사용을 위해 다음이 필요합니다:<br>· ${steps.join('<br>· ')}`;
+            noteEl.textContent = entry.needs_upgrade
+                ? '의존성 업그레이드 후에는 앱 재시작이 필요할 수 있습니다.'
+                : '';
+
+            document.getElementById('censorModelSetupModal').classList.add('active');
+        }
+
+        function closeCensorModelSetupModal() {
+            if (censorState.setupRunning) return;  // 설치 진행 중엔 닫기 방지
+            if (censorSetupPollTimer) { clearInterval(censorSetupPollTimer); censorSetupPollTimer = null; }
+            document.getElementById('censorModelSetupModal').classList.remove('active');
+            // 드롭다운을 마지막 준비된 모델로 되돌림
+            const sel = document.getElementById('censorModel');
+            if (censorState.currentModel) sel.value = censorState.currentModel;
+            censorState.pendingSetupModel = null;
+        }
+
+        async function startCensorModelSetup() {
+            const entry = censorState.pendingSetupModel;
+            if (!entry) return;
+            const startBtn = document.getElementById('censorSetupStartBtn');
+            const cancelBtn = document.getElementById('censorSetupCancelBtn');
+            const progWrap = document.getElementById('censorSetupProgress');
+            const statusText = document.getElementById('censorSetupStatusText');
+
+            try {
+                censorState.setupRunning = true;
+                startBtn.disabled = true;
+                cancelBtn.disabled = true;
+                progWrap.style.display = '';
+                statusText.textContent = '설치를 시작합니다...';
+
+                const res = await fetch(`${API_BASE}/api/censor/model/setup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model_id: entry.id })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `설치 시작 실패 (${res.status})`);
+                }
+                censorSetupPollTimer = setInterval(pollCensorSetupStatus, 600);
+            } catch (err) {
+                censorState.setupRunning = false;
+                cancelBtn.disabled = false;
+                startBtn.disabled = false;
+                statusText.textContent = '오류: ' + err.message;
+            }
+        }
+
+        async function pollCensorSetupStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/api/censor/model/setup-status`);
+                const s = await res.json();
+                const fill = document.getElementById('censorSetupProgressFill');
+                const pctEl = document.getElementById('censorSetupProgressText');
+                const statusText = document.getElementById('censorSetupStatusText');
+
+                const pct = Math.max(0, Math.min(100, s.progress || 0));
+                fill.style.width = pct + '%';
+                pctEl.textContent = pct + '%';
+                if (s.message) statusText.textContent = s.message;
+
+                if (s.error) {
+                    clearInterval(censorSetupPollTimer); censorSetupPollTimer = null;
+                    censorState.setupRunning = false;
+                    document.getElementById('censorSetupCancelBtn').disabled = false;
+                    document.getElementById('censorSetupStartBtn').disabled = false;
+                    statusText.textContent = '오류: ' + s.error;
+                    return;
+                }
+                if (s.done) {
+                    clearInterval(censorSetupPollTimer); censorSetupPollTimer = null;
+                    censorState.setupRunning = false;
+                    await onCensorSetupDone(s);
+                }
+            } catch (err) {
+                console.warn('setup-status poll failed:', err);  // 일시적 실패는 다음 틱 재시도
+            }
+        }
+
+        async function onCensorSetupDone(s) {
+            const entry = censorState.pendingSetupModel;
+            const statusText = document.getElementById('censorSetupStatusText');
+            const startBtn = document.getElementById('censorSetupStartBtn');
+            const cancelBtn = document.getElementById('censorSetupCancelBtn');
+
+            if (s.restart_required) {
+                // 의존성 업그레이드 후 재시작 필요 — 모델은 재시작 후 사용 가능
+                statusText.textContent = '설치 완료 — 새 의존성 적용을 위해 앱을 재시작해주세요.';
+                startBtn.style.display = 'none';
+                cancelBtn.disabled = false;
+                cancelBtn.textContent = '닫기';
+                return;  // 드롭다운은 이전 모델 유지 (아직 로드 불가)
+            }
+
+            // 재시작 불필요: 즉시 사용 가능
+            statusText.textContent = '완료!';
+            document.getElementById('censorModelSetupModal').classList.remove('active');
+            const filename = entry.filename;
+            await loadCensorModels();          // downloaded 상태 갱신
+            document.getElementById('censorModel').value = filename;
+            censorState.currentModel = filename;
+            censorState.pendingSetupModel = null;
+            await loadModelClasses(filename);
+            if (censorState.currentImage && censorState.currentTab === 'before') {
+                await scanCurrentImage();
+            }
+            saveCensorSettings();
         }
 
         // 검열 대상 UI 렌더링
@@ -30084,7 +30964,15 @@
             
             // 모델 변경
             document.getElementById('censorModel').onchange = async function() {
-                await loadModelClasses(this.value);
+                const filename = this.value;
+                const entry = censorState.modelRegistry?.[filename];
+                // 미보유(다운로드/업그레이드 필요) 모델이면 설치 모달로 유도하고 로드/스캔 보류
+                if (entry && entry.needs_setup) {
+                    openCensorModelSetupModal(entry);
+                    return;
+                }
+                censorState.currentModel = filename;
+                await loadModelClasses(filename);
                 if (censorState.currentImage && censorState.currentTab === 'before') {
                     await scanCurrentImage();
                 }
@@ -30129,6 +31017,20 @@
                 }
                 saveCensorSettings();
             };
+
+            // 미리보기 낮은 신뢰도 숨김 슬라이더 (표시 전용)
+            const previewFloorSlider = document.getElementById('censorPreviewFloor');
+            if (previewFloorSlider) {
+                previewFloorSlider.oninput = function() {
+                    const pct = parseInt(this.value) || 0;
+                    censorState.previewIgnoreBelow = pct / 100;
+                    document.getElementById('censorPreviewFloorValue').textContent = pct + '% 미만';
+                    if (censorState.currentTab === 'before') {
+                        drawDetectionBoxes();
+                    }
+                    saveCensorSettings();
+                };
+            }
 
             // 스팀 조작시 투명도 슬라이더
             const steamOpacitySlider = document.getElementById('steamOpacity');
@@ -31953,6 +32855,11 @@
                 : censorState.editBoxes;
             
             boxes.forEach((det, index) => {
+                // 검열전 미리보기: 낮은 신뢰도 박스 숨김 (표시 전용, 실제 검열엔 영향 없음)
+                if (censorState.currentTab === 'before') {
+                    const floor = censorState.previewIgnoreBelow || 0;
+                    if (floor > 0 && det.confidence !== undefined && det.confidence < floor) return;
+                }
                 const [x1, y1, x2, y2] = det.box;
                 const sx1 = x1 * scale + offsetX;
                 const sy1 = y1 * scale + offsetY;
