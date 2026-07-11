@@ -9728,23 +9728,38 @@
                                 <label>방식</label>
                                 <select id="censorMethod">
                                     <option value="steam" selected>☁️ 스팀</option>
+                                    <option value="mosaic">🔲 모자이크</option>
                                     <option value="black">박스 (검정)</option>
                                     <option value="white">박스 (흰색)</option>
                                 </select>
                             </div>
-                            <div class="side-setting-row">
+                            <div class="side-setting-row" id="censorExpandRow">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">
                                     <span>확장</span>
                                     <span id="censorExpandValue" style="font-weight: 500;">0</span>
                                 </label>
                                 <input type="range" id="censorExpandPixels" min="0" max="50" value="0">
                             </div>
-                            <div class="side-setting-row">
+                            <div class="side-setting-row" id="censorFeatherRow">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">
                                     <span>부드럽게</span>
                                     <span id="censorFeatherValue" style="font-weight: 500;">0</span>
                                 </label>
                                 <input type="range" id="censorFeather" min="0" max="50" value="0">
+                            </div>
+                            <div class="side-setting-row" id="mosaicStrengthRow" style="display: none;">
+                                <label style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>모자이크 강도</span>
+                                    <span id="mosaicStrengthValue" style="font-weight: 500;">12</span>
+                                </label>
+                                <input type="range" id="mosaicStrength" min="4" max="48" value="12">
+                            </div>
+                            <div class="side-setting-row" id="mosaicOpacityRow" style="display: none;">
+                                <label style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>모자이크 불투명도</span>
+                                    <span id="mosaicOpacityValue" style="font-weight: 500;">100%</span>
+                                </label>
+                                <input type="range" id="mosaicOpacity" min="10" max="100" value="100">
                             </div>
                             <div class="side-setting-row" id="steamOpacityRow">
                                 <label style="display: flex; justify-content: space-between; align-items: center;">
@@ -10271,6 +10286,7 @@
                             <label>방식:</label>
                             <select id="editCensorMethod">
                                 <option value="steam" selected>☁️ 스팀</option>
+                                <option value="mosaic">🔲 모자이크</option>
                                 <option value="black">박스 (검정)</option>
                                 <option value="white">박스 (흰색)</option>
                             </select>
@@ -11174,6 +11190,7 @@
             // Clear saved state
             card._imageData.image_path = null;
             card.classList.remove('is-saved');
+            persistRecentSaved(card._imageData.seq, null, null, card._imageData.image_base64);  // 미저장 전환 + 프리뷰 보존
 
             // Toggle buttons: show save, hide delete
             const saveBtn = card.querySelector('.save-preview-btn');
@@ -12009,6 +12026,7 @@
                             card._imageData.filename = result.filename;
                             card._imageData.image_path = result.image_path;
                             card.classList.add('is-saved');
+                            persistRecentSaved(card._imageData.seq, result.image_path, result.filename);  // 복원 버퍼에 저장 상태 기록
 
                             showToast(`저장됨: ${result.filename}`, 'success');
                         } else {
@@ -12644,6 +12662,20 @@
             }).catch(() => {});
         }
 
+        // 파일 저장/삭제 상태를 복원 버퍼(recent_images)에 기록 → 새로고침 후에도 저장 상태 유지.
+        // imagePath 있으면 저장됨, null이면 미저장(imageBase64로 프리뷰 보존 가능).
+        function persistRecentSaved(seq, imagePath, filename, imageBase64) {
+            if (seq == null) return;
+            const body = { seq, image_path: imagePath || null };
+            if (filename != null) body.filename = filename;
+            if (imageBase64 != null) body.image_base64 = imageBase64;
+            fetch(`${API_BASE}/api/recent/saved`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            }).catch(() => {});
+        }
+
         // 싱글 뷰어에 특정 이미지를 크게 표시하고 현재 액션 대상을 갱신
         function selectSingleImage(imageData, thumbEl) {
             if (!imageData) return;
@@ -12944,6 +12976,7 @@
                     if (result.success) {
                         d.filename = result.filename;
                         d.image_path = result.image_path;
+                        persistRecentSaved(d.seq, result.image_path, result.filename);  // 복원 버퍼에 저장 상태 기록
                         selectSingleImage(d, strip.querySelector('.single-thumb.selected'));
                         showToast(`저장됨: ${result.filename}`, 'success');
                     } else showToast(`저장 실패: ${result.error}`, 'error');
@@ -12961,6 +12994,7 @@
                     if (result.success) {
                         if (b64) { d.image_base64 = b64; d._fullSrc = 'data:image/png;base64,' + b64; }
                         d.image_path = null;
+                        persistRecentSaved(d.seq, null, null, b64);  // 미저장 전환 + 프리뷰 보존
                         const sel = strip.querySelector('.single-thumb.selected');
                         if (sel && b64) { const im = sel.querySelector('img'); if (im) im.src = d._fullSrc; }
                         selectSingleImage(d, sel);
@@ -13238,6 +13272,7 @@
                         card._imageData.image_path = result.image_path;
                         card._imageData.filename = result.filename;
                         card.classList.add('is-saved');
+                        persistRecentSaved(card._imageData.seq, result.image_path, result.filename);  // 복원 버퍼에 저장 상태 기록
                         showToast(`저장됨: ${result.filename}`, 'success');
                     } else {
                         showToast('저장 실패: ' + (result.error || 'Unknown error'), 'error');
@@ -15783,15 +15818,25 @@
 
             // N번 큐에 등록
             for (let i = 0; i < repeatCount; i++) {
-                // 와일드카드 해석 (토큰 없으면 원문 그대로) — 매 장 새로운 랜덤 조합
+                // req 레벨: 대표값 1회 해석 (폴백/구버전 호환용)
                 request.base_prompt = resolveWildcards(wcRaw.base_prompt, wildcardPools);
                 request.negative_prompt = resolveWildcards(wcRaw.negative_prompt, wildcardPools);
-                // 캐릭터 프롬프트는 한 번만 해석해 두 필드에 동일 적용
-                // (생성용 character_prompts_with_coords / 기록용 character_prompts 불일치 방지)
                 const resolvedChars = wcRaw.character_prompts_with_coords.map(c => ({ ...c, prompt: resolveWildcards(c.prompt, wildcardPools) }));
                 request.character_prompts_with_coords = resolvedChars;
                 request.character_prompts = resolvedChars.map(c => c.prompt);
-                request.prompt_list = wcRaw.prompt_list.map(s => ({ ...s, content: resolveWildcards(s.content, wildcardPools) }));
+                // 슬롯(=이미지)마다 와일드카드를 개별 해석해 오버라이드로 첨부
+                // → 한 배치(한 job의 여러 슬롯) 안에서도 이미지마다 다른 추첨이 들어감
+                request.prompt_list = wcRaw.prompt_list.map(s => {
+                    const perChars = wcRaw.character_prompts_with_coords.map(c => ({ ...c, prompt: resolveWildcards(c.prompt, wildcardPools) }));
+                    return {
+                        ...s,
+                        content: resolveWildcards(s.content, wildcardPools),
+                        base_prompt: resolveWildcards(wcRaw.base_prompt, wildcardPools),
+                        negative_prompt: resolveWildcards(wcRaw.negative_prompt, wildcardPools),
+                        character_prompts_with_coords: perChars,
+                        character_prompts: perChars.map(c => c.prompt),
+                    };
+                });
 
                 try {
                     await fetch(`${API_BASE}/api/generate/multi`, {
@@ -27524,6 +27569,8 @@
             // 확장/그라데이션 옵션
             expandPixels: 0,           // 박스 확장 픽셀
             feather: 0,                // 그라데이션 테두리 픽셀
+            mosaicStrength: 12,        // 모자이크 블록 크기 (원본 px)
+            mosaicOpacity: 100,        // 모자이크 불투명도 (%, 원본 위 블렌딩)
             steamOpacity: 30,          // 조작시 투명도 (%)
             steamBrightness: 100,      // 스팀 밝기 (0~100, 100=흰색)
             steamAlpha: 100,           // 스팀 불투명도 (0~100)
@@ -27929,6 +27976,21 @@
         }
         
         // 검열 설정 저장 (localStorage)
+        // 검열 방식에 따라 설정 행 표시/숨김: 스팀=스팀행, 모자이크=강도(확장/부드럽게 대체)
+        function updateCensorMethodRows(method) {
+            const isSteam = method === 'steam';
+            const isMosaic = method === 'mosaic';
+            const set = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+            set('steamOpacityRow', isSteam);
+            set('steamBrightnessRow', isSteam);
+            set('steamAlphaRow', isSteam);
+            // 모자이크: 확장/부드럽게 대신 모자이크 강도·불투명도
+            set('censorExpandRow', !isMosaic);
+            set('censorFeatherRow', !isMosaic);
+            set('mosaicStrengthRow', isMosaic);
+            set('mosaicOpacityRow', isMosaic);
+        }
+
         function saveCensorSettings() {
             const settings = {
                 currentUncensoredFolder: censorState.currentUncensoredFolder,
@@ -27941,6 +28003,8 @@
                     .map(cb => cb.dataset.class),
                 expandPixels: censorState.expandPixels,
                 feather: censorState.feather,
+                mosaicStrength: censorState.mosaicStrength,
+                mosaicOpacity: censorState.mosaicOpacity,
                 steamOpacity: censorState.steamOpacity,
                 steamBrightness: censorState.steamBrightness,
                 steamAlpha: censorState.steamAlpha
@@ -28052,11 +28116,8 @@
                     if (savedSettings?.censorMethod && methodSelect) {
                         methodSelect.value = savedSettings.censorMethod;
                     }
-                    // 스팀 전용 설정 표시/숨김
-                    const isSteamMethod = (methodSelect?.value || 'steam') === 'steam';
-                    document.getElementById('steamOpacityRow').style.display = isSteamMethod ? '' : 'none';
-                    document.getElementById('steamBrightnessRow').style.display = isSteamMethod ? '' : 'none';
-                    document.getElementById('steamAlphaRow').style.display = isSteamMethod ? '' : 'none';
+                    // 방식별 설정 행 표시/숨김 (스팀 행 / 모자이크 강도)
+                    updateCensorMethodRows(methodSelect?.value || 'steam');
 
                     // 저장된 확장/부드럽게 값 복원
                     if (savedSettings?.expandPixels !== undefined) {
@@ -28072,6 +28133,24 @@
                         featherEl.value = savedSettings.feather;
                         document.getElementById('censorFeatherValue').textContent = savedSettings.feather;
                         updateSliderFill(featherEl);
+                    }
+                    if (savedSettings?.mosaicStrength !== undefined) {
+                        censorState.mosaicStrength = savedSettings.mosaicStrength;
+                        const mEl = document.getElementById('mosaicStrength');
+                        if (mEl) {
+                            mEl.value = savedSettings.mosaicStrength;
+                            document.getElementById('mosaicStrengthValue').textContent = savedSettings.mosaicStrength;
+                            updateSliderFill(mEl);
+                        }
+                    }
+                    if (savedSettings?.mosaicOpacity !== undefined) {
+                        censorState.mosaicOpacity = savedSettings.mosaicOpacity;
+                        const moEl = document.getElementById('mosaicOpacity');
+                        if (moEl) {
+                            moEl.value = savedSettings.mosaicOpacity;
+                            document.getElementById('mosaicOpacityValue').textContent = savedSettings.mosaicOpacity + '%';
+                            updateSliderFill(moEl);
+                        }
                     }
                     if (savedSettings?.previewIgnoreBelow !== undefined) {
                         censorState.previewIgnoreBelow = savedSettings.previewIgnoreBelow;
@@ -28992,10 +29071,7 @@
                     }
                     break;
                 case 'mosaic':
-                    applyMosaicEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH);
-                    break;
-                case 'blur':
-                    applyBlurEffect(ctx, x, y, w, h);
+                    applyMosaicEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale);
                     break;
                 case 'steam':
                     applySteamEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale);
@@ -29068,41 +29144,28 @@
         }
 
         // 모자이크 효과
-        function applyMosaicEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH) {
-            const blockSize = Math.max(8, Math.min(w, h) / 8);
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = origW;
-            tempCanvas.height = origH;
-            const tempCtx = tempCanvas.getContext('2d');
-            
-            // 원본에서 해당 영역 추출
-            tempCtx.drawImage(originalImg, origX, origY, origW, origH, 0, 0, origW, origH);
-            
-            // 축소 후 확대로 모자이크
-            const smallW = Math.ceil(w / blockSize);
-            const smallH = Math.ceil(h / blockSize);
-            
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(tempCanvas, 0, 0, origW, origH, x, y, smallW, smallH);
-            ctx.drawImage(ctx.canvas, x, y, smallW, smallH, x, y, w, h);
-            ctx.imageSmoothingEnabled = true;
-        }
-        
-        // 블러 효과 (간단한 버전)
-        function applyBlurEffect(ctx, x, y, w, h) {
-            // CSS blur 대신 다중 그리기로 블러 효과
-            ctx.save();
-            ctx.globalAlpha = 0.1;
-            for (let i = -5; i <= 5; i++) {
-                for (let j = -5; j <= 5; j++) {
-                    ctx.drawImage(ctx.canvas, x, y, w, h, x + i, y + j, w, h);
-                }
-            }
-            ctx.restore();
+        function applyMosaicEffect(ctx, x, y, w, h, originalImg, origX, origY, origW, origH, scale = 1) {
+            // 강도 = 원본 px 기준 블록 크기 → 블록 개수는 스케일 무관 (백엔드와 통일)
+            const strength = Math.max(2, censorState.mosaicStrength || 12);
+            const opacity = Math.max(0, Math.min(1, (censorState.mosaicOpacity ?? 100) / 100));
+            const blocksX = Math.max(1, Math.round(origW / strength));
+            const blocksY = Math.max(1, Math.round(origH / strength));
 
-            // 반투명 오버레이
-            ctx.fillStyle = 'rgba(128, 128, 128, 0.5)';
-            ctx.fillRect(x, y, w, h);
+            // 1) 원본 ROI를 블록 개수만큼 축소 (평균색)
+            const small = document.createElement('canvas');
+            small.width = blocksX;
+            small.height = blocksY;
+            const sctx = small.getContext('2d');
+            sctx.imageSmoothingEnabled = true;
+            sctx.drawImage(originalImg, origX, origY, origW, origH, 0, 0, blocksX, blocksY);
+
+            // 2) 박스 크기로 최근접 확대 + 불투명도만큼 원본 위에 블렌딩
+            ctx.save();
+            ctx.globalAlpha = ctx.globalAlpha * opacity;
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(small, 0, 0, blocksX, blocksY, x, y, w, h);
+            ctx.restore();
+            ctx.imageSmoothingEnabled = true;
         }
 
         // 스팀/구름 효과를 위한 Simplex Noise 생성기
@@ -29436,6 +29499,8 @@
                 boxes: boxes.map(b => ({ box: b.box, method: b.method, rotation: b.rotation })),
                 expand: censorState.expandPixels,
                 feather: censorState.feather,
+                mosaicStrength: censorState.mosaicStrength,
+                mosaicOpacity: censorState.mosaicOpacity,
                 method: method
             });
         }
@@ -29448,6 +29513,8 @@
                 boxes: censorState.editBoxes.map(b => ({ box: b.box, method: b.method, rotation: b.rotation })),
                 expand: censorState.expandPixels,
                 feather: censorState.feather,
+                mosaicStrength: censorState.mosaicStrength,
+                mosaicOpacity: censorState.mosaicOpacity,
                 method: method,
                 imagePath: censorState.currentImage?.path
             });
@@ -29546,7 +29613,9 @@
                     })),
                     method: method,
                     expand_pixels: censorState.expandPixels || 0,
-                    feather: censorState.feather || 0
+                    feather: censorState.feather || 0,
+                    mosaic_strength: censorState.mosaicStrength || 12,
+                    mosaic_opacity: censorState.mosaicOpacity ?? 100
                 };
 
                 // 이미지 소스 설정
@@ -29906,7 +29975,9 @@
                         filename: censorState.currentImage.filename,
                         source: 'censored',
                         expand_pixels: censorState.expandPixels || 0,
-                        feather: censorState.feather || 0
+                        feather: censorState.feather || 0,
+                        mosaic_strength: censorState.mosaicStrength || 12,
+                        mosaic_opacity: censorState.mosaicOpacity ?? 100
                     })
                 });
                 
@@ -30231,6 +30302,8 @@
         async function precacheAllCensoredPreviews(method) {
             const expand = censorState.expandPixels || 0;
             const feather = censorState.feather || 0;
+            const mosaicStrength = censorState.mosaicStrength || 12;
+            const mosaicOpacity = censorState.mosaicOpacity ?? 100;
 
             // 확장/부드럽게가 없으면 캐싱 불필요 (프론트엔드에서 직접 렌더링)
             if (expand === 0 && feather === 0) {
@@ -30263,7 +30336,9 @@
                         })),
                         method: method,
                         expand_pixels: expand,
-                        feather: feather
+                        feather: feather,
+                        mosaic_strength: mosaicStrength,
+                        mosaic_opacity: mosaicOpacity
                     };
 
                     // 이미지 소스 설정
@@ -30577,6 +30652,8 @@
                         saveBody.method = method;
                         saveBody.expand_pixels = censorState.expandPixels || 0;
                         saveBody.feather = censorState.feather || 0;
+                        saveBody.mosaic_strength = censorState.mosaicStrength || 12;
+                        saveBody.mosaic_opacity = censorState.mosaicOpacity ?? 100;
 
                         // 드롭된 이미지면 image_base64 사용, 아니면 path 사용
                         if (imgInfo?.isDropped && imgInfo?.base64) {
@@ -31020,6 +31097,30 @@
                 saveCensorSettings();
             };
 
+            // 모자이크 강도 슬라이더 (블록 크기, 원본 px 기준)
+            const mosaicSlider = document.getElementById('mosaicStrength');
+            if (mosaicSlider) {
+                mosaicSlider.oninput = function() {
+                    censorState.mosaicStrength = parseInt(this.value);
+                    document.getElementById('mosaicStrengthValue').textContent = this.value;
+                    if (censorState.currentTab === 'processing') redrawProcessingPreview();
+                    else if (censorState.currentTab === 'after') redrawAfterPreview();
+                    saveCensorSettings();
+                };
+            }
+
+            // 모자이크 불투명도 슬라이더 (원본 위 블렌딩 %)
+            const mosaicOpacitySlider = document.getElementById('mosaicOpacity');
+            if (mosaicOpacitySlider) {
+                mosaicOpacitySlider.oninput = function() {
+                    censorState.mosaicOpacity = parseInt(this.value);
+                    document.getElementById('mosaicOpacityValue').textContent = this.value + '%';
+                    if (censorState.currentTab === 'processing') redrawProcessingPreview();
+                    else if (censorState.currentTab === 'after') redrawAfterPreview();
+                    saveCensorSettings();
+                };
+            }
+
             // 미리보기 낮은 신뢰도 숨김 슬라이더 (표시 전용)
             const previewFloorSlider = document.getElementById('censorPreviewFloor');
             if (previewFloorSlider) {
@@ -31313,11 +31414,7 @@
             document.getElementById('censorMethod').onchange = function() {
                 censorState.processingMethod = this.value;
                 const newMethod = this.value;
-                // 스팀 전용 설정 표시/숨김
-                const isSteam = newMethod === 'steam';
-                document.getElementById('steamOpacityRow').style.display = isSteam ? '' : 'none';
-                document.getElementById('steamBrightnessRow').style.display = isSteam ? '' : 'none';
-                document.getElementById('steamAlphaRow').style.display = isSteam ? '' : 'none';
+                updateCensorMethodRows(newMethod);
 
                 if (censorState.currentTab === 'processing') {
                     // 검열중 탭: 모든 이미지의 박스 방식 변경
@@ -32222,7 +32319,9 @@
                         method: method,
                         output_folder: outputFolder,
                         filename: censorState.editModalImage.filename,
-                        source: 'censored'  // 편집 모달에서는 검열된 이미지 기준
+                        source: 'censored',  // 편집 모달에서는 검열된 이미지 기준
+                        mosaic_strength: censorState.mosaicStrength || 12,
+                        mosaic_opacity: censorState.mosaicOpacity ?? 100
                     })
                 });
                 

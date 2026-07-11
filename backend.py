@@ -904,6 +904,12 @@ class PromptItem(BaseModel):
     content: str = ""
     slotIndex: int = 0
     promptTarget: str = "base"  # "base" or "char"
+    # 슬롯(=이미지)별 와일드카드 개별 해석 오버라이드. 있으면 req 레벨 대신 이 값을 사용
+    # → 대량 생성 한 배치 안에서도 이미지마다 다른 와일드카드 추첨이 적용됨
+    base_prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    character_prompts: Optional[List[str]] = None
+    character_prompts_with_coords: Optional[List[CharacterPromptWithCoordSimple]] = None
 
 
 class MultiGenerateRequest(BaseModel):
@@ -2447,13 +2453,20 @@ async def process_job(job):
         slot_index = prompt_item.slotIndex if hasattr(prompt_item, 'slotIndex') else prompt_idx
         prompt_target = prompt_item.promptTarget if hasattr(prompt_item, 'promptTarget') else "base"
 
+        # 슬롯(=이미지)별 와일드카드 개별 해석 오버라이드. 없으면(구 클라이언트) req 레벨 사용.
+        # → 대량 생성 한 배치 안에서도 이미지마다 다른 와일드카드 추첨이 반영됨
+        item_base_prompt = prompt_item.base_prompt if getattr(prompt_item, 'base_prompt', None) is not None else req.base_prompt
+        item_negative_prompt = prompt_item.negative_prompt if getattr(prompt_item, 'negative_prompt', None) is not None else req.negative_prompt
+        item_character_prompts = prompt_item.character_prompts if getattr(prompt_item, 'character_prompts', None) is not None else req.character_prompts
+        item_character_prompts_with_coords = prompt_item.character_prompts_with_coords if getattr(prompt_item, 'character_prompts_with_coords', None) is not None else req.character_prompts_with_coords
+
         # promptTarget에 따라 슬롯 프롬프트를 베이스 또는 캐릭터에 추가
-        has_characters = bool(req.character_prompts_with_coords or req.character_prompts)
+        has_characters = bool(item_character_prompts_with_coords or item_character_prompts)
         if prompt_target == "char" and extra_prompt and has_characters:
             # 캐릭터 프롬프트에 슬롯 태그 추가 (임시 복사본 사용, skipSlotPrompt 제외)
-            full_prompt = req.base_prompt
+            full_prompt = item_base_prompt
             modified_char_prompts_with_coords = []
-            for cp in req.character_prompts_with_coords:
+            for cp in item_character_prompts_with_coords:
                 if cp.skipSlotPrompt:
                     # 슬롯 프롬프트 적용 제외된 캐릭터는 원본 유지
                     modified_cp = CharacterPromptWithCoordSimple(
@@ -2470,22 +2483,22 @@ async def process_job(job):
                 modified_char_prompts_with_coords.append(modified_cp)
             # flat list도 skipSlotPrompt 반영 (character_prompts_with_coords와 동일 순서)
             modified_char_prompts = []
-            for i, cp in enumerate(req.character_prompts):
-                skip = (i < len(req.character_prompts_with_coords) and
-                        req.character_prompts_with_coords[i].skipSlotPrompt)
+            for i, cp in enumerate(item_character_prompts):
+                skip = (i < len(item_character_prompts_with_coords) and
+                        item_character_prompts_with_coords[i].skipSlotPrompt)
                 if skip:
                     modified_char_prompts.append(cp)
                 else:
                     modified_char_prompts.append(f"{cp}, {extra_prompt}".strip(", ") if cp else extra_prompt)
         else:
             # 기존 동작 유지: 슬롯 프롬프트를 베이스에 추가, 캐릭터는 원본 그대로
-            full_prompt = f"{req.base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else req.base_prompt
-            modified_char_prompts_with_coords = req.character_prompts_with_coords
-            modified_char_prompts = req.character_prompts
+            full_prompt = f"{item_base_prompt}, {extra_prompt}".strip(", ") if extra_prompt else item_base_prompt
+            modified_char_prompts_with_coords = item_character_prompts_with_coords
+            modified_char_prompts = item_character_prompts
 
         # 로컬인 경우 캐릭터 프롬프트를 메인 프롬프트에 합침
         # 캐릭터 UC(네거티브)도 메인 네거티브에 합침
-        full_negative = req.negative_prompt
+        full_negative = item_negative_prompt
         if req.provider != "nai":
             # character_prompts_with_coords 우선, 없으면 character_prompts 사용
             if modified_char_prompts_with_coords:
@@ -2649,14 +2662,14 @@ async def process_job(job):
             peropix_ext = {
                 "version": 3,
                 "provider": req.provider,
-                "character_prompts": req.character_prompts or [],
+                "character_prompts": item_character_prompts or [],
                 "variety_plus": req.variety_plus,
                 "furry_mode": req.furry_mode,
                 "local_model": req.model if req.provider == 'local' else "",
                 "local_loras": req.loras if req.provider == 'local' and req.loras else None,
                 "vibe_transfer": vibe_info if vibe_info else None,
-                "base_prompt": req.base_prompt,
-                "base_negative_prompt": req.negative_prompt,
+                "base_prompt": item_base_prompt,
+                "base_negative_prompt": item_negative_prompt,
                 "slot_prompt": extra_prompt if extra_prompt else None,
                 "slot_prompt_target": prompt_target if extra_prompt else None
             }
@@ -2670,7 +2683,7 @@ async def process_job(job):
                 # Local 또는 Comment 없는 경우: NAI 호환 형식으로 전체 생성
                 unified_metadata = {
                     "prompt": full_prompt,
-                    "uc": req.negative_prompt or "",
+                    "uc": item_negative_prompt or "",
                     "steps": req.steps,
                     "width": req.width,
                     "height": req.height,
@@ -4469,6 +4482,28 @@ async def recent_enhance_link(req: RecentEnhanceLinkRequest):
     for img in gen_queue.recent_images:
         if img.get("seq") == req.seq:
             img["enhance_group"] = req.group
+            return {"success": True}
+    return {"success": False, "error": "seq not found"}
+
+
+class RecentSavedRequest(BaseModel):
+    seq: int
+    image_path: Optional[str] = None   # 값 있으면 저장됨, None이면 미저장(파일 삭제 등)
+    filename: Optional[str] = None
+    image_base64: Optional[str] = None  # 미저장 전환 시 프리뷰 보존용
+
+
+@app.post("/api/recent/saved")
+async def recent_saved(req: RecentSavedRequest):
+    """미리보기의 파일 저장/삭제 상태를 복원 버퍼(recent_images)에 seq로 기록
+    → 새로고침 후에도 저장 상태 유지 (수동 저장/삭제한 이미지가 미저장으로 되돌아가는 문제 방지)."""
+    for img in gen_queue.recent_images:
+        if img.get("seq") == req.seq:
+            img["image_path"] = req.image_path  # None이면 미저장
+            if req.filename is not None:
+                img["filename"] = req.filename
+            if req.image_base64 is not None:
+                img["image_base64"] = req.image_base64
             return {"success": True}
     return {"success": False, "error": "seq not found"}
 
@@ -6811,18 +6846,23 @@ def detect_nsfw_regions(image_path: str, model_name: str = None,
 
 def apply_censor_boxes(image_path: str, boxes: list, method: str = "black",
                        color: str = None, output_path: str = None,
-                       expand_pixels: int = 0, feather: int = 0):
+                       expand_pixels: int = 0, feather: int = 0,
+                       mosaic_strength: int = 12, mosaic_opacity: int = 100):
     """이미지에 검열 박스 적용 (회전, 확장, 그라데이션 지원)
 
     Args:
         image_path: 이미지 경로
         boxes: 검열 박스 목록
-        method: 검열 방식 (black, white, blur, mosaic, color)
+        method: 검열 방식 (black, white, mosaic, color)
         color: 커스텀 색상 (hex)
         output_path: 저장 경로 (None이면 저장 안 함)
         expand_pixels: 박스 확장 픽셀 (0 이상)
         feather: 그라데이션 테두리 픽셀 (0 이상)
+        mosaic_strength: 모자이크 블록 크기 (원본 px, 클수록 굵음)
+        mosaic_opacity: 모자이크 불투명도 (%, 원본 위 블렌딩. 100=완전 불투명)
     """
+    # 모자이크 불투명도 (0.0~1.0)
+    mosaic_alpha = max(0.0, min(1.0, (mosaic_opacity if mosaic_opacity is not None else 100) / 100.0))
     import cv2
     import numpy as np
     import math
@@ -6907,8 +6947,8 @@ def apply_censor_boxes(image_path: str, boxes: list, method: str = "black",
         image[by:by2, bx:bx2] = blended
         return image
 
-    def apply_feathered_effect(image, pts, effect_type, feather_px):
-        """그라데이션 테두리가 적용된 블러/모자이크"""
+    def apply_feathered_mosaic(image, pts, feather_px, effect_alpha=1.0):
+        """그라데이션 테두리가 적용된 모자이크 (effect_alpha=효과 불투명도)"""
         bx, by, bw, bh = cv2.boundingRect(pts)
         margin = feather_px + 2
         bx = max(0, bx - margin)
@@ -6939,15 +6979,17 @@ def apply_censor_boxes(image_path: str, boxes: list, method: str = "black",
         alpha[core_mask > 0] = 1.0
         alpha[feather_zone] = 1.0 - np.clip(dist_outside[feather_zone] / feather_px, 0, 1)
 
-        # 효과 적용
-        if effect_type == "blur":
-            effected = cv2.GaussianBlur(roi, (99, 99), 30)
-        else:  # mosaic
-            if roi_h > 0 and roi_w > 0:
-                small = cv2.resize(roi, (max(1, roi_w // 10), max(1, roi_h // 10)), interpolation=cv2.INTER_LINEAR)
-                effected = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
-            else:
-                effected = roi
+        # 효과 불투명도 반영 (모자이크 반투명 블렌딩)
+        if effect_alpha < 1.0:
+            alpha *= effect_alpha
+
+        # 모자이크 적용
+        if roi_h > 0 and roi_w > 0:
+            block = max(1, mosaic_strength)
+            small = cv2.resize(roi, (max(1, roi_w // block), max(1, roi_h // block)), interpolation=cv2.INTER_LINEAR)
+            effected = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+        else:
+            effected = roi
 
         # 알파 블렌딩
         alpha_3ch = cv2.merge([alpha, alpha, alpha])
@@ -7007,9 +7049,10 @@ def apply_censor_boxes(image_path: str, boxes: list, method: str = "black",
             else:
                 cv2.fillPoly(image, [pts], censor_color, lineType=cv2.LINE_AA)
 
-        elif box_method in ("blur", "mosaic"):
+        elif box_method == "mosaic":
+            eff_alpha = mosaic_alpha
             if use_feather:
-                image = apply_feathered_effect(image, pts, box_method, feather)
+                image = apply_feathered_mosaic(image, pts, feather, eff_alpha)
             else:
                 # 기존 로직
                 bx, by, bw, bh = cv2.boundingRect(pts)
@@ -7025,19 +7068,17 @@ def apply_censor_boxes(image_path: str, boxes: list, method: str = "black",
                     pts_local = pts - np.array([bx, by])
                     cv2.fillPoly(mask, [pts_local], 255, lineType=cv2.LINE_AA)
 
-                    if box_method == "blur":
-                        blurred = cv2.GaussianBlur(roi, (99, 99), 30)
-                    else:  # mosaic
-                        roi_h, roi_w = roi.shape[:2]
-                        if roi_h > 0 and roi_w > 0:
-                            small = cv2.resize(roi, (max(1, roi_w // 10), max(1, roi_h // 10)), interpolation=cv2.INTER_LINEAR)
-                            blurred = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
-                        else:
-                            blurred = roi
+                    roi_h, roi_w = roi.shape[:2]
+                    if roi_h > 0 and roi_w > 0:
+                        block = max(1, mosaic_strength)
+                        small = cv2.resize(roi, (max(1, roi_w // block), max(1, roi_h // block)), interpolation=cv2.INTER_LINEAR)
+                        mosaicked = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+                    else:
+                        mosaicked = roi
 
-                    alpha = mask.astype(np.float32) / 255.0
+                    alpha = mask.astype(np.float32) / 255.0 * eff_alpha
                     alpha_3ch = cv2.merge([alpha, alpha, alpha])
-                    roi_result = (blurred.astype(np.float32) * alpha_3ch +
+                    roi_result = (mosaicked.astype(np.float32) * alpha_3ch +
                                  roi.astype(np.float32) * (1 - alpha_3ch)).astype(np.uint8)
                     image[by:by2, bx:bx2] = roi_result
 
@@ -7318,6 +7359,8 @@ class CensorApplyRequest(BaseModel):
     color: str = None  # 커스텀 색상
     expand_pixels: int = 0  # 박스 확장 픽셀
     feather: int = 0  # 그라데이션 테두리 픽셀
+    mosaic_strength: int = 12  # 모자이크 블록 크기 (원본 px)
+    mosaic_opacity: int = 100  # 모자이크 불투명도 (%)
     source: str = "uncensored"  # 이미지 소스 폴더 (uncensored 또는 censored)
 
 
@@ -7355,7 +7398,9 @@ async def apply_censor(req: CensorApplyRequest):
             method=req.method,
             color=req.color,
             expand_pixels=req.expand_pixels,
-            feather=req.feather
+            feather=req.feather,
+            mosaic_strength=req.mosaic_strength,
+            mosaic_opacity=req.mosaic_opacity
         )
 
         return {"success": True, "image": result_base64}
@@ -7380,6 +7425,8 @@ class CensorSaveRequest(BaseModel):
     source: str = "uncensored"  # uncensored 또는 censored (absolute_path 사용 시 무시됨)
     expand_pixels: int = 0  # 박스 확장 픽셀
     feather: int = 0  # 그라데이션 테두리 픽셀
+    mosaic_strength: int = 12  # 모자이크 블록 크기 (원본 px)
+    mosaic_opacity: int = 100  # 모자이크 불투명도 (%)
 
 
 @app.post("/api/censor/save")
@@ -7452,7 +7499,9 @@ async def save_censored_image(req: CensorSaveRequest):
             color=req.color,
             output_path=str(output_path),
             expand_pixels=req.expand_pixels,
-            feather=req.feather
+            feather=req.feather,
+            mosaic_strength=req.mosaic_strength,
+            mosaic_opacity=req.mosaic_opacity
         )
 
         return {"success": True, "filename": output_path.name, "path": str(output_path.relative_to(APP_DIR))}
@@ -7625,6 +7674,8 @@ async def batch_censor(request: dict):
     color = request.get("color")
     expand_pixels = request.get("expand_pixels", 0)
     feather = request.get("feather", 0)
+    mosaic_strength = request.get("mosaic_strength", 12)
+    mosaic_opacity = request.get("mosaic_opacity", 100)
 
     source_path = UNCENSORED_DIR / source_folder if source_folder else UNCENSORED_DIR
     output_path = CENSORED_DIR / output_folder if output_folder else CENSORED_DIR
@@ -7659,7 +7710,8 @@ async def batch_censor(request: dict):
                 apply_censor_boxes(
                     str(filepath), boxes, method=method, color=color,
                     output_path=str(out_filepath),
-                    expand_pixels=expand_pixels, feather=feather
+                    expand_pixels=expand_pixels, feather=feather,
+                    mosaic_strength=mosaic_strength, mosaic_opacity=mosaic_opacity
                 )
                 results.append({
                     "filename": filepath.name,
