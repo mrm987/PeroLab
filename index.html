@@ -20098,7 +20098,9 @@
                     }
 
                     // 와일드카드 #이름 자동완성 (태그 검색보다 우선)
-                    const wcMatch = textarea.value.substring(0, cursorPos).match(/#([A-Za-z0-9_]*)$/);
+                    // (?<![A-Za-z0-9_]) : 앞에 단어가 붙은 #은 NAI 액션 태그(source#/target#/mutual#)이므로
+                    //   와일드카드로 보지 않고 그냥 흘려보낸다 → 아래 getCurrentWord 태그 검색이 '#' 뒤 단어를 검색
+                    const wcMatch = textarea.value.substring(0, cursorPos).match(/(?<![A-Za-z0-9_])#([A-Za-z0-9_]*)$/);
                     if (wcMatch) {
                         const q = wcMatch[1].toLowerCase();
                         const names = Object.keys(wildcardPools).filter(n => n.startsWith(q)).sort();
@@ -20201,7 +20203,8 @@
             let result = text;
 
             // 1) 명명 풀 호출: #이름 (미정의면 원문 유지)
-            result = result.replace(/#([A-Za-z0-9_]+)/g, (m, name) => {
+            //    (?<![A-Za-z0-9_]) : source#tag 등 NAI 액션 태그의 #은 건드리지 않는다
+            result = result.replace(/(?<![A-Za-z0-9_])#([A-Za-z0-9_]+)/g, (m, name) => {
                 const pool = pools[name.toLowerCase()];
                 if (!pool || pool.length === 0) return m;
                 const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -20232,8 +20235,8 @@
                 escapedHtml.indexOf('||') === -1 &&
                 escapedHtml.indexOf('{') === -1) return escapedHtml;
             return escapedHtml
-                // (?<!&) : 아포스트로피 이스케이프(&#039;) 등 HTML 엔티티의 #을 매칭하지 않음
-                .replace(/(?<!&)#[A-Za-z0-9_]+/g, m => `<span class="wildcard-token wc-named">${m}</span>`)
+                // (?<![A-Za-z0-9_&]) : HTML 엔티티(&#039;)의 # 및 NAI 액션 태그(source#tag)의 #은 매칭하지 않음
+                .replace(/(?<![A-Za-z0-9_&])#[A-Za-z0-9_]+/g, m => `<span class="wildcard-token wc-named">${m}</span>`)
                 .replace(/\|\|[^]*?\|\|/g, m => `<span class="wildcard-token wc-inline">${m}</span>`)
                 .replace(/\{[^{}]*\|[^{}]*\}/g, m => `<span class="wildcard-token wc-inline">${m}</span>`);
         }
