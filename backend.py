@@ -2304,23 +2304,32 @@ class GenerationQueue:
         """특정 순번 이후의 이미지 목록 반환"""
         return [img for img in self.recent_images if img.get("seq", 0) > last_seq]
 
+    def _unregister(self, client_id: str, ws) -> None:
+        """이 client_id 슬롯이 아직 이 소켓을 가리킬 때만 등록 해제.
+        재연결로 새 소켓이 슬롯을 차지한 뒤 구 소켓 핸들러가 정리하면
+        새 연결이 브로드캐스트 명단에서 빠지므로 반드시 identity로 확인한다."""
+        if self.clients.get(client_id) is ws:
+            self.clients.pop(client_id, None)
+
     async def broadcast(self, data):
         """모든 WebSocket 클라이언트에 메시지 전송"""
         msg_type = data.get('type', 'unknown')
         if msg_type == 'image':
             print(f"[WS Broadcast] Sending image to {len(self.clients)} clients")
 
+        # 스냅샷 순회: await 중 다른 코루틴이 연결/해제로 dict를 바꾸면
+        # RuntimeError로 브로드캐스트가 통째로 죽어 image/job_done이 누락됨
         disconnected = []
-        for client_id, ws in self.clients.items():
+        for client_id, ws in list(self.clients.items()):
             try:
                 await ws.send_json(data)
             except Exception as e:
                 print(f"[WS Broadcast] Failed to send to {client_id}: {e}")
-                disconnected.append(client_id)
+                disconnected.append((client_id, ws))
 
-        # 연결 끊긴 클라이언트 제거
-        for client_id in disconnected:
-            self.clients.pop(client_id, None)
+        # 연결 끊긴 클라이언트 제거 (await 사이 재연결로 교체된 새 소켓은 지우지 않음)
+        for client_id, ws in disconnected:
+            self._unregister(client_id, ws)
 
     async def send_to_client(self, client_id: str, data: dict):
         """특정 클라이언트에 메시지 전송"""
@@ -2330,7 +2339,7 @@ class GenerationQueue:
                 await ws.send_json(data)
             except Exception as e:
                 print(f"[WS] Failed to send to {client_id}: {e}")
-                self.clients.pop(client_id, None)
+                self._unregister(client_id, ws)
 
 gen_queue = GenerationQueue()
 
@@ -4558,7 +4567,10 @@ async def websocket_endpoint(websocket: WebSocket, clientId: str = None):
     except Exception as e:
         print(f"[WS] Error with client {client_id}: {e}")
     finally:
-        gen_queue.clients.pop(client_id, None)
+        # 같은 client_id로 재연결되면 이 키는 이미 새 소켓을 가리킴 —
+        # 구 소켓 핸들러가 무조건 pop하면 새 연결이 브로드캐스트 명단에서 빠져
+        # 이후 image/job_done을 전혀 못 받게 됨 (자기 소켓일 때만 해제)
+        gen_queue._unregister(client_id, websocket)
 
 
 @app.post("/api/cancel-current")
