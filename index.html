@@ -11670,8 +11670,11 @@
         let placeholder = null;
         let dragScrollRAF = null;
         let dragMouseX = 0;
-        const DRAG_SCROLL_ZONE = 80;
+        let dragStartX = 0;
+        let dragMoved = false;
+        const DRAG_SCROLL_ZONE = 48;
         const DRAG_SCROLL_SPEED = 12;
+        const DRAG_MOVE_THRESHOLD = 4;
 
         function startSlotDrag(slot, e) {
             draggedSlot = slot;
@@ -11681,6 +11684,8 @@
             // 클릭 위치 비율을 축소 너비에 맞게 환산
             dragOffsetX = ((e.clientX - rect.left) / rect.width) * DRAG_WIDTH;
             dragMouseX = e.clientX;
+            dragStartX = e.clientX;
+            dragMoved = false;
 
             // 다른 슬롯들 축소
             slotsContainer.classList.add('drag-compact');
@@ -11702,42 +11707,52 @@
             slot.parentNode.insertBefore(placeholder, slot);
             document.body.appendChild(slot);
 
-            // 자동 스크롤 루프 시작
-            startDragAutoScroll();
+            // drag-compact가 앞쪽 슬롯들을 150px로 줄이면 그만큼 흐름이 왼쪽으로 밀려서,
+            // 잡은 슬롯의 자리(플레이스홀더)가 커서 아래를 벗어난다. 그대로 두면 커서를
+            // 움직이지도 않았는데 updateDragPlaceholder가 드롭 위치를 딴 데로 옮긴다.
+            // 스크롤로 되돌려 플레이스홀더를 고스트 중심에 다시 맞춘다.
+            const ghostCenter = e.clientX - dragOffsetX + DRAG_WIDTH / 2;
+            const phRect = placeholder.getBoundingClientRect();
+            slotsContainer.scrollLeft += (phRect.left + phRect.width / 2) - ghostCenter;
+
+            // 자동 스크롤은 첫 mousemove 때 건다 (onSlotDrag 참조)
 
             document.addEventListener('mousemove', onSlotDrag);
             document.addEventListener('mouseup', endSlotDrag);
         }
 
+        // 경계에서 0, 가장자리 바깥에서 1 — 제곱이라 경계 근처에서 아주 완만하게 붙는다
+        function dragScrollRamp(dist) {
+            const t = Math.max(0, Math.min(1, 1 - dist / DRAG_SCROLL_ZONE));
+            return t * t;
+        }
+
         function startDragAutoScroll() {
             function scrollLoop() {
                 if (!draggedSlot) return;
-                const wrapper = document.getElementById('slotsWrapper');
-                const wrapperRect = wrapper.getBoundingClientRect();
-                const relX = dragMouseX - wrapperRect.left;
-                const relRight = wrapperRect.right - dragMouseX;
+                const rect = slotsContainer.getBoundingClientRect();
+                const maxScroll = slotsContainer.scrollWidth - slotsContainer.clientWidth;
+                const relX = dragMouseX - rect.left;
+                const relRight = rect.right - dragMouseX;
 
-                if (relX < DRAG_SCROLL_ZONE) {
-                    // 영역 밖(relX < 0)이면 최대 속도, 안쪽이면 비례 속도
-                    const speed = relX <= 0 ? DRAG_SCROLL_SPEED : DRAG_SCROLL_SPEED * (1 - relX / DRAG_SCROLL_ZONE);
-                    slotsContainer.scrollLeft -= speed;
-                } else if (relRight < DRAG_SCROLL_ZONE) {
-                    const speed = relRight <= 0 ? DRAG_SCROLL_SPEED : DRAG_SCROLL_SPEED * (1 - relRight / DRAG_SCROLL_ZONE);
-                    slotsContainer.scrollLeft += speed;
+                let delta = 0;
+                if (relX < DRAG_SCROLL_ZONE && slotsContainer.scrollLeft > 0) {
+                    delta = -DRAG_SCROLL_SPEED * dragScrollRamp(relX);
+                } else if (relRight < DRAG_SCROLL_ZONE && slotsContainer.scrollLeft < maxScroll) {
+                    delta = DRAG_SCROLL_SPEED * dragScrollRamp(relRight);
+                }
+
+                if (delta) {
+                    slotsContainer.scrollLeft += delta;
+                    // 스크롤되면 다른 슬롯들이 밀리므로 드롭 위치도 다시 계산해야 따라온다
+                    updateDragPlaceholder();
                 }
                 dragScrollRAF = requestAnimationFrame(scrollLoop);
             }
             dragScrollRAF = requestAnimationFrame(scrollLoop);
         }
 
-        function onSlotDrag(e) {
-            if (!draggedSlot) return;
-            dragMouseX = e.clientX;
-
-            // 커서 기준으로 위치 계산 — 축소와 무관
-            draggedSlot.style.left = (e.clientX - dragOffsetX) + 'px';
-
-            // 플레이스홀더 위치 업데이트
+        function updateDragPlaceholder() {
             const slots = [...slotsContainer.querySelectorAll('.slot:not(.dragging)')];
             const draggedRect = draggedSlot.getBoundingClientRect();
             const draggedCenter = draggedRect.left + draggedRect.width / 2;
@@ -11752,6 +11767,24 @@
                 }
             }
             slotsContainer.appendChild(placeholder);
+        }
+
+        function onSlotDrag(e) {
+            if (!draggedSlot) return;
+            dragMouseX = e.clientX;
+
+            // 커서 기준으로 위치 계산 — 축소와 무관
+            draggedSlot.style.left = (e.clientX - dragOffsetX) + 'px';
+
+            // 실제로 끌기 전에는 순서를 건드리지도, 스크롤을 걸지도 않는다.
+            // 잡기만 하고 놓으면 원래 순서 그대로여야 한다.
+            if (!dragMoved) {
+                if (Math.abs(e.clientX - dragStartX) < DRAG_MOVE_THRESHOLD) return;
+                dragMoved = true;
+            }
+
+            updateDragPlaceholder();
+            if (!dragScrollRAF) startDragAutoScroll();
         }
 
         function endSlotDrag() {
@@ -14144,12 +14177,10 @@
         let overscrollOffset = 0;
         
         slotsContainer.addEventListener('mousedown', (e) => {
-            // 텍스트 입력란, 버튼, 드래그 핸들, 리사이즈 핸들 제외
-            if (e.target.tagName === 'INPUT' ||
-                e.target.tagName === 'TEXTAREA' ||
-                e.target.tagName === 'BUTTON' ||
-                e.target.classList.contains('slot-drag') ||
-                e.target.classList.contains('slot-delete')) {
+            // 텍스트 입력란, 버튼, 드래그 핸들, 리사이즈 핸들 제외.
+            // 아이콘 버튼은 e.target이 버튼이 아니라 그 안의 <svg>/<line>이라
+            // tagName·classList를 직접 보면 전부 빗나간다 → closest로 조상까지 보고 판정.
+            if (e.target.closest('input, textarea, button, .slot-drag, .slot-delete')) {
                 return;
             }
             
