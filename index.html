@@ -4217,6 +4217,10 @@
             color: var(--text);
             font-size: 12px;
             line-height: 1;
+            /* 아이콘 버튼 중앙 정렬 (SVG 앵커 보정) */
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             opacity: 0;
             transition: opacity var(--transition-fast);
@@ -8766,6 +8770,8 @@
             background: none; border: none; color: var(--text-dim); cursor: pointer;
             font-size: 1rem; padding: 2px 4px; border-radius: var(--radius-sm);
             line-height: 1; transition: background 0.15s, color 0.15s;
+            /* 아이콘 버튼 중앙 정렬 (SVG 앵커 보정) */
+            display: inline-flex; align-items: center; justify-content: center;
         }
         .card-find-modal-close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
         .card-find-modal-body {
@@ -10235,7 +10241,7 @@
             <div class="card-find-modal" id="cardFindModal">
                 <div class="card-find-modal-header" id="cardFindModalHeader">
                     <span>찾기 / 바꾸기</span>
-                    <button type="button" class="card-find-modal-close" id="cardFindCloseBtn">&times;</button>
+                    <button type="button" class="card-find-modal-close" id="cardFindCloseBtn"><span data-icon="x"></span></button>
                 </div>
                 <div class="card-find-modal-body">
                     <div class="card-find-row">
@@ -15185,7 +15191,7 @@
                                 <span class="check">${isSelected ? ICONS.check : ''}</span>
                                 <span class="label">${p.name}</span>
                                 <span class="preview">${preview}</span>
-                                <button class="delete-btn" title="삭제">×</button>
+                                <button class="delete-btn" title="삭제">${ICONS.trash}</button>
                             </div>
                         `;
                     }).join('');
@@ -15196,7 +15202,7 @@
 
                         // 아이템 클릭 시 적용
                         item.onclick = (e) => {
-                            if (e.target.classList.contains('delete-btn')) return;
+                            if (e.target.closest('.delete-btn')) return;
                             if (preset) {
                                 applyCharPreset(preset.data);
                                 currentCharPreset = { filename, name: preset.name };
@@ -28785,7 +28791,7 @@
                     : `data:image/jpeg;base64,${img.thumbnail}`;
                 // 검열 전 탭에서만 삭제 버튼 표시
                 const deleteBtn = isBeforeTab 
-                    ? `<button class="thumb-delete-btn" data-index="${index}" title="삭제">×</button>`
+                    ? `<button class="thumb-delete-btn" data-index="${index}" title="삭제">${ICONS.x}</button>`
                     : '';
                 return `
                 <div class="censor-thumbnail ${index === censorState.currentIndex ? 'active' : ''}" 
@@ -28829,7 +28835,7 @@
             container.querySelectorAll('.censor-thumbnail').forEach(thumb => {
                 thumb.onclick = async (e) => {
                     // 삭제 버튼 클릭은 무시 (이미 처리됨)
-                    if (e.target.classList.contains('thumb-delete-btn')) return;
+                    if (e.target.closest('.thumb-delete-btn')) return;
                     
                     const index = parseInt(thumb.dataset.index);
                     
@@ -36417,7 +36423,7 @@
             let dragging = false, startX, startY, startLeft, startTop;
 
             header.addEventListener('mousedown', (e) => {
-                if (e.target.tagName === 'BUTTON') return;
+                if (e.target.closest('button')) return;
                 dragging = true;
                 startX = e.clientX;
                 startY = e.clientY;
