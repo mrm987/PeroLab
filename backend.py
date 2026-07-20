@@ -582,6 +582,50 @@ def save_metadata_to_exif(image_bytes: bytes, metadata_dict: dict, image_format:
         return image_bytes
 
 
+def _decode_stealth_pnginfo(img) -> dict:
+    """NAI stealth pnginfo(알파 채널 LSB 스테가노그래피) 디코드.
+
+    다른 유저가 공유한 파일은 업로드/재저장 과정에서 PNG tEXt(Comment) 청크가 제거되지만,
+    알파 채널에 숨겨진 stealth 데이터는 남는다(NAI 공홈이 이 데이터를 읽음).
+    알파 LSB를 column-major(x 바깥, y 안쪽)로 읽어 시그니처·길이·페이로드를 복원한다.
+
+    반환: 내부 Comment JSON을 파싱한 dict(= PNG Comment와 동일 형식), 없으면 None.
+    """
+    try:
+        if img.mode != 'RGBA':
+            return None
+        import numpy as np
+        import gzip as _gzip
+        alpha = np.array(img)[:, :, 3]
+        bits = (alpha & 1).astype(np.uint8).T.reshape(-1)  # column-major
+        sig_bits = 15 * 8
+        if bits.size < sig_bits + 32:
+            return None
+        # 시그니처 확인 (opaque 이미지는 알파 LSB가 전부 1이라 여기서 걸러짐)
+        sig = np.packbits(bits[:sig_bits]).tobytes().decode('utf-8', 'ignore')
+        if sig not in ('stealth_pnginfo', 'stealth_pngcomp'):
+            return None
+        compressed = sig == 'stealth_pngcomp'
+        off = sig_bits
+        param_len = int.from_bytes(np.packbits(bits[off:off + 32]).tobytes(), 'big')
+        off += 32
+        if param_len <= 0 or param_len % 8 != 0 or off + param_len > bits.size:
+            return None
+        payload = np.packbits(bits[off:off + param_len]).tobytes()
+        raw = _gzip.decompress(payload).decode('utf-8') if compressed else payload.decode('utf-8')
+        outer = json.loads(raw)  # {Description, Software, Source, Comment, ...}
+        # 내부 Comment(문자열 JSON)가 실제 NAI 메타데이터
+        comment = outer.get('Comment')
+        if isinstance(comment, str):
+            return json.loads(comment)
+        if isinstance(comment, dict):
+            return comment
+        return outer or None
+    except Exception as e:
+        print(f"[EXIF] stealth pnginfo decode error: {e}")
+        return None
+
+
 def read_metadata_from_image(image_bytes: bytes) -> dict:
     """이미지에서 메타데이터 읽기 (EXIF UserComment 또는 PNG Comment)
 
@@ -727,6 +771,12 @@ def read_metadata_from_image(image_bytes: bytes) -> dict:
                 return metadata
         except:
             pass
+
+        # 6. NAI stealth pnginfo (알파 채널 LSB) - 공유 과정에서 PNG Comment가 제거된 파일
+        #    tEXt/EXIF가 모두 없을 때만 시도 (opaque 이미지는 시그니처 불일치로 즉시 통과)
+        stealth = _decode_stealth_pnginfo(img)
+        if stealth:
+            return stealth
 
     except Exception as e:
         print(f"[EXIF] Error reading metadata: {e}")
@@ -1294,6 +1344,18 @@ async def call_nai_api(req: GenerateRequest):
 
         # UC Preset 태그 적용 (네거티브 프롬프트 앞에 추가)
         uc_preset_tags = V45_UC_PRESETS.get(req.uc_preset, "")
+
+        # NAI 웹과 동일: 프롬프트(베이스+캐릭터)에 nsfw가 있으면 UC 프리셋 맨 앞의 "nsfw, "만 제거.
+        # 사용자가 요청한 nsfw를 네거티브로 부정하지 않게 하는 규칙이며, 다른 중복 태그는 건드리지 않는다.
+        if uc_preset_tags.startswith("nsfw, "):
+            positive_texts = [req.prompt or ""]
+            if req.character_prompts_with_coords:
+                positive_texts += [cp.prompt or "" for cp in req.character_prompts_with_coords]
+            elif req.character_prompts:
+                positive_texts += list(req.character_prompts)
+            if any(re.search(r"\bnsfw\b", t, re.IGNORECASE) for t in positive_texts):
+                uc_preset_tags = uc_preset_tags[len("nsfw, "):]
+
         if uc_preset_tags:
             if req.negative_prompt:
                 negative_for_nai = uc_preset_tags + ", " + req.negative_prompt
@@ -2668,10 +2730,16 @@ async def process_job(job):
                     vibe_info.append(vibe_entry)
 
             # PeroPix 확장 필드
+            # 캐릭터별 네거티브(uc)를 character_prompts와 같은 순서로 저장 (round-trip 복원용)
+            character_negatives = (
+                [(cp.uc or "") for cp in item_character_prompts_with_coords]
+                if item_character_prompts_with_coords else []
+            )
             peropix_ext = {
                 "version": 3,
                 "provider": req.provider,
                 "character_prompts": item_character_prompts or [],
+                "character_negatives": character_negatives,
                 "variety_plus": req.variety_plus,
                 "furry_mode": req.furry_mode,
                 "local_model": req.model if req.provider == 'local' else "",
@@ -2679,6 +2747,10 @@ async def process_job(job):
                 "vibe_transfer": vibe_info if vibe_info else None,
                 "base_prompt": item_base_prompt,
                 "base_negative_prompt": item_negative_prompt,
+                # UC Preset / Quality Tags: NAI가 응답 Comment에서 null로 비워 돌려주므로
+                # 사용자가 실제 선택한 값을 여기 저장해야 복원이 정확하다.
+                "uc_preset": req.uc_preset,
+                "quality_tags": req.quality_tags,
                 "slot_prompt": extra_prompt if extra_prompt else None,
                 "slot_prompt_target": prompt_target if extra_prompt else None
             }

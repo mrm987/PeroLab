@@ -15000,7 +15000,7 @@
             return charactersList.querySelectorAll('.character-item:not(.disabled)').length;
         }
 
-        function addCharacter(content = '') {
+        function addCharacter(content = '', uc = '') {
             // Characters 섹션이 접혀있으면 펼치기
             const charactersContent = document.getElementById('charactersContent');
             if (charactersContent.classList.contains('collapsed')) {
@@ -15015,7 +15015,7 @@
             // 활성화된 캐릭터가 6명 이상이면 새 캐릭터는 비활성화 상태로 추가
             const enabledCount = getEnabledCharacterCount();
             const shouldBeEnabled = enabledCount < 6;
-            const item = createCharacterItem(content, false, shouldBeEnabled);
+            const item = createCharacterItem(content, false, shouldBeEnabled, '', null, uc, false);
             charactersList.appendChild(item);
             updateCharacterNumbers();
             item.querySelector('.char-prompt-textarea').focus();
@@ -17438,7 +17438,16 @@
                 charPrompts = meta.characterPrompts.map(c => c.prompt).filter(c => c);
             }
 
-            // UC Preset: 숫자 → 문자열 변환
+            // 캐릭터별 네거티브(uc) 추출 — peropix 확장 우선, 없으면 NAI v4_negative_prompt에서.
+            // charPrompts와 같은 인덱스로 정렬(캐릭터 순서 동일). positive는 비는 경우가 없어 정렬이 유지됨.
+            let charNegatives = [];
+            if (ppx.character_negatives && ppx.character_negatives.length > 0) {
+                charNegatives = ppx.character_negatives.slice();
+            } else if (meta.v4_negative_prompt?.caption?.char_captions) {
+                charNegatives = meta.v4_negative_prompt.caption.char_captions.map(c => c.char_caption || '');
+            }
+
+            // UC Preset: 숫자 → 문자열 변환 (순수 NAI 폴백용)
             const ucPresetMap = { 0: 'Heavy', 1: 'Light', 2: 'Human Focus', 3: 'None' };
             let ucPreset = ucPresetMap[meta.ucPreset] || meta.ucPreset || 'Heavy';
             let qualityTags = meta.qualityToggle;
@@ -17467,6 +17476,51 @@
                 'Human Focus': 'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy'
             };
 
+            // 프리셋 후보 목록: 각 프리셋의 정상형 + NSFW 변형.
+            // NAI는 프롬프트에 NSFW가 있으면 UC 프리셋 맨 앞의 "nsfw, "를 제거하고 넣는다(공홈 캡처로 확인).
+            // 길이 내림차순으로 정렬해 startsWith가 짧은 프리셋(Heavy)에 먼저 걸려 긴 프리셋(Human Focus)을
+            // 놓치는 문제를 방지한다.
+            const buildPresetCandidates = (presets) => {
+                const cands = [];
+                for (const [name, tags] of Object.entries(presets)) {
+                    cands.push([name, tags]);
+                    if (tags.startsWith('nsfw, ')) cands.push([name, tags.slice(6)]);
+                }
+                cands.sort((a, b) => b[1].length - a[1].length);
+                return cands;
+            };
+
+            // 네거티브 앞에서 프리셋 태그를 감지·제거. 매칭되면 {name, neg}, 아니면 null.
+            const stripUcPreset = (neg, presets) => {
+                neg = neg || '';
+                for (const [name, cand] of buildPresetCandidates(presets)) {
+                    if (neg.startsWith(cand)) {
+                        return { name, neg: neg.slice(cand.length).replace(/^,\s*/, '') };
+                    }
+                }
+                return null;
+            };
+
+            // 구버전 PeroPix 이미지(uc_preset 미저장)의 프리셋 복원:
+            // 최종 uc(fullUc) = <프리셋 태그> + ", " + <클린 네거티브(baseNeg)> 구조이므로 차분으로 역산.
+            // PeroPix가 자기 테이블로 생성한 값이라 매칭이 보장됨. 못 맞추면 null.
+            const detectUcPresetFromDiff = (fullUc, baseNeg, presets) => {
+                fullUc = fullUc || ''; baseNeg = baseNeg || '';
+                if (fullUc === baseNeg) return 'None';
+                let prefix = fullUc;
+                if (baseNeg) {
+                    if (fullUc.endsWith(baseNeg)) {
+                        prefix = fullUc.slice(0, fullUc.length - baseNeg.length).replace(/,\s*$/, '').trim();
+                    } else {
+                        return null;
+                    }
+                }
+                for (const [name, cand] of buildPresetCandidates(presets)) {
+                    if (prefix === cand) return name;
+                }
+                return null;
+            };
+
             if (isPureNai) {
                 // 순수 NAI 이미지: 프롬프트 끝에서 퀄리티 태그 제거
                 let tagRemoved = false;
@@ -17482,36 +17536,44 @@
                     qualityTags = false;
                 }
 
-                // UC 프리셋 감지 및 제거
-                let foundPreset = false;
-                for (const [presetName, presetTags] of Object.entries(v45UcPresets)) {
-                    if (negativePrompt.startsWith(presetTags)) {
-                        ucPreset = presetName;
-                        negativePrompt = negativePrompt.slice(presetTags.length);
-                        negativePrompt = negativePrompt.replace(/^,\s*/, '');
-                        foundPreset = true;
-                        break;
-                    }
-                }
-                if (!foundPreset) {
+                // UC 프리셋 감지 및 제거 (NSFW 변형 포함)
+                const res = stripUcPreset(negativePrompt, v45UcPresets);
+                if (res) {
+                    ucPreset = res.name;
+                    negativePrompt = res.neg;
+                } else {
                     ucPreset = 'None';
                 }
             } else {
-                // PeroPix 이미지: base_negative_prompt가 있으면 직접 사용 (UC 프리셋 제거됨)
-                if (ppx.base_negative_prompt !== undefined) {
-                    negativePrompt = ppx.base_negative_prompt || '';
+                // PeroPix 이미지
+                // 1) 네거티브: base_negative_prompt가 있으면 직접 사용 (프리셋/캐릭터 UC 제거된 클린값)
+                const baseNeg = ppx.base_negative_prompt;
+                if (baseNeg !== undefined) {
+                    negativePrompt = baseNeg || '';
+                }
+
+                // 2) UC Preset: 저장값 우선(신규). 없으면 meta.uc↔base 차분으로 복원(구버전).
+                //    ucPreset은 NAI가 null로 비워 돌려주므로 여기서 확정해야 정확하다.
+                if (ppx.uc_preset !== undefined && ppx.uc_preset !== null) {
+                    ucPreset = ppx.uc_preset;
+                } else if (baseNeg !== undefined) {
+                    ucPreset = detectUcPresetFromDiff(meta.uc || '', baseNeg || '', v45UcPresets) || 'None';
                 } else {
-                    // 이전 버전 하위호환: meta.uc에서 UC 프리셋 제거 시도
-                    let foundPreset = false;
-                    for (const [presetName, presetTags] of Object.entries(v45UcPresets)) {
-                        if (negativePrompt.startsWith(presetTags)) {
-                            ucPreset = presetName;
-                            negativePrompt = negativePrompt.slice(presetTags.length);
-                            negativePrompt = negativePrompt.replace(/^,\s*/, '');
-                            foundPreset = true;
-                            break;
-                        }
+                    // 아주 구버전: base_negative_prompt조차 없음 → meta.uc 앞에서 프리셋 제거 시도
+                    const res = stripUcPreset(negativePrompt, v45UcPresets);
+                    if (res) {
+                        ucPreset = res.name;
+                        negativePrompt = res.neg;
+                    } else {
+                        ucPreset = 'None';
                     }
+                }
+
+                // 3) Quality Tags: 저장값 우선(신규). 없으면 meta.prompt 끝 태그로 복원(구버전).
+                if (ppx.quality_tags !== undefined && ppx.quality_tags !== null) {
+                    qualityTags = ppx.quality_tags;
+                } else {
+                    qualityTags = v45QualityTagsPatterns.some(p => (meta.prompt || '').endsWith(p));
                 }
             }
 
@@ -17566,10 +17628,14 @@
             }
             // request_type이 "PromptGenerateRequest" 같은 내부 타입이면 무시
 
+            // 캐릭터 네거티브를 프롬프트 개수에 맞춰 정렬 (인덱스 i가 같은 캐릭터)
+            const alignedCharNegatives = charPrompts.map((_, i) => charNegatives[i] || '');
+
             return {
                 prompt: prompt,
                 negative_prompt: negativePrompt,
                 character_prompts: charPrompts,
+                character_negatives: alignedCharNegatives,
                 slot_prompt: slotPrompt,
                 seed: meta.seed,
                 width: meta.width,
@@ -17638,7 +17704,7 @@
             if (metadata.character_prompts && metadata.character_prompts.length > 0) {
                 metadata.character_prompts.forEach((cp, idx) => {
                     if (cp && cp.trim()) {
-                        addCharacter(cp);
+                        addCharacter(cp, (metadata.character_negatives && metadata.character_negatives[idx]) || '');
                         // 기존 height가 있으면 복원
                         if (existingHeights[idx]) {
                             const items = charactersList.querySelectorAll('.character-item');
@@ -17712,7 +17778,7 @@
             if (metadata.character_prompts && metadata.character_prompts.length > 0) {
                 metadata.character_prompts.forEach((cp, idx) => {
                     if (cp && cp.trim()) {
-                        addCharacter(cp);
+                        addCharacter(cp, (metadata.character_negatives && metadata.character_negatives[idx]) || '');
                         // 기존 height가 있으면 복원
                         if (existingHeights[idx]) {
                             const items = charactersList.querySelectorAll('.character-item');
@@ -22640,12 +22706,20 @@
             `;
 
             // 캐릭터 프롬프트: 캐릭터 단위로 개별 박스 생성 (다중이면 번호 표기)
+            // 캐릭터별 네거티브가 있으면 프롬프트 바로 아래에 함께 표시
+            const charNegs = meta.character_negatives || [];
             let charFieldsHtml;
             if (meta.character_prompts && meta.character_prompts.length > 0) {
                 const multi = meta.character_prompts.length > 1;
-                charFieldsHtml = meta.character_prompts.map((cp, i) =>
-                    createPromptField(`dropModalCharPrompt${i}`, multi ? `Character Prompt ${i + 1}` : 'Character Prompt', cp)
-                ).join('');
+                charFieldsHtml = meta.character_prompts.map((cp, i) => {
+                    const label = multi ? `Character Prompt ${i + 1}` : 'Character Prompt';
+                    let html = createPromptField(`dropModalCharPrompt${i}`, label, cp);
+                    if (charNegs[i] && charNegs[i].trim()) {
+                        const ucLabel = multi ? `Character UC ${i + 1}` : 'Character UC';
+                        html += createPromptField(`dropModalCharUc${i}`, ucLabel, charNegs[i]);
+                    }
+                    return html;
+                }).join('');
             } else {
                 charFieldsHtml = createPromptField('dropModalCharPrompt', 'Character Prompt', '');
             }
@@ -22669,6 +22743,8 @@
                     <div><strong>Sampler:</strong> ${meta.sampler}</div>
                     <div><strong>Scheduler:</strong> ${meta.scheduler}</div>
                     <div><strong>SMEA:</strong> ${meta.smea}</div>
+                    <div><strong>UC Preset:</strong> ${meta.uc_preset || 'None'}</div>
+                    <div><strong>Quality Tags:</strong> ${meta.quality_tags ? 'On' : 'Off'}</div>
                     <div><strong>Variety+:</strong> ${meta.variety_plus ? 'On' : 'Off'}</div>
                 </div>
             `;
@@ -24053,13 +24129,14 @@
             const prompt = normalized?.prompt || document.getElementById('prompt').value || '';
             const negativePrompt = normalized?.negative_prompt || document.getElementById('negativePrompt').value || '';
             const charPrompts = (normalized?.character_prompts) || [];  // 원본의 캐릭터 프롬프트 보존·기록
+            const charNegatives = (normalized?.character_negatives) || [];  // 캐릭터별 네거티브 보존
             const params = {
                 provider: 'nai',
                 nai_model: normalized?.nai_model || document.getElementById('naiModel').value,
                 base_prompt: prompt,
                 negative_prompt: negativePrompt,
                 character_prompts: charPrompts,
-                character_prompts_with_coords: charPrompts.map(p => ({ prompt: p })),
+                character_prompts_with_coords: charPrompts.map((p, i) => ({ prompt: p, uc: charNegatives[i] || '' })),
                 width, height,
                 steps: normalized?.steps || parseInt(document.getElementById('steps').value) || 28,
                 cfg: normalized?.cfg || parseFloat(document.getElementById('cfg').value) || 5,
@@ -25314,6 +25391,14 @@
                 ? parsed.character_prompts.join('\n---\n')
                 : '';
             promptsHtml += createPromptSection('Character Prompt', charPromptText, '👤');
+
+            // Character Negatives (있을 때만)
+            const charNegText = (parsed.character_negatives && parsed.character_negatives.some(n => n && n.trim()))
+                ? parsed.character_negatives.map(n => n || '').join('\n---\n')
+                : '';
+            if (charNegText.trim()) {
+                promptsHtml += createPromptSection('Character UC', charNegText, '🚫');
+            }
 
             // Slot Prompt
             promptsHtml += createPromptSection('Slot Prompt', parsed.slot_prompt, '🎰');
