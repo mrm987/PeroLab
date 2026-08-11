@@ -20807,6 +20807,8 @@
                 cfgRescale: document.getElementById('cfgRescale').value,
                 varietyPlus: document.getElementById('varietyPlus').checked,
                 normalizeVibeStrength: document.getElementById('normalizeVibeStrength').checked,
+                enhanceLast: { ...enhanceLast },
+                batchEnhance: { ...batchEnhanceSettings },
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
                 // vibeList: 이미지 base64 제외하고 저장 (용량 문제 방지)
                 vibeList: vibeList.map(v => ({
@@ -21036,6 +21038,8 @@
                 }
                 if (settings.varietyPlus !== undefined) document.getElementById('varietyPlus').checked = settings.varietyPlus;
                 if (settings.normalizeVibeStrength !== undefined) document.getElementById('normalizeVibeStrength').checked = settings.normalizeVibeStrength;
+                if (settings.enhanceLast) Object.assign(enhanceLast, settings.enhanceLast);
+                if (settings.batchEnhance) Object.assign(batchEnhanceSettings, settings.batchEnhance);
                 if (settings.enableVibeTransfer !== undefined) {
                     document.getElementById('enableVibeTransfer').checked = settings.enableVibeTransfer;
                     document.getElementById('vibeTransferSettings').style.display = settings.enableVibeTransfer ? 'block' : 'none';
@@ -24049,6 +24053,10 @@
         // ============================================================
         // Enhance Modal (NAI)
         // ============================================================
+        // 마지막으로 쓴 Enhance 강도. 모달을 열 때마다 3 으로 되돌아가던 것을 고친다.
+        // 공홈도 강도를 상태로 들고 있어 다시 열어도 남는다. 설정에 저장해 재시작 뒤에도 유지.
+        const enhanceLast = { magnitude: 3, advancedMode: false, strength: 0.5, noise: 0 };
+
         const enhanceState = {
             imageBase64: null,
             metadata: null,
@@ -24275,28 +24283,30 @@
                 enhanceState.width = img.width;
                 enhanceState.height = img.height;
                 enhanceState.scale = 1;
-                enhanceState.magnitude = 3;
                 enhanceState.slotIndex = slotIndex;
                 enhanceState.sourceEl = sourceEl;  // 결과를 버전으로 붙일 원본 카드/썸네일
-                enhanceState.advancedMode = false;
-                enhanceState.strength = 0.5;
-                enhanceState.noise = 0;
+                // ★강도는 마지막에 쓴 값으로 연다 (매번 3 으로 되돌아가지 않게)
+                enhanceState.magnitude = enhanceLast.magnitude;
+                enhanceState.advancedMode = enhanceLast.advancedMode;
+                enhanceState.strength = enhanceLast.strength;
+                enhanceState.noise = enhanceLast.noise;
 
                 // 모달 UI 업데이트
                 document.getElementById('enhanceModalImg').src = img.src;
-                document.getElementById('enhanceModalMagnitude').textContent = '3';
+                document.getElementById('enhanceModalMagnitude').textContent = String(enhanceState.magnitude);
                 const magnitudeSlider = document.getElementById('enhanceModalMagnitudeSlider');
-                magnitudeSlider.value = 3;
+                magnitudeSlider.value = enhanceState.magnitude;
                 updateSliderFill(magnitudeSlider);
 
-                // Advanced 모드 초기화
-                document.getElementById('enhanceMagnitudeSection').style.display = 'block';
-                document.getElementById('enhanceAdvancedSection').style.display = 'none';
-                document.getElementById('enhanceAdvancedToggle').textContent = 'Show Advanced';
-                document.getElementById('enhanceStrengthSlider').value = 0.5;
-                document.getElementById('enhanceNoiseSlider').value = 0;
-                document.getElementById('enhanceStrengthValue').textContent = '0.5';
-                document.getElementById('enhanceNoiseValue').textContent = '0';
+                // Advanced 모드도 마지막 상태 그대로 연다
+                const adv = enhanceState.advancedMode;
+                document.getElementById('enhanceMagnitudeSection').style.display = adv ? 'none' : 'block';
+                document.getElementById('enhanceAdvancedSection').style.display = adv ? 'block' : 'none';
+                document.getElementById('enhanceAdvancedToggle').textContent = adv ? 'Hide Advanced' : 'Show Advanced';
+                document.getElementById('enhanceStrengthSlider').value = enhanceState.strength;
+                document.getElementById('enhanceNoiseSlider').value = enhanceState.noise;
+                document.getElementById('enhanceStrengthValue').textContent = String(enhanceState.strength);
+                document.getElementById('enhanceNoiseValue').textContent = String(enhanceState.noise);
                 updateSliderFill(document.getElementById('enhanceStrengthSlider'));
                 updateSliderFill(document.getElementById('enhanceNoiseSlider'));
 
@@ -24578,6 +24588,7 @@
         let batchScaleAdjusted = 0;    // 이번 배치에서 배율이 내려간 카드 수 (완료 토스트에 표시)
         let naiCostOverLimit = false;  // 1장당 140 Anlas 초과 (공홈은 이때 생성을 막는다)
         let batchCostToken = 0;        // 비용 계산 경쟁 방지
+        // 세션 안에서는 원래 유지되던 값. 단일 모달과 맞춰 재시작 뒤에도 남게 설정에 저장한다.
         const batchEnhanceSettings = { magnitude: 3, advancedMode: false, strength: 0.5, noise: 0, scale: 1 };
 
         // 현재 배치 강도(strength, noise) — advanced면 직접값, 아니면 magnitude preset
@@ -24711,10 +24722,10 @@
             syncMode();
             updateSliderFill(magSlider); updateSliderFill(strSlider); updateSliderFill(noiseSlider);
 
-            magSlider.oninput = () => { batchEnhanceSettings.magnitude = parseInt(magSlider.value); magVal.textContent = magSlider.value; updateSliderFill(magSlider); refreshBatchEnhanceCost(); };
-            strSlider.oninput = () => { batchEnhanceSettings.strength = parseFloat(strSlider.value); strVal.textContent = strSlider.value; updateSliderFill(strSlider); refreshBatchEnhanceCost(); };
-            noiseSlider.oninput = () => { batchEnhanceSettings.noise = parseFloat(noiseSlider.value); noiseVal.textContent = noiseSlider.value; updateSliderFill(noiseSlider); };
-            advToggle.onclick = () => { batchEnhanceSettings.advancedMode = !batchEnhanceSettings.advancedMode; syncMode(); refreshBatchEnhanceCost(); };
+            magSlider.oninput = () => { batchEnhanceSettings.magnitude = parseInt(magSlider.value); magVal.textContent = magSlider.value; updateSliderFill(magSlider); refreshBatchEnhanceCost(); saveAppSettings(); };
+            strSlider.oninput = () => { batchEnhanceSettings.strength = parseFloat(strSlider.value); strVal.textContent = strSlider.value; updateSliderFill(strSlider); refreshBatchEnhanceCost(); saveAppSettings(); };
+            noiseSlider.oninput = () => { batchEnhanceSettings.noise = parseFloat(noiseSlider.value); noiseVal.textContent = noiseSlider.value; updateSliderFill(noiseSlider); saveAppSettings(); };
+            advToggle.onclick = () => { batchEnhanceSettings.advancedMode = !batchEnhanceSettings.advancedMode; syncMode(); refreshBatchEnhanceCost(); saveAppSettings(); };
 
             // 배율(Resolution) 버튼 1x/1.5x
             document.querySelectorAll('#batchEnhanceModal .batch-res-btn').forEach(btn => {
@@ -24781,6 +24792,15 @@
         }
 
         // Enhance 모달 이벤트 설정
+        // 지금 모달의 강도 설정을 「마지막에 쓴 값」으로 기억한다 (설정에도 저장)
+        function rememberEnhanceStrength() {
+            enhanceLast.magnitude = enhanceState.magnitude;
+            enhanceLast.advancedMode = enhanceState.advancedMode;
+            enhanceLast.strength = enhanceState.strength;
+            enhanceLast.noise = enhanceState.noise;
+            if (typeof saveAppSettings === 'function') saveAppSettings();
+        }
+
         function setupEnhanceModalEvents() {
             // Resolution 버튼은 openEnhanceModal 이 원본 크기에 맞춰 만든다 (buildEnhanceResButtons)
 
@@ -24795,6 +24815,7 @@
                     enhanceState.strength = preset.strength;
                     enhanceState.noise = preset.noise;
                 }
+                rememberEnhanceStrength();
                 updateEnhanceModalCost();
             });
 
@@ -24823,6 +24844,7 @@
                     enhanceState.strength = preset.strength;
                     enhanceState.noise = preset.noise;
                 }
+                rememberEnhanceStrength();
                 updateEnhanceModalCost();
             });
 
@@ -24831,6 +24853,7 @@
             strengthSlider.addEventListener('input', () => {
                 enhanceState.strength = parseFloat(strengthSlider.value);
                 document.getElementById('enhanceStrengthValue').textContent = enhanceState.strength;
+                rememberEnhanceStrength();
                 updateEnhanceModalCost();
             });
 
@@ -24839,6 +24862,8 @@
             noiseSlider.addEventListener('input', () => {
                 enhanceState.noise = parseFloat(noiseSlider.value);
                 document.getElementById('enhanceNoiseValue').textContent = enhanceState.noise;
+                rememberEnhanceStrength();
+                updateEnhanceModalCost();
             });
 
             // 클릭 가능한 값 (직접 입력)
