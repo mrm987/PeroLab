@@ -20806,6 +20806,7 @@
                 furryModeEnabled: furryModeEnabled,
                 cfgRescale: document.getElementById('cfgRescale').value,
                 varietyPlus: document.getElementById('varietyPlus').checked,
+                normalizeVibeStrength: document.getElementById('normalizeVibeStrength').checked,
                 enableVibeTransfer: document.getElementById('enableVibeTransfer').checked,
                 // vibeList: 이미지 base64 제외하고 저장 (용량 문제 방지)
                 vibeList: vibeList.map(v => ({
@@ -21034,6 +21035,7 @@
                     document.getElementById('cfgRescale').value = settings.cfgRescale;
                 }
                 if (settings.varietyPlus !== undefined) document.getElementById('varietyPlus').checked = settings.varietyPlus;
+                if (settings.normalizeVibeStrength !== undefined) document.getElementById('normalizeVibeStrength').checked = settings.normalizeVibeStrength;
                 if (settings.enableVibeTransfer !== undefined) {
                     document.getElementById('enableVibeTransfer').checked = settings.enableVibeTransfer;
                     document.getElementById('vibeTransferSettings').style.display = settings.enableVibeTransfer ? 'block' : 'none';
@@ -21515,6 +21517,7 @@
                     furryModeEnabled: settings.furryModeEnabled || false,
                     cfgRescale: settings.cfgRescale || 0,
                     varietyPlus: settings.varietyPlus || false,
+                    normalizeVibeStrength: settings.normalizeVibeStrength !== false,
                     enableVibeTransfer: settings.enableVibeTransfer || false,
                     vibeList: settings.vibeList || [],
                     // Legacy CharRef → PreciseRef 마이그레이션
