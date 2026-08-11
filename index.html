@@ -630,6 +630,11 @@
         }
         select.unsupported-value:hover { border-color: var(--error, #ff6b6b); }
         .anlas-over-limit { color: var(--error, #ff6b6b); font-weight: 700; }
+        /* 캐릭터 참조가 어느 캔버스로 처리됐는지 — 공홈은 종횡비가 가장 가까운 후보를 고른다 */
+        .precise-ref-canvas-note {
+            font-size: 0.7rem; color: var(--text-dim, #8a8a8a); margin: 2px 0 4px;
+        }
+        .precise-ref-canvas-note:empty { display: none; }
         .unsupported-note {
             display: block;
             margin: -8px 0 var(--space-md);
@@ -18708,6 +18713,9 @@
         let preciseRefList = [];
 
         // Canvas 기반 이미지 처리 (NAIS2/NAI 웹과 동일한 방식)
+        // 마지막으로 처리한 캐릭터 참조의 「원본 → 캔버스」 크기 (목록에 표시용)
+        let lastPreciseRefCanvas = '';
+
         async function processPreciseReferenceImage(base64Image) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -18753,6 +18761,8 @@
                     // PNG로 출력 (NAI 웹과 동일)
                     const dataUrl = canvas.toDataURL('image/png');
                     const base64Only = dataUrl.split(',')[1];
+                    // 어느 캔버스로 갔는지 화면에 보여 주기 위해 함께 들고 간다
+                    lastPreciseRefCanvas = `${width}×${height} → ${targetW}×${targetH}`;
                     resolve(base64Only);
                 };
                 img.onerror = () => reject(new Error('Image load failed'));
@@ -18776,6 +18786,7 @@
                                 <option value="character" ${ref.mode === 'character' ? 'selected' : ''}>Character</option>
                                 <option value="style" ${ref.mode === 'style' ? 'selected' : ''}>Style</option>
                             </select>
+                            <div class="precise-ref-canvas-note">${ref.canvasNote || ''}</div>
                             <div class="precise-ref-sliders">
                                 <div class="precise-ref-slider-group">
                                     <label><span>Strength</span><span class="precise-ref-strength-value clickable-value" data-idx="${idx}" data-field="strength">${ref.strength}</span></label>
@@ -18912,6 +18923,7 @@
             preciseRefList.push({
                 image: base64,  // 원본 (프리뷰용)
                 processedImage: processedImage,  // 처리된 이미지 (API용)
+                canvasNote: lastPreciseRefCanvas,  // 어느 캔버스로 갔는지 (목록에 표시)
                 mode: 'character&style',  // 기본값: Character & Style
                 strength: 1.0,
                 fidelity: 1.0
@@ -23223,6 +23235,7 @@
                     preciseRefList.push({
                         image: pendingDropData.image,  // 원본 (프리뷰용)
                         processedImage: processedImage,  // 처리된 이미지 (API용)
+                        canvasNote: lastPreciseRefCanvas,  // 어느 캔버스로 갔는지
                         mode: 'character&style',  // 기본값
                         strength: 1.0,
                         fidelity: 1.0
