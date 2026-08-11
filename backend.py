@@ -382,6 +382,91 @@ def binarize_mask(base64_mask: str, threshold: int = 1) -> str:
 
 
 # ============================================================
+# NAI 공홈과 같은 베이스 이미지·마스크 전처리
+#
+# ★출처: 웹 번들(2026-08-11) chunks/2075 의 전송 전처리 —
+#     i.image = await rX(i.image, transparent?"transparent":"white", i.height, i.width, false)
+#     i.mask  = await E(i.mask, "black", i.height, i.width, false, false)   // 스무딩 없음
+#   그리고 generateInfill 이 마스크를 1/8 로 줄여 임계 155 를 먹인 뒤 위 경로로 되돌린다.
+#   즉 와이어 마스크는 풀사이즈지만 8px 블록이다.
+# ★서버 리사이즈에 맡기지 말 것 — 필터가 다르면 초기 latent 가 달라진다.
+# ============================================================
+
+def preprocess_base_image(base64_image: str, width: int, height: int) -> str:
+    """요청 해상도로 리샘플하고 흰 배경 위에 평탄화한다 (공홈 rX 대응).
+
+    공홈은 pica 의 lanczos3 를 쓴다. PIL 의 LANCZOS 가 같은 계열이다.
+    투명 PNG 를 그대로 보내면 공홈과 결과가 갈리므로 알파를 흰색으로 깐다.
+    """
+    from PIL import Image as PILImage
+
+    img = PILImage.open(io.BytesIO(base64.b64decode(base64_image)))
+    if img.size != (width, height):
+        img = img.resize((width, height), PILImage.LANCZOS)
+    if img.mode in ('RGBA', 'LA', 'P'):
+        img = img.convert('RGBA')
+        canvas = PILImage.new('RGBA', img.size, (255, 255, 255, 255))
+        canvas.alpha_composite(img)
+        img = canvas.convert('RGB')
+    elif img.mode != 'RGB':
+        img = img.convert('RGB')
+
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+def quantize_mask_to_8px(base64_mask: str, width: int, height: int) -> str:
+    """마스크를 8px 격자로 맞추고 요청 해상도로 되돌린다 (공홈 generateInfill 대응).
+
+    1/8 축소(스무딩 없음) -> 임계 155 -> 원래 크기로 nearest 확대.
+    PeroPix 에디터는 이미 8px 셀로만 칠하지만, 외부에서 온 마스크나
+    크기가 다른 마스크도 같은 격자에 놓이도록 코드로 보장한다.
+    """
+    from PIL import Image as PILImage
+
+    mask = PILImage.open(io.BytesIO(base64.b64decode(base64_mask))).convert('L')
+    if mask.size != (width, height):
+        mask = mask.resize((width, height), PILImage.NEAREST)
+
+    small = mask.resize((max(1, width // 8), max(1, height // 8)), PILImage.NEAREST)
+    small = small.point(lambda v: 255 if v >= 155 else 0, mode='L')
+    mask = small.resize((width, height), PILImage.NEAREST)
+
+    alpha = PILImage.new('L', mask.size, 255)
+    out = PILImage.merge('RGBA', (mask, mask, mask, alpha))
+    buffer = io.BytesIO()
+    out.save(buffer, format='PNG')
+    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
+def build_inpaint_blend_mask(base64_mask: str, width: int, height: int):
+    """인페인트 결과를 원본에 되붙일 때 쓰는 소프트 마스크 (공홈 합성 파이프라인 대응).
+
+    공홈: 1/8 마스크 -> dilate(반경 4) -> 8배 확대 -> blur(반경 20) 2회 -> 적색채널을 알파로.
+    1/8 스케일의 반경 4 는 원본 기준 약 32px 확장이다.
+
+    ★와이어로 보내는 마스크와 다른 물건이다. 이건 로컬 합성 전용.
+    ★공홈의 dilate/blur 워커 본체는 지연 로드 청크라 번들에 없다 — 반경 값과 순서만 확인됐고
+      커널 형태는 미확인이다. 픽셀 단위로 같지는 않고 "경계 32px 을 부드럽게 섞는다"가 같다.
+    """
+    from PIL import Image as PILImage, ImageFilter
+
+    mask = PILImage.open(io.BytesIO(base64.b64decode(base64_mask))).convert('L')
+    if mask.size != (width, height):
+        mask = mask.resize((width, height), PILImage.NEAREST)
+
+    sw, sh = max(1, width // 8), max(1, height // 8)
+    small = mask.resize((sw, sh), PILImage.NEAREST).point(lambda v: 255 if v >= 155 else 0, mode='L')
+    # dilate 반경 4 = 9x9 최대값 필터 (1/8 스케일)
+    small = small.filter(ImageFilter.MaxFilter(9))
+    blend = small.resize((width, height), PILImage.NEAREST)
+    for _ in range(2):
+        blend = blend.filter(ImageFilter.GaussianBlur(20))
+    return blend
+
+
+# ============================================================
 # Windows Explorer 폴더 열기 (포커스 포함)
 # ============================================================
 
@@ -917,7 +1002,10 @@ class GenerateRequest(BaseModel):
     base_image: Optional[str] = None  # base64 encoded image
     base_mask: Optional[str] = None   # base64 encoded mask (white = inpaint area)
     base_mode: str = "inpaint"        # "img2img" | "inpaint"
-    base_strength: float = 0.7        # 변형 강도
+    base_strength: float = 0.7        # img2img 변형 강도 (공홈 strength 기본값)
+    base_inpaint_strength: float = 1.0  # 인페인트 강도 (공홈 inpaintImg2ImgStrength 기본값 1)
+    enhance_prompt_add: bool = False    # Enhance 요청이면 True (퀄리티 접미사 뒤에 문구 추가)
+    normalize_vibe_strength: bool = True  # vibe 강도 정규화 (공홈에도 같은 토글이 있다)
     base_noise: float = 0.0           # 노이즈
 
     # Local
@@ -1003,6 +1091,9 @@ class MultiGenerateRequest(BaseModel):
     base_mask: Optional[str] = None
     base_mode: str = "inpaint"
     base_strength: float = 0.7
+    base_inpaint_strength: float = 1.0
+    enhance_prompt_add: bool = False
+    normalize_vibe_strength: bool = True
     base_noise: float = 0.0
 
     # Upscale (Local only)
@@ -1042,8 +1133,11 @@ class ConfigUpdate(BaseModel):
 # 좌표 문자열(a1~e5)을 NAI API 좌표(x, y)로 변환
 def coord_to_xy(coord: str) -> dict:
     """
-    5x5 그리드 좌표를 NAI API 좌표로 변환
-    a1 = (0.0, 0.0), c3 = (0.5, 0.5), e5 = (1.0, 1.0)
+    5x5 그리드 좌표를 NAI API 좌표로 변환 (셀 중심)
+    a1 = (0.1, 0.1), c3 = (0.5, 0.5), e5 = (0.9, 0.9)
+
+    ★공홈 좌표 피커가 캐릭터 center를 [.1,.3,.5,.7,.9] 값과 동등 비교한다
+      (웹 번들 chunks/3811:962500). 0/0.25/…/1.0 은 가장자리 칸이 프레임 밖으로 밀린다.
     """
     if not coord or len(coord) != 2:
         return {"x": 0.5, "y": 0.5}  # 기본값: 중앙
@@ -1051,8 +1145,8 @@ def coord_to_xy(coord: str) -> dict:
     col = coord[0].lower()
     row = coord[1]
 
-    col_map = {'a': 0.0, 'b': 0.25, 'c': 0.5, 'd': 0.75, 'e': 1.0}
-    row_map = {'1': 0.0, '2': 0.25, '3': 0.5, '4': 0.75, '5': 1.0}
+    col_map = {'a': 0.1, 'b': 0.3, 'c': 0.5, 'd': 0.7, 'e': 0.9}
+    row_map = {'1': 0.1, '2': 0.3, '3': 0.5, '4': 0.7, '5': 0.9}
 
     x = col_map.get(col, 0.5)
     y = row_map.get(row, 0.5)
@@ -1083,6 +1177,139 @@ NAI_SCHEDULER_MAP = {
     "ddim_uniform": "karras",  # fallback
     "beta": "karras",  # fallback
 }
+
+# ============================================================
+# NAI 공홈 프롬프트 가공 표
+#
+# ★출처: NAI 웹 클라이언트 번들(2026-08-11, buildId c410ef7-production)의
+#   ed()=퀄리티 접미사 · eF()=프리셋 목록 · V=nsfw 예외집합 · J()=UC 해결기 ·
+#   eN/eR()=모델 전환 시 프리셋 폴백. chunks/pages/_app 기준.
+# ★프리셋 본문에 "nsfw, " 를 박아 두지 말 것. 공홈은 본문과 별개로 조건이 맞을 때만 앞에 붙인다.
+# ============================================================
+
+# 모델별 퀄리티 접미사 (공홈 ed(): V4.5 계열은 prefix 없이 suffix만 쓴다)
+NAI_QUALITY_SUFFIX = {
+    "nai-diffusion-4-5-full": ", very aesthetic, masterpiece, no text",
+    "nai-diffusion-4-5-curated": ", very aesthetic, masterpiece, no text, -0.8::feet::, rating:general",
+}
+
+# 모델별 UC 프리셋. 목록 순서가 곧 공홈 ucPreset 인덱스다. (category, 표시이름, 본문)
+# 마지막 항목은 언제나 none 이며 매칭·nsfw 대상에서 제외된다.
+NAI_UC_PRESETS = {
+    "nai-diffusion-4-5-full": [
+        ("heavy", "Heavy", "lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"),
+        ("light", "Light", "lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"),
+        ("furry", "Furry Focus", "{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"),
+        ("human", "Human Focus", "lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"),
+        ("none", "None", ""),
+    ],
+    "nai-diffusion-4-5-curated": [
+        ("heavy", "Heavy", "blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page"),
+        ("light", "Light", "blurry, lowres, upscaled, artistic error, scan artifacts, jpeg artifacts, logo, too many watermarks, negative space, blank page"),
+        ("human", "Human Focus", "blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page"),
+        ("none", "None", ""),
+    ],
+}
+
+# uc 앞에 "nsfw, " 를 붙이지 않는 모델 (공홈 V 집합 중 PeroPix 가 쓰는 것)
+NAI_NO_NSFW_PREFIX = {
+    "nai-diffusion-4-5-curated",
+    "nai-diffusion-4-5-curated-inpainting",
+}
+
+# 모델을 바꿀 때 없는 프리셋을 무엇으로 대체할지 (공홈 eN)
+NAI_UC_CATEGORY_FALLBACK = {
+    "none": ["none", "light", "heavy"],
+    "light": ["light", "none", "heavy"],
+    "heavy": ["heavy", "light", "none"],
+    "human": ["human", "heavy", "light", "none"],
+    "furry": ["furry", "heavy", "light", "none"],
+}
+
+# 인페인트 모델 매핑 (공홈 el()). 접미사 규칙으로 만들지 말 것 — 없는 모델 id 가 생긴다.
+NAI_INPAINT_MODEL = {
+    "nai-diffusion-4-5-full": "nai-diffusion-4-5-full-inpainting",
+    "nai-diffusion-4-5-curated": "nai-diffusion-4-5-curated-inpainting",
+    "nai-diffusion-4-full": "nai-diffusion-4-full-inpainting",
+    "nai-diffusion-4-curated-preview": "nai-diffusion-4-curated-inpainting",  # -preview 탈락
+    "custom": "custom",
+}
+NAI_INPAINT_MODEL_DEFAULT = "nai-diffusion-4-5-curated-inpainting"
+
+
+def nai_base_model(model: str) -> str:
+    """인페인트 모델을 원본 모델로 되돌린다 (표 조회용)."""
+    for base, inpaint in NAI_INPAINT_MODEL.items():
+        if model == inpaint:
+            return base
+    return model
+
+
+def nai_uc_presets(model: str) -> list:
+    """모델의 UC 프리셋 목록. 모르는 모델은 V4.5 Full 목록으로 본다."""
+    return NAI_UC_PRESETS.get(nai_base_model(model), NAI_UC_PRESETS["nai-diffusion-4-5-full"])
+
+
+def nai_uc_preset_index(model: str, preset_name: str) -> int:
+    """표시이름 -> 공홈 ucPreset 인덱스. 그 모델에 없으면 카테고리 폴백표를 태운다."""
+    presets = nai_uc_presets(model)
+    for i, (_cat, name, _text) in enumerate(presets):
+        if name == preset_name:
+            return i
+    # 이름이 없다 = 다른 모델의 프리셋이다. 카테고리로 대체 프리셋을 찾는다.
+    src_cat = None
+    for plist in NAI_UC_PRESETS.values():
+        for cat, name, _text in plist:
+            if name == preset_name:
+                src_cat = cat
+                break
+        if src_cat:
+            break
+    for cat in NAI_UC_CATEGORY_FALLBACK.get(src_cat or "none", ["none"]):
+        for i, (c, _n, _t) in enumerate(presets):
+            if c == cat:
+                return i
+    return len(presets) - 1  # 마지막 = none
+
+
+# ★공홈은 `text:` 지시가 있으면 그 **앞에** 덧붙인다 (퀄리티 접미사·인핸스 문구 모두).
+#   뒤에 붙이면 렌더될 문자열 자체가 오염된다 (chunks/pages/_app 의 ef(), US 정규식).
+NAI_TEXT_CLAUSE_RE = re.compile(r"(?:^|\s|[,.:\[\]{}、。])text:(?!:)", re.IGNORECASE)
+NAI_ENHANCE_PROMPT_ADD = ", -2::upscaled, blurry::,"
+
+
+def nai_append_prompt(prompt: str, addition: str) -> str:
+    """`text:` 절이 있으면 그 앞에, 없으면 맨 뒤에 붙인다."""
+    prompt = prompt or ""
+    m = NAI_TEXT_CLAUSE_RE.search(prompt)
+    if m:
+        i = m.start()
+        return prompt[:i] + addition + prompt[i:]
+    return prompt + addition
+
+
+def nai_resolve_uc(model: str, preset_name: str, prompt: str, user_negative: str) -> str:
+    """
+    공홈 J() 와 같은 순서로 최종 uc 를 만든다.
+    - 프리셋 본문 + ", " + 사용자 네거티브
+    - 프리셋이 none 이 아니고, 모델이 예외집합에 없고, 프롬프트에 nsfw 가 없으면 맨 앞에 "nsfw, "
+    - ★nsfw 검사 대상은 퀄리티 태그가 붙은 베이스 프롬프트 하나뿐이다 (캐릭터 슬롯은 안 본다).
+      매칭도 단어 경계가 아니라 단순 부분문자열이다.
+    """
+    presets = nai_uc_presets(model)
+    idx = nai_uc_preset_index(model, preset_name)
+    text = presets[idx][2]
+    is_none = idx == len(presets) - 1
+
+    if text and model not in NAI_NO_NSFW_PREFIX and "nsfw" not in (prompt or "").lower():
+        text = "nsfw, " + text
+
+    if user_negative:
+        if is_none:
+            return user_negative
+        return (text + ", " + user_negative) if text else user_negative
+    return text
+
 
 # Vibe 캐시 디렉토리
 VIBE_CACHE_DIR = APP_DIR / "vibe_cache"
@@ -1308,69 +1535,65 @@ async def call_nai_api(req: GenerateRequest):
     if not token:
         raise HTTPException(status_code=500, detail="NAI token not set. Go to Settings.")
 
-    uc_preset_map = {"Heavy": 0, "Light": 1, "Human Focus": 2, "None": 3}
-    uc_preset_value = uc_preset_map.get(req.uc_preset, 0)
+    # ucPreset 은 모델별 프리셋 배열의 인덱스다 (공홈 동일). 그 모델에 없는 프리셋이면 폴백표를 탄다.
+    uc_preset_value = nai_uc_preset_index(req.nai_model, req.uc_preset)
 
     # SMEA는 V3 모델에서만 지원, V4+에서는 비활성화
     is_v4_model = "diffusion-4" in req.nai_model
     sm = req.smea in ["SMEA", "SMEA+DYN"] and not is_v4_model
     sm_dyn = req.smea == "SMEA+DYN" and not is_v4_model
 
-    seed = req.seed if req.seed >= 0 else random.randint(0, 2**31 - 1)
+    # 자동 시드 범위는 공홈과 같은 2^32 대역. ★-1 만 제외한다 —
+    # PeroPix 는 -1 을 "랜덤 시드" 표식으로 쓰기 때문이다 (공홈엔 그 표식이 없다).
+    seed = req.seed if req.seed >= 0 else random.randint(0, 2**32 - 2)
     
     # NAI 값이면 그대로, KSampler 값이면 변환
     nai_sampler = NAI_SAMPLER_MAP.get(req.sampler, req.sampler)
     nai_scheduler = NAI_SCHEDULER_MAP.get(req.scheduler, req.scheduler)
 
-    # Furry Mode: 프롬프트 앞에 "fur dataset, " 추가
-    prompt_for_nai = f"fur dataset, {req.prompt}" if req.furry_mode else req.prompt
+    # Furry Mode: 프롬프트 앞에 "fur dataset, " 추가.
+    # 공홈은 이미 "fur dataset"/"background dataset" 으로 시작하면 붙이지 않는다 (chunks/2075:472700).
+    prompt_for_nai = req.prompt or ""
+    if req.furry_mode and not (prompt_for_nai.startswith("fur dataset")
+                               or prompt_for_nai.startswith("background dataset")):
+        prompt_for_nai = f"fur dataset, {prompt_for_nai}"
 
-    # V4.5 Quality Tags (NAI 서버가 처리하지 않으므로 클라이언트에서 직접 추가)
-    V45_QUALITY_TAGS = ", very aesthetic, masterpiece, no text"
-
-    # V4.5 UC Presets (NAI 서버가 처리하지 않으므로 클라이언트에서 직접 추가)
-    V45_UC_PRESETS = {
-        "Heavy": "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page",
-        "Light": "nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page",
-        "Furry Focus": "nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic",
-        "Human Focus": "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy",
-    }
-
-    # V4+ 모델에서만 클라이언트 태그 적용
+    # V4+ 모델에서만 클라이언트 태그 적용 (V3 이하는 NAI 서버가 처리)
     if is_v4_model:
-        # Quality Tags 적용 (프롬프트 끝에 추가)
+        # Quality Tags: 모델별 접미사 (공홈 ed()). `text:` 절이 있으면 그 앞에 넣는다.
         if req.quality_tags:
-            prompt_for_nai = prompt_for_nai + V45_QUALITY_TAGS
+            prompt_for_nai = nai_append_prompt(prompt_for_nai, NAI_QUALITY_SUFFIX.get(
+                nai_base_model(req.nai_model), NAI_QUALITY_SUFFIX["nai-diffusion-4-5-full"]
+            ))
 
-        # UC Preset 태그 적용 (네거티브 프롬프트 앞에 추가)
-        uc_preset_tags = V45_UC_PRESETS.get(req.uc_preset, "")
+        # Enhance 전용 문구는 ★퀄리티 접미사 **뒤에** 온다 (공홈 generateEnhance 순서).
+        # 프론트에서 베이스 프롬프트에 미리 끼워 넣으면 접미사보다 앞서게 돼 순서가 뒤집힌다.
+        if (req.enhance_prompt_add
+                and "diffusion-4-5" in req.nai_model
+                and "upscaled, blurry" not in prompt_for_nai):
+            prompt_for_nai = nai_append_prompt(prompt_for_nai, NAI_ENHANCE_PROMPT_ADD)
 
-        # NAI 웹과 동일: 프롬프트(베이스+캐릭터)에 nsfw가 있으면 UC 프리셋 맨 앞의 "nsfw, "만 제거.
-        # 사용자가 요청한 nsfw를 네거티브로 부정하지 않게 하는 규칙이며, 다른 중복 태그는 건드리지 않는다.
-        if uc_preset_tags.startswith("nsfw, "):
-            positive_texts = [req.prompt or ""]
-            if req.character_prompts_with_coords:
-                positive_texts += [cp.prompt or "" for cp in req.character_prompts_with_coords]
-            elif req.character_prompts:
-                positive_texts += list(req.character_prompts)
-            if any(re.search(r"\bnsfw\b", t, re.IGNORECASE) for t in positive_texts):
-                uc_preset_tags = uc_preset_tags[len("nsfw, "):]
-
-        if uc_preset_tags:
-            if req.negative_prompt:
-                negative_for_nai = uc_preset_tags + ", " + req.negative_prompt
-            else:
-                negative_for_nai = uc_preset_tags
-        else:
-            negative_for_nai = req.negative_prompt
+        # UC: 프리셋 본문 + 사용자 네거티브, 조건이 맞으면 앞에 "nsfw, " (공홈 J())
+        # ★nsfw 검사 대상은 퀄리티 태그가 붙은 베이스 프롬프트 하나뿐 — 캐릭터 슬롯은 안 본다.
+        negative_for_nai = nai_resolve_uc(
+            req.nai_model, req.uc_preset, prompt_for_nai, req.negative_prompt
+        )
     else:
-        # V3 이하 모델은 NAI 서버가 처리
         negative_for_nai = req.negative_prompt
 
-    # NAI API는 64 배수 해상도만 지원 - 비정렬 값 유입 시 올림 조정 (NAI 웹과 동일)
+    # NAI API는 64 배수 해상도만 지원 - 비정렬 값 유입 시 조정.
+    # ★공홈은 올림이 아니라 **가까운 쪽으로 반올림**한다 (chunks/pages/_app:669215 K()).
+    #   예: 800 -> 공홈 768, 옛 PeroPix 832. 올림은 없던 유료 재화 소모를 만든다.
     import math
-    width = math.ceil(req.width / 64) * 64
-    height = math.ceil(req.height / 64) * 64
+
+    def _align64(v: int) -> int:
+        lo = math.floor(v / 64) * 64
+        hi = math.ceil(v / 64) * 64
+        r = lo if (v - lo < hi - v) else hi
+        return 64 if r <= 0 else r
+
+    width = _align64(req.width)
+    height = _align64(req.height)
     if width != req.width or height != req.height:
         print(f"[NAI] Resolution aligned to 64: {req.width}x{req.height} -> {width}x{height}")
     if width <= 0:
@@ -1398,14 +1621,21 @@ async def call_nai_api(req: GenerateRequest):
         "cfg_rescale": req.cfg_rescale,
         "noise_schedule": nai_scheduler,
         "legacy_v3_extend": False,
-        "uncond_scale": 1.0,
+        # ★uncond_scale 은 보내지 않는다 — 공홈은 params_version 2 승격 때 이 키를 삭제했고
+        #   (chunks/pages/_app:711960 `delete r.uncond_scale`) V4 기본 파라미터에도 없다.
         "negative_prompt": negative_for_nai,
         "prompt": prompt_for_nai,
-        "extra_noise_seed": int(seed),
+        # ★extra_noise_seed 는 여기 두지 않는다 — 공홈은 베이스 이미지가 있을 때만 넣는다.
+        #   (아래 base_image 분기에서 seed - 1 로 추가)
+        # 공홈 V4/V4.5 요청에 늘 실리는 값들 (chunks/pages/_app:679123 기본 파라미터)
+        "image_format": "png",
+        "inpaintImg2ImgStrength": 1,
+        "legacy_uc": False,
     }
 
-    # 웹 페이로드와 정렬: 모든 생성 요청에 항상 포함되는 base 파라미터 (6개 캡처 전부 공통)
-    params["normalize_reference_strength_multiple"] = True
+    # 웹 페이로드와 정렬: 모든 생성 요청에 항상 포함되는 base 파라미터 (6개 캡처 전부 공통).
+    # ★공홈에서도 사용자가 끌 수 있는 토글이다 (Normalize Reference Strength Values, 기본 켜짐).
+    params["normalize_reference_strength_multiple"] = req.normalize_vibe_strength
     # SMEA: V3는 sm/sm_dyn, V4+는 autoSmea 사용 (웹과 동일). V4에선 sm/sm_dyn 미전송.
     if is_v4_model:
         params.pop("sm", None)
@@ -1468,8 +1698,14 @@ async def call_nai_api(req: GenerateRequest):
         print(f"[NAI] v4_negative_prompt char_captions: {params['v4_negative_prompt']['caption']['char_captions']}")
 
     # Variety+ 옵션 (값이 있을 때만 추가)
+    # ★공홈은 모델별 기준값에 해상도 보정을 곱한다 (웹 번들 pages/_app):
+    #   기준값 cfgDelaySigma = V4.5 계열·custom 58 / V4.0 이하 19
+    #   보정계수 = sqrt(floor(w/8) * floor(h/8) / 15808)  ← 832x1216 이 정확히 1.0
+    # 19 고정으로 보내면 V4.5 에서 CFG 지연 구간이 3배 짧아져 Variety+ 가 거의 안 걸린다.
     if req.variety_plus:
-        params["skip_cfg_above_sigma"] = 19
+        base_sigma = 58 if "diffusion-4-5" in req.nai_model else 19
+        factor = math.sqrt((width // 8) * (height // 8) / 15808)
+        params["skip_cfg_above_sigma"] = base_sigma * factor
     
     # k_euler_ancestral + non-native scheduler 조합에서 필수 파라미터
     if nai_sampler == "k_euler_ancestral" and nai_scheduler != "native":
@@ -1538,7 +1774,23 @@ async def call_nai_api(req: GenerateRequest):
                 raise
 
         params["reference_image_multiple"] = vibe_images
-        params["reference_information_extracted_multiple"] = info_extracted_list
+
+        # ★V4+ 인코딩 경로에서는 reference_information_extracted_multiple 을 보내지 않는다.
+        #   IE 는 /ai/encode-vibe 단계에서 이미 벡터에 구워졌다. 공홈은 V3 레거시 경로에서만
+        #   이 필드를 채운다 (chunks/2075:475430 vs :476013). 한 번 더 보내면 이중 적용 위험.
+        if not is_v4_plus:
+            params["reference_information_extracted_multiple"] = info_extracted_list
+
+        # ★normalize_reference_strength_multiple 이 켜져 있고 2장 이상이면 공홈은
+        #   **클라이언트에서 미리 나눠** 보낸다. 조건은 합이 1을 넘을 때만 (chunks/2075:475545).
+        #   플래그만 켜고 원본 값을 보내면 참조 강도가 통째로 달라진다.
+        if params.get("normalize_reference_strength_multiple") and len(strength_list) > 1:
+            total = sum(abs(v) for v in strength_list)
+            if total != 0 and total > 1:
+                strength_list = [v / total for v in strength_list]
+                print(f"[NAI] Vibe strengths normalized (sum was {total:.3f}): "
+                      f"{[round(v, 4) for v in strength_list]}")
+
         params["reference_strength_multiple"] = strength_list
 
     # Precise Reference (V4.5 only) - 여러 개 지원
@@ -1625,10 +1877,17 @@ async def call_nai_api(req: GenerateRequest):
     action = "generate"
     model_to_use = req.nai_model
     if req.base_image:
-        # 이미지를 PNG로 변환 (NAI 서버가 내부적으로 width/height에 맞춰 리사이즈)
-        base_png = ensure_png_base64(req.base_image)
+        # 공홈과 동일하게 클라이언트에서 요청 해상도로 리샘플하고 흰 배경에 평탄화한다.
+        # ★서버 리사이즈에 맡기지 말 것 — 필터가 다르면 초기 latent 가 달라진다.
+        base_png = preprocess_base_image(req.base_image, width, height)
         params["image"] = base_png
         params["strength"] = req.base_strength
+
+        # 공홈은 베이스 이미지가 있을 때만 extra_noise_seed 를 넣고, 값은 seed - 1 이다.
+        # ★-1 을 0 으로 올리지 말 것. 공홈도 시드 0 이면 -1 을 그대로 보낸다 (클램프 없음).
+        params["extra_noise_seed"] = int(seed) - 1
+        if int(seed) - 1 < 0:
+            print(f"[NAI] extra_noise_seed is negative ({int(seed) - 1}) — 공홈과 동일하게 그대로 전송")
 
         if req.base_mode == "inpaint" and req.base_mask:
             action = "infill"
@@ -1639,8 +1898,8 @@ async def call_nai_api(req: GenerateRequest):
             img_pil = PILImage.open(io.BytesIO(img_data))
             print(f"[NAI] Source image size: {img_pil.size}")
 
-            # 마스크를 이진화 (NAI는 순수 흑백만 지원, 회색 가장자리 제거)
-            mask_png = binarize_mask(req.base_mask)
+            # 마스크를 8px 격자로 맞춘 뒤 요청 해상도로 되돌린다 (공홈과 동일)
+            mask_png = quantize_mask_to_8px(req.base_mask, width, height)
             params["mask"] = mask_png
 
             # 마스크 크기 확인
@@ -1655,13 +1914,20 @@ async def call_nai_api(req: GenerateRequest):
             #   - add_original_image=False (웹은 false! 우리가 True로 잘못 보내고 있었음)
             #   - request_type 미전송 (웹엔 없음. "NativeInfillingRequest"는 마스크 영역을
             #     강도무관 완전재생성시켜 강도를 무효화하던 원인 → 제거)
-            #   - 강도 슬라이더를 웹과 동일하게 inpaintImg2ImgStrength + img2img.strength +
-            #     strength 세 곳에 반영 (JSON 엔드포인트가 어느 필드를 읽든 강도가 먹도록)
+            #   - request_type 미전송 (웹엔 없음. "NativeInfillingRequest"는 마스크 영역을
+            #     강도무관 완전재생성시켜 강도를 무효화하던 원인 → 제거)
+            # ★강도 필드 배치 (2026-08-11 번들 재확인, 이전 서술은 틀렸다):
+            #   인페인트 슬라이더는 inpaintImg2ImgStrength **하나에만** 실린다. 기본값은 1이고,
+            #   1이면 img2img 필드가 아예 없다(= 마스크 영역 완전 재생성).
+            #   strength 는 별개 파라미터로, img2img 슬라이더 값(기본 0.7)이 그대로 나간다.
             params.pop("request_type", None)
             params["add_original_image"] = False
             params["strength"] = req.base_strength
-            params["inpaintImg2ImgStrength"] = req.base_strength
-            params["img2img"] = {"strength": req.base_strength, "color_correct": True}
+            params["inpaintImg2ImgStrength"] = req.base_inpaint_strength
+            if req.base_inpaint_strength != 1:
+                params["img2img"] = {"strength": req.base_inpaint_strength, "color_correct": True}
+            else:
+                params.pop("img2img", None)
             params["noise"] = 0
             # 웹은 V3 SMEA(sm/sm_dyn) 대신 autoSmea:false 사용
             params.pop("sm", None)
@@ -1670,7 +1936,7 @@ async def call_nai_api(req: GenerateRequest):
             # euler ancestral 노이즈 재주입 끄고 brownian 선호 (웹과 동일)
             params["deliberate_euler_ancestral_bug"] = False
             params["prefer_brownian"] = True
-            params["normalize_reference_strength_multiple"] = True
+            params["normalize_reference_strength_multiple"] = req.normalize_vibe_strength
             params["image_format"] = "png"
             params["legacy"] = False
             params["legacy_v3_extend"] = False
@@ -1686,23 +1952,28 @@ async def call_nai_api(req: GenerateRequest):
                 if param in params:
                     del params[param]
 
-            # 인페인트는 전용 모델 사용 (모델명 + "-inpainting")
-            # 예: nai-diffusion-4-5-full → nai-diffusion-4-5-full-inpainting
+            # 인페인트는 전용 모델 사용. ★접미사 규칙으로 만들지 말 것 —
+            # nai-diffusion-4-curated-preview 처럼 접미사만 붙이면 없는 id 가 된다 (공홈은 -preview 를 뗀다).
             if not model_to_use.endswith("-inpainting"):
-                model_to_use = f"{model_to_use}-inpainting"
-            print(f"[NAI] Mode: Inpaint, model={model_to_use}, user_strength={req.base_strength}")
+                model_to_use = NAI_INPAINT_MODEL.get(model_to_use, NAI_INPAINT_MODEL_DEFAULT)
+            print(f"[NAI] Mode: Inpaint, model={model_to_use}, "
+                  f"inpaint_strength={req.base_inpaint_strength}, img2img_strength={req.base_strength}")
         else:
             action = "img2img"
             # img2img 파라미터 (NAI 웹 페이로드와 동일하게)
             params["noise"] = req.base_noise
             params["image_format"] = "png"
             params["inpaintImg2ImgStrength"] = 1
+            # 공홈은 action 이 img2img 면 항상 최상위 color_correct=false 를 붙인다
+            params["color_correct"] = False
             print(f"[NAI] Mode: Img2Img, strength={req.base_strength}, noise={req.base_noise}")
 
     payload = {
         "input": prompt_for_nai,
         "model": model_to_use,
         "action": action,
+        # 공홈은 최상위에 이 값을 항상 붙인다 (chunks/pages/_app:419923)
+        "use_new_shared_trial": True,
         "parameters": params
     }
 
@@ -1752,25 +2023,21 @@ async def call_nai_api(req: GenerateRequest):
                 # 마스크의 흰색 영역만 NAI 결과 사용, 검은색 영역은 원본 유지
                 if action == "infill" and req.base_image and req.base_mask:
                     try:
-                        # 원본 이미지 로드
-                        original_data = base64.b64decode(ensure_png_base64(req.base_image))
+                        # 원본은 NAI 로 보낸 것과 같은 전처리를 거친 이미지여야 한다.
+                        # ★convert('RGB') 는 알파를 검정에 깐다 — 보낸 것은 흰 배경이므로
+                        #   그대로 쓰면 투명 영역이 합성에서 검게 되돌아온다.
+                        original_data = base64.b64decode(
+                            preprocess_base_image(req.base_image, image.size[0], image.size[1]))
                         original_img = Image.open(io.BytesIO(original_data)).convert('RGB')
 
-                        # 마스크 로드 (이진화된 마스크 사용)
-                        mask_data = base64.b64decode(binarize_mask(req.base_mask))
-                        mask_img = Image.open(io.BytesIO(mask_data)).convert('L')
-
-                        # 크기 맞추기
-                        if original_img.size != image.size:
-                            original_img = original_img.resize(image.size, Image.LANCZOS)
-                        if mask_img.size != image.size:
-                            mask_img = mask_img.resize(image.size, Image.NEAREST)
+                        # 합성용 소프트 마스크 (공홈과 동일: 32px 확장 + 블러).
+                        # ★와이어로 보낸 이진 마스크로 자르면 경계에 계단·색단차가 남는다.
+                        mask_img = build_inpaint_blend_mask(req.base_mask, image.size[0], image.size[1])
 
                         # NAI 결과를 RGB로 변환
                         result_rgb = image.convert('RGB')
 
-                        # 마스크를 사용해 합성: 흰색(255) = NAI 결과, 검은색(0) = 원본
-                        # PIL.Image.composite(image1, image2, mask) - mask가 흰색인 곳은 image1, 검은색인 곳은 image2
+                        # 소프트 마스크로 합성: 255 = NAI 결과, 0 = 원본, 중간값은 섞인다
                         composited = Image.composite(result_rgb, original_img, mask_img)
 
                         # 원본이 RGBA였으면 알파 채널 복원
@@ -2485,7 +2752,8 @@ async def process_job(job):
         pre_allocated_filenames.append(filename)
 
     # 시드 설정
-    current_seed = req.seed if req.seed >= 0 else random.randint(0, 2**31 - 1)
+    # 공홈과 같은 2^32 대역 (-1 은 랜덤 표식이라 제외)
+    current_seed = req.seed if req.seed >= 0 else random.randint(0, 2**32 - 2)
 
     print(f"[Generate] Job {job_id} started - {total_images} image(s), {req.width}x{req.height}, {req.steps} steps")
 
@@ -2584,7 +2852,7 @@ async def process_job(job):
                 full_prompt = f"{full_prompt}, {char_prompts_str}".strip(", ")
 
         if req.random_seed_per_image and prompt_idx > 0:
-            current_seed = random.randint(0, 2**31 - 1)
+            current_seed = random.randint(0, 2**32 - 2)
 
         single_req = GenerateRequest(
             provider=req.provider,
@@ -4307,50 +4575,66 @@ async def get_nai_subscription():
         return {"error": str(e), "anlas": None}
 
 
+# ============================================================
+# Anlas 비용 (공홈 웹 번들 2026-08-11 에서 추출한 식 그대로)
+#   per_sample = ceil(A*px + B*px*steps) * (SMEA Dyn 1.4 / SMEA 1.2 / 1)
+#   최종      = max(ceil(per_sample * strength), 2), 140 초과면 공홈은 생성 자체를 막는다
+# ============================================================
+NAI_COST_A = 2.951823174884865e-06      # 공홈 2951823174884865e-21
+NAI_COST_B = 5.753298233447344e-07      # 공홈 5753298233447344e-22
+NAI_MAX_COST_PER_IMAGE = 140            # 공홈 g.dZ
+NAI_OPUS_FREE_PIXELS = 1048576          # 공홈 eZ
+# vibe 인코딩 비용은 **개당 2 고정**이다 (공홈 `getPrice`: 인코딩이 이미 있으면 0, 없으면 2).
+# ★해상도별 표(e0/e1, 1/2/3/5/7)는 **NAI Upscale 툴** 가격이지 vibe 가 아니다 — 한 번 헷갈렸다.
+NAI_VIBE_ENCODE_COST = 2
+
+
+def nai_image_sample_cost(width: int, height: int, steps: int,
+                          smea: bool = False, smea_dyn: bool = False) -> int:
+    px = width * height
+    base = math.ceil(NAI_COST_A * px + NAI_COST_B * px * steps)
+    mult = 1.4 if smea_dyn else (1.2 if smea else 1)
+    return math.ceil(base * mult)
+
+
 def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = False,
                          vibe_count: int = 0, has_char_ref: bool = False,
-                         strength: float = 1.0, precise_ref_count: int = 0) -> int:
-    """NAI 이미지 생성 Anlas 소모량 계산
+                         strength: float = 1.0, precise_ref_count: int = 0,
+                         vibe_encode_cost: int = 0,
+                         smea: bool = False, smea_dyn: bool = False) -> int:
+    """NAI 이미지 생성 Anlas 소모량 계산 (공홈 식)
 
     precise_ref_count: Precise Reference 개수 (새 API)
     has_char_ref: Legacy Character Reference 사용 여부 (deprecated, precise_ref_count > 0이면 무시)
+    vibe_encode_cost: 캐시되지 않은 vibe 들의 인코딩 비용 합 (엔드포인트에서 계산)
     """
     pixels = width * height
-    base_pixels = 1024 * 1024
 
     # 실제 레퍼런스 개수 (새 API 우선)
     ref_count = precise_ref_count if precise_ref_count > 0 else (1 if has_char_ref else 0)
 
-    # Opus 무료 조건: 1MP 이하, 28 steps 이하, vibe/char_ref 없음
-    if is_opus and pixels <= base_pixels and steps <= 28 and vibe_count <= 0 and ref_count <= 0:
-        return 0
+    # 이미지 1장 원가 (공홈 chunks/pages/_app:696800 의 o()).
+    # ★옛 근사식 ceil(MP*20) 은 28 steps 에서만 맞고 기본값 23 에서 15~18% 과다였다.
+    per_sample = nai_image_sample_cost(width, height, steps, smea=smea, smea_dyn=smea_dyn)
+    per_sample = max(math.ceil(per_sample * strength), 2)   # 공홈: Math.max(ceil(w*y), 2)
 
-    # 기본 비용 계산: ceil(MP * 20)
-    if is_opus and pixels <= base_pixels and steps <= 28:
-        # Opus는 기본 생성 무료, 추가 기능만 비용
-        base_cost = 0
-    else:
-        # NAI 공식: ceil(megapixels * 20)
-        base_cost = math.ceil(pixels / base_pixels * 20)
+    # Opus 무료: **1MP 이하 + 28 steps 이하**면 1장이 공짜.
+    # ★vibe 도 캐릭터 참조도 무료 판정에 들어가지 않는다.
+    #   공홈 `eZ()` 에 `!characterRef` 조건이 있지만 **가격을 계산하는 쪽은 그 키를 안 넘긴다**
+    #   (chunks/3811:1088111 은 params 만 넘긴다 → 언제나 undefined). 전송 경로만 이 키를 채운다.
+    #   실측(2026-08-11): Opus·832x1216·28step·프리사이즈 1개 = **5** (무료가 살아 있고 참조비 5 만).
+    opus_free = is_opus and pixels <= NAI_OPUS_FREE_PIXELS and steps <= 28
 
-    # Steps 보정 (28 초과시)
-    if steps > 28 and base_cost > 0:
-        base_cost = int(base_cost * (steps / 28))
+    total = 0 if opus_free else per_sample
 
-    # img2img strength 보정 (strength < 1.0이면 비용 감소)
-    if strength < 1.0 and base_cost > 0:
-        base_cost = max(math.ceil(base_cost * strength), 2)
+    # 캐릭터 참조: **개당 5, 장당** (공홈 `m += 5 * 개수 * n_samples`). Opus 여부와 무관.
+    total += 5 * ref_count
 
-    # Vibe Transfer (첫 사용 시 2 Anlas, 이후 무료)
-    if vibe_count >= 1:
-        base_cost += 2
+    # ★vibe 인코딩 비용과 5개 초과 가산은 **요청 전체에 한 번**이지 장당이 아니다.
+    #   엔드포인트에서 total_cost 에 한 번만 더한다.
+    total += vibe_encode_cost
 
-    # Precise Reference: 개당 5 Anlas (Opus), 15 Anlas (일반)
-    if ref_count > 0:
-        cost_per_ref = 5 if is_opus else 15
-        base_cost += cost_per_ref * ref_count
-
-    return base_cost
+    return total
 
 
 @app.post("/api/nai/calculate-cost")
@@ -4402,17 +4686,54 @@ async def calculate_cost(request: dict):
         uncached_vibe_count = vibe_count
 
     strength = request.get("strength", 1.0)
-    cost_per_image = calculate_anlas_cost(width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength, precise_ref_count)
-    total_cost = cost_per_image * count
+    smea_val = request.get("smea", "none")
+    smea = smea_val in ("SMEA", "SMEA+DYN")
+    smea_dyn = smea_val == "SMEA+DYN"
 
-    # Vibe 인코딩 비용 (캐시되지 않은 것만, 첫 이미지에서만 발생)
-    vibe_encoding_cost = uncached_vibe_count * 2 if uncached_vibe_count > 0 else 0
+    # Vibe 인코딩 비용: 공홈은 **각 vibe 이미지의 해상도**로 정해진다 (표 e0). 옛 구현은 일괄 2였다.
+    vibe_encoding_cost = 0
+    if uncached_vibe_count > 0:
+        counted = 0
+        for v in (vibes or []):
+            if counted >= uncached_vibe_count:
+                break
+            img_b64 = v.get("image", "")
+            if not img_b64:
+                continue
+            try:
+                from PIL import Image as PILImage
+                vi = PILImage.open(io.BytesIO(base64.b64decode(img_b64)))
+                c = nai_vibe_encode_cost(vi.size[0], vi.size[1], is_opus)
+                vibe_encoding_cost += max(c, 0)
+            except Exception:
+                vibe_encoding_cost += 2   # 못 읽으면 옛 근사값
+            counted += 1
+        if counted == 0:  # vibes 배열 없이 개수만 온 경우
+            vibe_encoding_cost = uncached_vibe_count * 2
+
+    cost_per_image = calculate_anlas_cost(
+        width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength,
+        precise_ref_count, vibe_encode_cost=0, smea=smea, smea_dyn=smea_dyn)
+
+    # 공홈은 Opus 무료 1장을 n_samples 에서 빼는 방식이라, 여러 장이면 나머지는 정가다.
+    opus_free = is_opus and width * height <= NAI_OPUS_FREE_PIXELS and steps <= 28
+    if opus_free:
+        per_sample = max(math.ceil(
+            nai_image_sample_cost(width, height, steps, smea, smea_dyn) * strength), 2)
+        total_cost = per_sample * max(0, count - 1)
+    else:
+        total_cost = cost_per_image * count
+    total_cost += vibe_encoding_cost
+    if uncached_vibe_count > 4:
+        total_cost += (uncached_vibe_count - 4) * 2
 
     return {
         "cost_per_image": cost_per_image,
         "total_cost": total_cost,
         "count": count,
-        "is_free": cost_per_image == 0,
+        "is_free": total_cost == 0,
+        # 공홈은 1장이 140 Anlas 를 넘으면 생성 버튼을 막는다 (g.dZ). 표시만 하고 막지는 않는다.
+        "over_limit": cost_per_image > NAI_MAX_COST_PER_IMAGE,
         "vibe_encoding_cost": vibe_encoding_cost,
         "cached_vibes": len(vibes) - uncached_vibe_count if vibes else 0,
         "uncached_vibes": uncached_vibe_count

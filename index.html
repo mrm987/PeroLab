@@ -621,6 +621,23 @@
             box-shadow: 0 0 0 3px rgba(74, 122, 184, 0.15);
         }
 
+        /* 더 이상 지원하지 않는 값이 남아 있는 드롭다운 — 사용자가 직접 고르게 강조만 한다.
+           값을 몰래 바꾸지 않는 것이 요점이다. */
+        select.unsupported-value {
+            border-color: var(--error, #ff6b6b);
+            color: var(--error, #ff6b6b);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.12);
+        }
+        select.unsupported-value:hover { border-color: var(--error, #ff6b6b); }
+        .anlas-over-limit { color: var(--error, #ff6b6b); font-weight: 700; }
+        .unsupported-note {
+            display: block;
+            margin: -8px 0 var(--space-md);
+            font-size: 0.72rem;
+            color: var(--error, #ff6b6b);
+            line-height: 1.4;
+        }
+
         textarea {
             resize: vertical;
             min-height: 80px;
@@ -8964,7 +8981,6 @@
                             <select id="naiModel">
                                 <option value="nai-diffusion-4-5-full">V4.5 Full</option>
                                 <option value="nai-diffusion-4-5-curated">V4.5 Curated</option>
-                                <option value="nai-diffusion-4-curated-preview">V4 Curated</option>
                             </select>
 
                             <div class="row">
@@ -9017,6 +9033,13 @@
                                     <small class="section-hint">
                                         최대 16개 이미지. 강도 합계가 1.0 이하가 되도록 권장.
                                     </small>
+
+                                    <!-- 공홈에도 같은 토글이 있다 (Normalize Reference Strength Values, 기본 켜짐).
+                                         켜져 있고 강도 합이 1을 넘으면 각 값을 합으로 나눠 보낸다. -->
+                                    <label class="checkbox-row" style="margin-top: 6px;">
+                                        <input type="checkbox" id="normalizeVibeStrength" checked>
+                                        <span>강도 정규화 (합이 1을 넘으면 나눠서 전송)</span>
+                                    </label>
 
                                     <div id="vibeCacheInfo" style="display: none;"></div>
 
@@ -9246,6 +9269,9 @@
                         <div class="row">
                             <div>
                                 <label>Size</label>
+                                <!-- ✦ = NAI 공홈에 있는 프리셋. Small/Normal/Large/Wallpaper 는
+                                     공홈의 분류 그대로다 (웹 번들 pages/_app 의 v4 프리셋 표).
+                                     별표 없는 그룹은 공홈에 없는 SDXL 비율이다. -->
                                 <select id="sizePreset">
                                     <optgroup label="Landscape">
                                         <option value="1536x640">1536 × 640</option>
@@ -9261,6 +9287,20 @@
                                         <option value="832x1216" selected>832 × 1216 ✦</option>
                                         <option value="768x1344">768 × 1344</option>
                                         <option value="640x1536">640 × 1536</option>
+                                    </optgroup>
+                                    <optgroup label="Large ✦">
+                                        <option value="1536x1024">1536 × 1024</option>
+                                        <option value="1472x1472">1472 × 1472</option>
+                                        <option value="1024x1536">1024 × 1536</option>
+                                    </optgroup>
+                                    <optgroup label="Wallpaper ✦">
+                                        <option value="1920x1088">1920 × 1088</option>
+                                        <option value="1088x1920">1088 × 1920</option>
+                                    </optgroup>
+                                    <optgroup label="Small ✦">
+                                        <option value="768x512">768 × 512</option>
+                                        <option value="640x640">640 × 640</option>
+                                        <option value="512x768">512 × 768</option>
                                     </optgroup>
                                     <option value="custom">Custom</option>
                                     <optgroup id="recentCustomSizes" label="Recent Custom" style="display:none">
@@ -10408,10 +10448,8 @@
                 <div style="flex: 1;">
                     <div style="margin-bottom: 12px;">
                         <label>Resolution</label>
-                        <div style="display: flex; gap: 8px; margin-top: 4px;">
-                            <button type="button" class="btn enhance-res-btn active" data-scale="1">Normal (1x)</button>
-                            <button type="button" class="btn enhance-res-btn" data-scale="1.5">Large (1.5x)</button>
-                        </div>
+                        <!-- 배율 버튼은 원본 크기에 따라 코드가 만든다 (공홈과 같은 규칙) -->
+                        <div id="enhanceResBtns" style="display: flex; gap: 8px; margin-top: 4px;"></div>
                         <div id="enhanceResInfo" class="vol-label" style="margin-top: 4px;"></div>
                     </div>
                     <div style="margin-bottom: 12px;" id="enhanceMagnitudeSection">
@@ -10689,8 +10727,9 @@
                 <div class="batch-strength-row">
                     <label>배율 (Resolution)</label>
                     <div class="batch-res-btns">
-                        <button type="button" class="btn batch-res-btn active" data-scale="1">Normal (1x)</button>
-                        <button type="button" class="btn batch-res-btn" data-scale="1.5">Large (1.5x)</button>
+                        <button type="button" class="btn batch-res-btn active" data-scale="1">1x</button>
+                        <button type="button" class="btn batch-res-btn" data-scale="1.5">1.5x</button>
+                        <button type="button" class="btn batch-res-btn" data-scale="2">2x</button>
                     </div>
                 </div>
                 <div id="batchMagnitudeSection" class="batch-strength-row">
@@ -10837,6 +10876,142 @@
         }
 
         const API_BASE = 'http://127.0.0.1:8765';
+
+        // ============================================================
+        // NAI 공홈 프롬프트 가공 표 (backend.py 의 NAI_* 상수와 같은 값이어야 한다)
+        //
+        // ★출처: NAI 웹 클라이언트 번들(2026-08-11, buildId c410ef7-production)
+        //   ed()=퀄리티 접미사 · eF()=프리셋 목록 · V=nsfw 예외집합 · eN/eR()=모델 전환 폴백
+        // ★프리셋 본문에 "nsfw, " 를 박지 말 것. 공홈은 조건이 맞을 때만 별도로 앞에 붙인다.
+        // ★프리셋 목록의 순서가 곧 공홈 ucPreset 인덱스다. 마지막은 언제나 none.
+        // ============================================================
+        const NAI_QUALITY_SUFFIX = {
+            'nai-diffusion-4-5-full': ', very aesthetic, masterpiece, no text',
+            'nai-diffusion-4-5-curated': ', very aesthetic, masterpiece, no text, -0.8::feet::, rating:general',
+        };
+        const NAI_UC_PRESETS = {
+            'nai-diffusion-4-5-full': [
+                { cat: 'heavy', name: 'Heavy', text: 'lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page' },
+                { cat: 'light', name: 'Light', text: 'lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page' },
+                { cat: 'furry', name: 'Furry Focus', text: '{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic' },
+                { cat: 'human', name: 'Human Focus', text: 'lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy' },
+                { cat: 'none', name: 'None', text: '' },
+            ],
+            'nai-diffusion-4-5-curated': [
+                { cat: 'heavy', name: 'Heavy', text: 'blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page' },
+                { cat: 'light', name: 'Light', text: 'blurry, lowres, upscaled, artistic error, scan artifacts, jpeg artifacts, logo, too many watermarks, negative space, blank page' },
+                { cat: 'human', name: 'Human Focus', text: 'blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page' },
+                { cat: 'none', name: 'None', text: '' },
+            ],
+        };
+        // 모델을 바꿀 때 없는 프리셋을 무엇으로 대체할지 (공홈 eN)
+        const NAI_UC_CATEGORY_FALLBACK = {
+            none: ['none', 'light', 'heavy'],
+            light: ['light', 'none', 'heavy'],
+            heavy: ['heavy', 'light', 'none'],
+            human: ['human', 'heavy', 'light', 'none'],
+            furry: ['furry', 'heavy', 'light', 'none'],
+        };
+        const NAI_DEFAULT_MODEL = 'nai-diffusion-4-5-full';
+
+        // 자동 시드 범위. 공홈은 Math.floor(0x100000000*Math.random()-1) = -1 ~ 4294967294 이고,
+        // PeroPix 는 2^31-1 까지만 써서 상위 절반을 못 쓰고 있었다.
+        // ★-1 만 제외한다 — PeroPix 는 -1 을 "랜덤 시드" 표식으로 쓰기 때문이다 (공홈엔 그 표식이 없다).
+        function naiRandomSeed() {
+            return Math.floor(Math.random() * 4294967295);   // 0 ~ 4294967294
+        }
+
+        // 인페인트 모델명을 원본 모델명으로 되돌린다 (표 조회용)
+        function naiBaseModel(model) {
+            return (model || '').replace(/-inpainting$/, '').replace(
+                /^nai-diffusion-4-curated$/, 'nai-diffusion-4-curated-preview');
+        }
+        function naiUcPresets(model) {
+            return NAI_UC_PRESETS[naiBaseModel(model)] || NAI_UC_PRESETS[NAI_DEFAULT_MODEL];
+        }
+        // 다른 모델의 프리셋 이름을 현재 모델의 프리셋 이름으로 옮긴다 (공홈 eR)
+        function naiMapUcPreset(name, toModel) {
+            const list = naiUcPresets(toModel);
+            if (list.some(p => p.name === name)) return name;
+            let srcCat = null;
+            for (const plist of Object.values(NAI_UC_PRESETS)) {
+                const hit = plist.find(p => p.name === name);
+                if (hit) { srcCat = hit.cat; break; }
+            }
+            for (const cat of (NAI_UC_CATEGORY_FALLBACK[srcCat || 'none'] || ['none'])) {
+                const hit = list.find(p => p.cat === cat);
+                if (hit) return hit.name;
+            }
+            return list[list.length - 1].name;
+        }
+
+        // ── 지원하지 않는 값이 드롭다운에 들어올 때 ──────────────────────────
+        // 조용히 다른 값으로 바꾸지 않는다. 원래 값을 그대로 보여 주되 빨갛게 강조하고,
+        // 목록을 열면 지원 값만 나오며(hidden option), 그 상태로 생성하면 막는다.
+        function markSelectUnsupported(sel, rawValue, what) {
+            let opt = sel.querySelector('option[data-unsupported]');
+            if (!opt) {
+                opt = document.createElement('option');
+                opt.dataset.unsupported = '1';
+                opt.hidden = true;   // 목록을 열면 안 보인다
+                sel.appendChild(opt);
+            }
+            opt.value = rawValue;
+            opt.textContent = `${rawValue} (지원 안 함)`;
+            sel.value = rawValue;
+            sel.classList.add('unsupported-value');
+            sel.dataset.unsupportedLabel = what;
+            let note = sel.parentElement.querySelector('.unsupported-note');
+            if (!note) {
+                note = document.createElement('small');
+                note.className = 'unsupported-note';
+                sel.parentElement.insertBefore(note, sel.nextSibling);
+            }
+            note.textContent = `더 이상 지원하지 않는 ${what}입니다. 목록에서 다시 골라 주세요.`;
+        }
+
+        function clearSelectUnsupported(sel) {
+            const opt = sel.querySelector('option[data-unsupported]');
+            if (opt) opt.remove();
+            sel.classList.remove('unsupported-value');
+            delete sel.dataset.unsupportedLabel;
+            const note = sel.parentElement.querySelector('.unsupported-note');
+            if (note) note.remove();
+        }
+
+        // 값이 목록에 있으면 선택하고, 없으면 원래 값을 띄운 채 경고 상태로 둔다.
+        function setSelectSafe(id, value, what) {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            clearSelectUnsupported(sel);
+            if (value === undefined || value === null || value === '') return;
+            const known = Array.from(sel.options).some(o => o.value === value && !o.dataset.unsupported);
+            if (known) sel.value = value;
+            else markSelectUnsupported(sel, value, what);
+        }
+
+        // 생성 직전 검사. 지원 안 하는 값이 남아 있으면 어떤 항목인지 알려 주고 막는다.
+        function findUnsupportedSelections() {
+            return Array.from(document.querySelectorAll('select.unsupported-value'))
+                .map(sel => sel.dataset.unsupportedLabel || sel.id);
+        }
+
+        // UC 프리셋 목록을 현재 모델에 맞게 다시 만든다. 선택값이 그 모델에 없으면
+        // 공홈과 동일한 카테고리 폴백으로 옮긴다 (예: Furry Focus -> Heavy).
+        function refreshUcPresetOptions() {
+            const sel = document.getElementById('ucPreset');
+            if (!sel) return;
+            const model = document.getElementById('naiModel').value;
+            const list = naiUcPresets(model);
+            const prev = sel.value;
+            const next = naiMapUcPreset(prev, model);
+            sel.innerHTML = list.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            clearSelectUnsupported(sel);
+            sel.value = next;
+            if (prev && next !== prev) {
+                console.log(`[NAI] UC preset "${prev}" is not in ${model} -> "${next}"`);
+            }
+        }
 
         let currentProvider = 'nai';
         document.body.dataset.provider = 'nai';  // CSS 제어용 초기값
@@ -15687,6 +15862,24 @@
                 return;
             }
 
+            // 지원하지 않는 값이 남아 있으면(옛 이미지/설정에서 복원된 모델·프리셋 등) 생성을 막는다.
+            // 값을 대신 골라 주지 않는 대신, 무엇을 확인해야 하는지 알려 준다.
+            if (currentProvider === 'nai') {
+                const bad = findUnsupportedSelections();
+                if (bad.length) {
+                    showToast(`확인이 필요한 항목이 있습니다: ${bad.join(', ')} — 지원하는 값으로 다시 골라 주세요`, 'warning');
+                    document.querySelector('select.unsupported-value')?.focus();
+                    return;
+                }
+            }
+
+            // ★1장당 140 Anlas 를 넘으면 공홈은 생성을 막는다. 개별 이미지 비용 기준이며,
+            //   여러 장 생성의 **합계**로 재지 않는다 (정상 상황에서도 합계는 쉽게 넘는다).
+            if (currentProvider === 'nai' && naiCostOverLimit) {
+                showToast('이미지 1장 비용이 140 Anlas를 넘습니다 — 해상도나 steps를 줄여 주세요', 'warning');
+                return;
+            }
+
             // 생성은 항상 활성 생성 모드(genMode)로. 보조 탭(갤러리/검열/보조/카드)을 보는 중이면 해당 생성 뷰로 전환.
             if (currentMode !== 'slot' && currentMode !== 'single') {
                 setActiveView(genMode);
@@ -15789,6 +15982,7 @@
                         encoded: v.encoded,
                         encoded_model: v.encoded_model
                     }));
+                    request.normalize_vibe_strength = document.getElementById('normalizeVibeStrength').checked;
                 }
 
                 // Precise Reference (V4.5 only) - 여러 레퍼런스 지원
@@ -15850,7 +16044,9 @@
             if (baseImageData.enabled && baseImageData.image) {
                 request.base_image = baseImageData.image;
                 request.base_mode = baseImageData.mode;
-                request.base_strength = baseImageData.strength;
+                // 공홈처럼 둘을 따로 보낸다: strength = img2img, inpaintImg2ImgStrength = 인페인트
+                request.base_strength = baseImageData.strength ?? 0.7;
+                request.base_inpaint_strength = baseImageData.inpaintStrength ?? 1.0;
                 request.base_noise = baseImageData.noise;
                 if (baseImageData.mode === 'inpaint' && baseImageData.mask) {
                     request.base_mask = baseImageData.mask;
@@ -15860,7 +16056,7 @@
             // 시드 고정이 아닐 경우, 다음 큐를 위해 즉시 새 시드로 UI 갱신
             // (빠르게 여러 번 클릭해도 중복 시드 방지)
             if (!document.getElementById('lockSeed').checked) {
-                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+                document.getElementById('seed').value = naiRandomSeed();
             }
 
             // 와일드카드 원본 보관 (배치마다 새로 해석 → 풀 안에서 랜덤 조합 시험)
@@ -15911,7 +16107,7 @@
                 }
 
                 // 매번 새로운 시드
-                request.seed = Math.floor(Math.random() * 2147483647);
+                request.seed = naiRandomSeed();
             }
             } finally {
                 pendingSubmits--;
@@ -17447,9 +17643,20 @@
                 charNegatives = meta.v4_negative_prompt.caption.char_captions.map(c => c.char_caption || '');
             }
 
-            // UC Preset: 숫자 → 문자열 변환 (순수 NAI 폴백용)
-            const ucPresetMap = { 0: 'Heavy', 1: 'Light', 2: 'Human Focus', 3: 'None' };
-            let ucPreset = ucPresetMap[meta.ucPreset] || meta.ucPreset || 'Heavy';
+            // 이 이미지를 만든 모델. 프리셋·퀄리티 태그 표가 모델마다 다르므로 먼저 정한다.
+            // request_type이 "PromptGenerateRequest" 같은 NAI 내부 타입이면 모델명이 아니다.
+            let naiModel = '';
+            if (meta.request_type && meta.request_type.startsWith('nai-diffusion')) {
+                naiModel = meta.request_type;
+            } else if (meta.model && meta.model.startsWith('nai-diffusion')) {
+                naiModel = meta.model;
+            }
+            const imgPresets = naiUcPresets(naiModel || NAI_DEFAULT_MODEL);
+
+            // UC Preset: 숫자 인덱스 → 이름 (그 모델의 프리셋 배열 순서가 곧 인덱스다)
+            let ucPreset = (typeof meta.ucPreset === 'number' && imgPresets[meta.ucPreset])
+                ? imgPresets[meta.ucPreset].name
+                : (meta.ucPreset || 'Heavy');
             let qualityTags = meta.qualityToggle;
 
             // 순수 NAI 이미지 여부 확인 (peropix 확장이 없으면 순수 NAI)
@@ -17462,48 +17669,40 @@
             let prompt = meta.prompt || '';
             let negativePrompt = meta.uc || '';
 
-            // V4.5 Quality Tags 패턴
+            // 퀄리티 태그 패턴 — 이 이미지 모델의 접미사 기준.
+            // ★Enhance 변형(`-2::upscaled, blurry::`)을 함께 본다. 공홈은 자기가 붙여 놓고도
+            //   임포트 때 감안하지 않아 자기 Enhance 이미지의 퀄리티 태그를 못 알아본다.
+            //   이건 공홈에 맞추지 않고 우리 쪽을 유지한다.
+            const imgQualitySuffix = NAI_QUALITY_SUFFIX[naiBaseModel(naiModel || NAI_DEFAULT_MODEL)]
+                || NAI_QUALITY_SUFFIX[NAI_DEFAULT_MODEL];
             const v45QualityTagsPatterns = [
-                ", very aesthetic, masterpiece, no text, -2::upscaled, blurry::,", // Enhance
-                ", very aesthetic, masterpiece, no text" // 일반
+                imgQualitySuffix + ", -2::upscaled, blurry::,",  // Enhance
+                imgQualitySuffix                                  // 일반
             ];
 
-            // V4.5 UC 프리셋 정의
-            const v45UcPresets = {
-                'Heavy': 'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page',
-                'Light': 'nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page',
-                'Furry Focus': 'nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic',
-                'Human Focus': 'nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy'
-            };
-
-            // 프리셋 후보 목록: 각 프리셋의 정상형 + NSFW 변형.
-            // NAI는 프롬프트에 NSFW가 있으면 UC 프리셋 맨 앞의 "nsfw, "를 제거하고 넣는다(공홈 캡처로 확인).
-            // 길이 내림차순으로 정렬해 startsWith가 짧은 프리셋(Heavy)에 먼저 걸려 긴 프리셋(Human Focus)을
-            // 놓치는 문제를 방지한다.
-            const buildPresetCandidates = (presets) => {
-                const cands = [];
-                for (const [name, tags] of Object.entries(presets)) {
-                    cands.push([name, tags]);
-                    if (tags.startsWith('nsfw, ')) cands.push([name, tags.slice(6)]);
-                }
-                cands.sort((a, b) => b[1].length - a[1].length);
-                return cands;
-            };
-
-            // 네거티브 앞에서 프리셋 태그를 감지·제거. 매칭되면 {name, neg}, 아니면 null.
+            // 네거티브 앞에서 프리셋 본문을 감지·제거. 매칭되면 {name, neg}, 아니면 null.
+            // ★공홈 임포트(chunks/3811:437185)와 같은 순서다:
+            //   (1) 맨 앞의 "nsfw" + 뒤따르는 ", " 를 먼저 떼고
+            //   (2) 프리셋을 본문 길이 내림차순으로 훑어 startsWith 매칭 — 짧은 Heavy 가
+            //       긴 Human Focus 앞부분에 먼저 걸리는 것을 막는다
+            //   (3) 마지막(none)은 매칭 대상에서 제외
             const stripUcPreset = (neg, presets) => {
                 neg = neg || '';
-                for (const [name, cand] of buildPresetCandidates(presets)) {
-                    if (neg.startsWith(cand)) {
-                        return { name, neg: neg.slice(cand.length).replace(/^,\s*/, '') };
+                if (neg.startsWith('nsfw')) {
+                    neg = neg.slice(4);
+                    if (neg.startsWith(', ')) neg = neg.slice(2);
+                }
+                const cands = presets.slice(0, -1).sort((a, b) => b.text.length - a.text.length);
+                for (const p of cands) {
+                    if (p.text && neg.startsWith(p.text)) {
+                        return { name: p.name, neg: neg.slice(p.text.length).replace(/^,\s*/, '') };
                     }
                 }
                 return null;
             };
 
             // 구버전 PeroPix 이미지(uc_preset 미저장)의 프리셋 복원:
-            // 최종 uc(fullUc) = <프리셋 태그> + ", " + <클린 네거티브(baseNeg)> 구조이므로 차분으로 역산.
-            // PeroPix가 자기 테이블로 생성한 값이라 매칭이 보장됨. 못 맞추면 null.
+            // 최종 uc(fullUc) = <프리셋 본문> + ", " + <클린 네거티브(baseNeg)> 구조이므로 차분으로 역산.
             const detectUcPresetFromDiff = (fullUc, baseNeg, presets) => {
                 fullUc = fullUc || ''; baseNeg = baseNeg || '';
                 if (fullUc === baseNeg) return 'None';
@@ -17515,8 +17714,12 @@
                         return null;
                     }
                 }
-                for (const [name, cand] of buildPresetCandidates(presets)) {
-                    if (prefix === cand) return name;
+                if (prefix.startsWith('nsfw')) {
+                    prefix = prefix.slice(4);
+                    if (prefix.startsWith(', ')) prefix = prefix.slice(2);
+                }
+                for (const p of presets) {
+                    if (p.text && prefix === p.text) return p.name;
                 }
                 return null;
             };
@@ -17537,7 +17740,7 @@
                 }
 
                 // UC 프리셋 감지 및 제거 (NSFW 변형 포함)
-                const res = stripUcPreset(negativePrompt, v45UcPresets);
+                const res = stripUcPreset(negativePrompt, imgPresets);
                 if (res) {
                     ucPreset = res.name;
                     negativePrompt = res.neg;
@@ -17557,10 +17760,10 @@
                 if (ppx.uc_preset !== undefined && ppx.uc_preset !== null) {
                     ucPreset = ppx.uc_preset;
                 } else if (baseNeg !== undefined) {
-                    ucPreset = detectUcPresetFromDiff(meta.uc || '', baseNeg || '', v45UcPresets) || 'None';
+                    ucPreset = detectUcPresetFromDiff(meta.uc || '', baseNeg || '', imgPresets) || 'None';
                 } else {
                     // 아주 구버전: base_negative_prompt조차 없음 → meta.uc 앞에서 프리셋 제거 시도
-                    const res = stripUcPreset(negativePrompt, v45UcPresets);
+                    const res = stripUcPreset(negativePrompt, imgPresets);
                     if (res) {
                         ucPreset = res.name;
                         negativePrompt = res.neg;
@@ -17618,15 +17821,7 @@
                 furryMode = true;
             }
 
-            // NAI 형식 → 앱 내부 형식 변환
-            // 모델명: request_type이 실제 모델명인지 확인 (NAI 내부 타입명 필터)
-            let naiModel = '';
-            if (meta.request_type && meta.request_type.startsWith('nai-diffusion')) {
-                naiModel = meta.request_type;
-            } else if (meta.model && meta.model.startsWith('nai-diffusion')) {
-                naiModel = meta.model;
-            }
-            // request_type이 "PromptGenerateRequest" 같은 내부 타입이면 무시
+            // (naiModel 은 프리셋 표를 고르기 위해 위쪽에서 이미 정했다)
 
             // 캐릭터 네거티브를 프롬프트 개수에 맞춰 정렬 (인덱스 i가 같은 캐릭터)
             const alignedCharNegatives = charPrompts.map((_, i) => charNegatives[i] || '');
@@ -17851,7 +18046,9 @@
 
             // NAI 설정
             if (metadata.nai_model) {
-                document.getElementById('naiModel').value = metadata.nai_model;
+                // 더 이상 지원하지 않는 모델(옛 V4 Curated 등)이면 조용히 바꾸지 않고 경고 상태로 둔다
+                setSelectSafe('naiModel', metadata.nai_model, '모델');
+                refreshUcPresetOptions();   // 모델이 바뀌었으니 프리셋 목록부터 맞춘다
                 highlight('naiModel');
             }
             if (metadata.smea) {
@@ -17859,7 +18056,9 @@
                 highlight('smea');
             }
             if (metadata.uc_preset) {
-                document.getElementById('ucPreset').value = metadata.uc_preset;
+                // 그 모델에 없는 프리셋이면 공홈과 같은 카테고리 폴백으로 옮긴다
+                setSelectSafe('ucPreset', naiMapUcPreset(metadata.uc_preset,
+                    document.getElementById('naiModel').value), 'UC 프리셋');
                 highlight('ucPreset');
             }
             if (metadata.quality_tags !== undefined) {
@@ -18284,9 +18483,15 @@
             updateAnlasCost();
         };
         
-        // 64 배수로 조정 (낮은 쪽으로 - 높은 쪽은 유료 재화 추가 소모 가능)
+        // 64 배수로 조정. ★공홈은 올림이 아니라 **가까운 쪽으로 반올림**한다
+        // (chunks/pages/_app:669215 K(): floor/ceil 중 원값에 가까운 쪽, 0 이하면 64).
+        // 예: 800 -> 공홈 768, 옛 PeroPix 832.
         function alignTo64(value) {
-            return Math.ceil(value / 64) * 64;
+            const n = Math.floor(value / 64) * 64;
+            const i = Math.ceil(value / 64) * 64;
+            const r = (value - n < i - value) ? n : i;
+            if (Number.isNaN(r)) return 0;
+            return r <= 0 ? 64 : r;
         }
 
         // Width/Height 직접 수정 시 Custom으로 변경 + 64 배수 조정
@@ -18359,7 +18564,16 @@
         // ============================================================
         // Vibe Transfer
         // ============================================================
-        let vibeList = []; // {image: base64, info_extracted: 1.0, strength: 0.6}
+        // vibe 의 information_extracted 기본값. ★공홈은 모델별로 다르다 (chunks/pages/_app:717370):
+        //   V4.5 Full / Full-Inpainting -> 0.7, 그 외 -> 1.0
+        // 이 값은 /ai/encode-vibe 로 보내져 **인코딩 벡터 자체에 구워진다** — 기본값이 다르면
+        // 같은 이미지라도 다른 vibe 가 된다.
+        function naiDefaultVibeIE(model) {
+            const m = naiBaseModel(model || document.getElementById('naiModel').value);
+            return (m === 'nai-diffusion-4-5-full') ? 0.7 : 1.0;
+        }
+
+        let vibeList = []; // {image, info_extracted, strength}
 
         document.getElementById('enableVibeTransfer').onchange = function() {
             document.getElementById('vibeTransferSettings').style.display = this.checked ? 'block' : 'none';
@@ -18386,7 +18600,7 @@
                 const base64 = await fileToBase64(file);
                 vibeList.push({
                     image: base64,
-                    info_extracted: 1.0,
+                    info_extracted: naiDefaultVibeIE(),
                     strength: 0.6,
                     name: file.name
                 });
@@ -18501,15 +18715,19 @@
                     const width = img.width;
                     const height = img.height;
 
-                    // 캔버스 크기 선택 (1472x1472, 1536x1024, 1024x1536)
-                    let targetW = 1472, targetH = 1472;
-                    if (width > height) {
-                        targetW = 1536;
-                        targetH = 1024;
-                    } else if (width < height) {
-                        targetW = 1024;
-                        targetH = 1536;
+                    // 캔버스 크기는 후보 셋 중 **종횡비가 가장 가까운 것**을 고른다.
+                    // ★공홈 chunks/pages/_app:717501 —
+                    //     rg=[[1024,1536],[1536,1024],[1472,1472]]
+                    //     for (t of rg) if (|t[0]/t[1] - ar| < |n[0]/n[1] - ar|) n = t
+                    //   동률이면 앞선 후보가 이긴다. 경계: 비율 <= 0.8333 세로, < 1.25 정사각, 그 이상 가로.
+                    //   "가로>세로면 무조건 1536x1024" 로 두면 정사각에 가까운 참조가 다른 캔버스로 간다.
+                    const ar = width / height;
+                    const cands = [[1024, 1536], [1536, 1024], [1472, 1472]];
+                    let best = cands[0];
+                    for (const c of cands) {
+                        if (Math.abs(c[0] / c[1] - ar) < Math.abs(best[0] / best[1] - ar)) best = c;
                     }
+                    const targetW = best[0], targetH = best[1];
 
                     const canvas = document.createElement('canvas');
                     canvas.width = targetW;
@@ -18741,22 +18959,31 @@
         async function updateAnlasCost() {
             if (currentProvider !== 'nai') return;
 
-            const width = parseInt(document.getElementById('width').value) || 832;
-            const height = parseInt(document.getElementById('height').value) || 1216;
+            // ★비용은 **실제로 생성될 해상도**로 센다. 백엔드가 64 정렬을 거는데 여기서
+            //   정렬 전 값으로 세면 표시와 청구가 어긋난다 (인핸스에서 실제로 겪은 결함).
+            const width = alignTo64(parseInt(document.getElementById('width').value) || 832);
+            const height = alignTo64(parseInt(document.getElementById('height').value) || 1216);
             const steps = parseInt(document.getElementById('steps').value) || 28;
             const vibeEnabled = document.getElementById('enableVibeTransfer').checked;
             const vibeCount = vibeEnabled ? vibeList.length : 0;
             const preciseRefEnabled = document.getElementById('enablePreciseRef').checked;
             const preciseRefCount = preciseRefEnabled ? preciseRefList.length : 0;
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
-            const slotCount = document.querySelectorAll('.slot:not(.locked)').length;
             const naiModel = document.getElementById('naiModel').value;
 
-            // 모든 슬롯이 잠긴 경우 - 비용 0 표시
-            if (slotCount === 0) {
+            // ★생성 장 수는 **생성 모드**를 따른다. 싱글은 슬롯과 무관하게 1장씩이다.
+            //   addToQueue 의 `promptCount = genMode === 'single' ? 1 : (slotList.length || 1)` 와
+            //   같은 식이어야 한다 — 슬롯 수로만 세면 싱글에서 있지도 않은 슬롯 배수로 계산된다.
+            const unlockedSlots = getUnlockedSlotCount();
+            const slotCount = genMode === 'single' ? 1 : (unlockedSlots || 1);
+
+            // 슬롯 모드에서 슬롯은 있는데 전부 잠긴 경우만 생성이 막힌다 (addToQueue 와 동일 판정)
+            if (genMode === 'slot' && getAllSlotList().length > 0 && unlockedSlots === 0) {
                 document.getElementById('anlasCost').style.display = 'inline';
                 document.getElementById('anlasFreeTag').style.display = 'none';
                 document.getElementById('anlasCost').textContent = '0 (잠김)';
+                document.getElementById('anlasCost').classList.remove('anlas-over-limit');
+                naiCostOverLimit = false;
                 return;
             }
 
@@ -18813,6 +19040,19 @@
                     }
                 }
 
+                // ★공홈은 **이미지 1장** 비용이 140 Anlas 를 넘으면 생성 버튼을 막는다 (g.dZ).
+                //   여러 장 생성의 합계가 아니라 개별 비용 기준이다 — 합계로 재면 정상 상황도 걸린다.
+                naiCostOverLimit = !!data.over_limit;
+                const anlasEl = document.getElementById('anlasCost');
+                if (naiCostOverLimit) {
+                    anlasEl.style.display = 'inline';
+                    document.getElementById('anlasFreeTag').style.display = 'none';
+                    anlasEl.textContent = `${data.cost_per_image} — 1장당 140 초과, 생성 불가`;
+                    anlasEl.classList.add('anlas-over-limit');
+                } else {
+                    anlasEl.classList.remove('anlas-over-limit');
+                }
+
                 // Vibe 캐시 상태 표시
                 const vibeCacheInfo = document.getElementById('vibeCacheInfo');
                 if (vibeCacheInfo && vibes.length > 0) {
@@ -18862,8 +19102,13 @@
         document.getElementById('enableVibeTransfer').addEventListener('change', updateAnlasCost);
         document.getElementById('enablePreciseRef').addEventListener('change', updateAnlasCost);
         document.getElementById('naiModel').addEventListener('change', () => {
+            clearSelectUnsupported(document.getElementById('naiModel'));
+            refreshUcPresetOptions();   // 모델마다 프리셋 목록이 다르다 (공홈 동일)
             updateAnlasCost();
             updateSmeaVisibility();
+        });
+        document.getElementById('ucPreset').addEventListener('change', () => {
+            clearSelectUnsupported(document.getElementById('ucPreset'));
         });
 
         // V4+ 모델에서 SMEA 비활성화
@@ -18885,6 +19130,7 @@
             }
         }
         updateSmeaVisibility(); // 초기 실행
+        refreshUcPresetOptions(); // 초기 실행 — 현재 모델의 프리셋 목록으로 맞춘다
 
         // ============================================================
         // Prompt Weight Highlighting System
@@ -20750,9 +20996,15 @@
             
             // NAI-specific
             if (currentProvider === 'nai') {
-                if (settings.naiModel) document.getElementById('naiModel').value = settings.naiModel;
+                if (settings.naiModel) {
+                    setSelectSafe('naiModel', settings.naiModel, '모델');
+                    refreshUcPresetOptions();
+                }
                 if (settings.smea) document.getElementById('smea').value = settings.smea;
-                if (settings.ucPreset) document.getElementById('ucPreset').value = settings.ucPreset;
+                if (settings.ucPreset) {
+                    setSelectSafe('ucPreset', naiMapUcPreset(settings.ucPreset,
+                        document.getElementById('naiModel').value), 'UC 프리셋');
+                }
                 if (settings.qualityTags !== undefined) document.getElementById('qualityTags').checked = settings.qualityTags;
                 if (settings.furryModeEnabled !== undefined) {
                     furryModeEnabled = settings.furryModeEnabled;
@@ -21157,9 +21409,15 @@
                     
                     // NAI-specific (시작 provider가 NAI일 때)
                     if (currentProvider === 'nai' && naiSettings) {
-                        if (naiSettings.naiModel) document.getElementById('naiModel').value = naiSettings.naiModel;
+                        if (naiSettings.naiModel) {
+                            setSelectSafe('naiModel', naiSettings.naiModel, '모델');
+                            refreshUcPresetOptions();
+                        }
                         if (naiSettings.smea) document.getElementById('smea').value = naiSettings.smea;
-                        if (naiSettings.ucPreset) document.getElementById('ucPreset').value = naiSettings.ucPreset;
+                        if (naiSettings.ucPreset) {
+                            setSelectSafe('ucPreset', naiMapUcPreset(naiSettings.ucPreset,
+                                document.getElementById('naiModel').value), 'UC 프리셋');
+                        }
                         if (naiSettings.qualityTags !== undefined) document.getElementById('qualityTags').checked = naiSettings.qualityTags;
                         if (naiSettings.furryModeEnabled) {
                             furryModeEnabled = true;
@@ -21355,9 +21613,11 @@
                 }
                 
                 // NAI-specific
-                document.getElementById('naiModel').value = naiSettings.naiModel;
+                setSelectSafe('naiModel', naiSettings.naiModel, '모델');
+                refreshUcPresetOptions();
                 document.getElementById('smea').value = naiSettings.smea;
-                document.getElementById('ucPreset').value = naiSettings.ucPreset;
+                setSelectSafe('ucPreset', naiMapUcPreset(naiSettings.ucPreset,
+                    document.getElementById('naiModel').value), 'UC 프리셋');
                 document.getElementById('qualityTags').checked = naiSettings.qualityTags;
                 if (naiSettings.furryModeEnabled) {
                     furryModeEnabled = true;
@@ -21667,7 +21927,7 @@
 
             // 시드가 비어있으면 랜덤 생성
             if (!document.getElementById('seed').value) {
-                document.getElementById('seed').value = Math.floor(Math.random() * 2147483647);
+                document.getElementById('seed').value = naiRandomSeed();
             }
 
             // 초기 그라데이션 업데이트
@@ -21761,6 +22021,8 @@
 
             // Queue 버튼 라벨 (생성 대상 기준): 싱글은 슬롯 개수와 무관하므로 숫자 없이 표시
             generateBtn.textContent = genMode === 'single' ? 'Queue' : `Queue (${getUnlockedSlotCount() || 1})`;
+            // 비용도 생성 모드를 따르므로 모드가 바뀌면 다시 센다
+            if (typeof updateAnlasCost === 'function') updateAnlasCost();
         }
 
         slotModeBtn.onclick = () => {
@@ -22925,7 +23187,7 @@
                     vibeList.push({
                         image: pendingDropData.image,
                         strength: 0.6,
-                        info_extracted: 1.0,
+                        info_extracted: naiDefaultVibeIE(),
                         name: pendingDropData.name
                     });
                     renderVibeList();
@@ -22998,6 +23260,7 @@
                         mask: null,
                         mode: 'img2img',
                         strength: 0.7,
+                        inpaintStrength: 1.0,
                         noise: 0,
                         width: img.width,
                         height: img.height
@@ -23066,11 +23329,27 @@
             image: null,        // base64
             mask: null,         // base64 (white = inpaint area)
             mode: 'img2img',    // 'img2img' | 'inpaint'
+            // ★강도는 모드별로 따로 둔다. 공홈도 img2img 슬라이더와 인페인트 슬라이더가 별개이고,
+            //   기본값이 다르다(0.7 / 1). 하나로 합치면 모드를 오갈 때 값이 서로 샌다.
             strength: 0.7,
+            inpaintStrength: 1.0,
             noise: 0,
             width: 0,
             height: 0
         };
+
+        // 강도 슬라이더는 하나지만 값은 모드별로 따로다 — 지금 모드의 값을 읽고 쓴다.
+        // 구버전 저장 데이터에는 inpaintStrength 가 없으므로 공홈 기본값 1 로 채운다.
+        function currentBaseStrength() {
+            if (baseImageData.mode === 'inpaint') {
+                return baseImageData.inpaintStrength ?? 1.0;
+            }
+            return baseImageData.strength ?? 0.7;
+        }
+        function setCurrentBaseStrength(v) {
+            if (baseImageData.mode === 'inpaint') baseImageData.inpaintStrength = v;
+            else baseImageData.strength = v;
+        }
 
         // Mask Editor 상태
         const maskEditor = {
@@ -23169,8 +23448,10 @@
                 }
 
                 // 설정 복원 (인페인트 모드 고정)
-                document.getElementById('maskEditorStrength').value = baseImageData.strength;
-                document.getElementById('maskEditorStrengthValue').textContent = baseImageData.strength;
+                // 마스크 에디터는 언제나 인페인트 -> 인페인트 강도를 보여준다
+                const _ms = baseImageData.inpaintStrength ?? 1.0;
+                document.getElementById('maskEditorStrength').value = _ms;
+                document.getElementById('maskEditorStrengthValue').textContent = _ms;
                 // 프로그램적으로 value 를 바꿨으므로 게이지(fill)도 동기화 (핸들 위치와 일치)
                 if (typeof updateSliderFill === 'function') updateSliderFill(document.getElementById('maskEditorStrength'));
 
@@ -23467,7 +23748,7 @@
                 baseImageData.image = fullImageCanvas.toDataURL('image/png').split(',')[1];
                 baseImageData.mask = maskEditor.maskCanvas.toDataURL('image/png').split(',')[1];  // 이미 원본 크기
                 baseImageData.mode = 'inpaint';  // 마스크 에디터는 항상 인페인트
-                baseImageData.strength = parseFloat(document.getElementById('maskEditorStrength').value);
+                baseImageData.inpaintStrength = parseFloat(document.getElementById('maskEditorStrength').value);
                 baseImageData.noise = 0;  // 인페인트는 noise 미사용
                 baseImageData.width = maskEditor.originalImage.width;
                 baseImageData.height = maskEditor.originalImage.height;
@@ -23517,8 +23798,9 @@
                 }
 
                 document.getElementById('baseImageMode').value = baseImageData.mode;
-                document.getElementById('baseImageStrength').value = baseImageData.strength;
-                document.getElementById('baseImageStrengthValue').textContent = baseImageData.strength;
+                const _bs = currentBaseStrength();
+                document.getElementById('baseImageStrength').value = _bs;
+                document.getElementById('baseImageStrengthValue').textContent = _bs;
                 document.getElementById('baseImageNoise').value = baseImageData.noise;
                 document.getElementById('baseImageNoiseValue').textContent = baseImageData.noise;
                 // 프로그램적으로 value 를 바꿨으므로 게이지(fill)도 동기화 (핸들 위치와 일치)
@@ -23601,6 +23883,7 @@
                     mask: null,
                     mode: 'img2img',
                     strength: 0.7,
+                    inpaintStrength: 1.0,
                     noise: 0,
                     width: 0,
                     height: 0
@@ -23619,7 +23902,7 @@
 
             // Sliders
             document.getElementById('baseImageStrength').oninput = function() {
-                baseImageData.strength = parseFloat(this.value);
+                setCurrentBaseStrength(parseFloat(this.value));
                 document.getElementById('baseImageStrengthValue').textContent = this.value;
             };
             document.getElementById('baseImageNoise').oninput = function() {
@@ -23629,6 +23912,11 @@
             document.getElementById('baseImageMode').onchange = function() {
                 baseImageData.mode = this.value;
                 updateBaseImageNoiseVisibility();
+                // 강도는 모드별로 값이 다르다 — 슬라이더를 그 모드의 값으로 갈아 끼운다
+                const _ms = currentBaseStrength();
+                document.getElementById('baseImageStrength').value = _ms;
+                document.getElementById('baseImageStrengthValue').textContent = _ms;
+                if (typeof updateSliderFill === 'function') updateSliderFill(document.getElementById('baseImageStrength'));
                 // 마스크 수정 버튼 표시 업데이트
                 document.getElementById('editMaskBtn').style.display = this.value === 'inpaint' ? 'block' : 'none';
                 // 비용 업데이트
@@ -23996,24 +24284,8 @@
                 updateSliderFill(document.getElementById('enhanceStrengthSlider'));
                 updateSliderFill(document.getElementById('enhanceNoiseSlider'));
 
-                // Large 이미지(1MP 초과)는 1.5x 비활성화 (NAI 제한)
-                const megapixels = (img.width * img.height) / 1000000;
-                const isLargeImage = megapixels > 1.1;  // Normal 최대 ~1MP, Large는 그 이상
-
-                // Resolution 버튼 초기화
-                document.querySelectorAll('.enhance-res-btn').forEach(btn => {
-                    const isLargeBtn = btn.dataset.scale === '1.5';
-                    btn.classList.toggle('active', btn.dataset.scale === '1');
-                    if (isLargeBtn && isLargeImage) {
-                        btn.disabled = true;
-                        btn.title = '이미 Large 이미지입니다';
-                        btn.style.opacity = '0.5';
-                    } else {
-                        btn.disabled = false;
-                        btn.title = '';
-                        btn.style.opacity = '1';
-                    }
-                });
+                // 배율 버튼을 원본 크기에 맞춰 만든다. 기본 선택은 가용 배율 중 최대 (공홈 동일).
+                buildEnhanceResButtons(img.width, img.height);
 
                 updateEnhanceResInfo();
                 updateEnhanceModalCost();
@@ -24029,46 +24301,70 @@
             enhanceState.metadata = null;
         }
 
-        // NAI Large 해상도 목록 (1.5배용)
-        const NAI_LARGE_RESOLUTIONS = [
-            [2304, 960], [2112, 1088], [1984, 1152], [1856, 1280], [1728, 1408], [1536, 1536],
-            [1408, 1728], [1280, 1856], [1152, 1984], [1088, 2112], [960, 2304]
-        ];
+        // ============================================================
+        // Enhance 해상도 규칙 (공홈과 동일)
+        //
+        // ★공홈 generateEnhance (chunks/2075:482365):
+        //     width  = Math.floor(원본 너비 × 배율)
+        //     height = Math.floor(원본 높이 × 배율)
+        //   해상도 목록으로 스냅하지 않는다. "NAI Large 해상도" 라는 11개짜리 표를 두고
+        //   가장 가까운 값으로 갈아치우던 옛 구현은 근거가 없었고, 1152x896 을 1728x1344 가
+        //   아니라 1728x1408 로 보내는 등 프리셋 9개 중 6개에서 어긋났다.
+        //
+        // ★배율 선택지 (chunks/3811:1022369):
+        //     832x1216 · 1216x832 → [1.5, 1] 고정 (1.5배가 64 로 안 떨어지는데도 예외)
+        //     그 외 → [2, 1.5, 1] 중 (w·s)(h·s) <= 3,145,728 이고 두 변이 모두 64 의 배수인 것
+        //   기본 선택은 가용 배율 중 최대다.
+        // ============================================================
+        const NAI_ENHANCE_MAX_PIXELS = 3145728;   // 공홈 xM
+        const NAI_ENHANCE_STRIDE = 64;            // 공홈 $d(model)
 
-        // 가장 가까운 NAI 해상도 찾기
-        function findClosestNAIResolution(targetW, targetH) {
-            let closest = NAI_LARGE_RESOLUTIONS[0];
-            let minDiff = Infinity;
-            for (const [w, h] of NAI_LARGE_RESOLUTIONS) {
-                const diff = Math.abs(w - targetW) + Math.abs(h - targetH);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closest = [w, h];
-                }
-            }
-            return closest;
+        // 이 이미지에 쓸 수 있는 배율 목록 (큰 것부터)
+        function enhanceScaleOptions(w, h) {
+            if ((w === 832 && h === 1216) || (w === 1216 && h === 832)) return [1.5, 1];
+            return [2, 1.5, 1].filter(s =>
+                w * s * h * s <= NAI_ENHANCE_MAX_PIXELS &&
+                (w * s) % NAI_ENHANCE_STRIDE === 0 &&
+                (h * s) % NAI_ENHANCE_STRIDE === 0);
         }
 
-        // 배율 적용 목표 해상도 (1.5x면 가장 가까운 NAI Large 해상도로 스냅). 단일·배치 공용.
+        // 배율 적용 목표 해상도. 단일·배치 공용.
+        // ★공홈은 floor(원본×배율) 뒤에 **전송 직전 64 정렬**을 건다 (chunks/2075:477518:
+        //   `i.width % $d(model) != 0 && (i.width = If(i.width, $d(model)))`, If = 가까운 쪽 반올림).
+        //   그래서 1216×832 ×1.5 = 1824×1248 은 **1856×1280** 으로 나간다 (실측: 공홈 출력 PNG).
+        //   1152×896 ×1.5 = 1728×1344 처럼 이미 64 배수면 그대로다.
+        //   ★정렬을 빼면 화면의 해상도·비용은 1824×1248 기준인데 실제 생성은 백엔드가 정렬한
+        //     1856×1280 으로 나가서, 표시 비용(18)과 실제 청구(19)가 어긋난다.
         function computeEnhanceTargetSize(w, h, scale) {
-            if (scale > 1) return findClosestNAIResolution(Math.round(w * scale), Math.round(h * scale));
-            return [w, h];
+            return [alignTo64(Math.floor(w * scale)), alignTo64(Math.floor(h * scale))];
         }
 
-        // base64 이미지를 Canvas로 리사이즈 (1.5x 업스케일용). 실패 시 원본 반환.
-        function upscaleBase64(b64, w, h) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    try {
-                        const c = document.createElement('canvas');
-                        c.width = w; c.height = h;
-                        c.getContext('2d').drawImage(img, 0, 0, w, h);
-                        resolve(c.toDataURL('image/png').split(',')[1]);
-                    } catch { resolve(b64); }
-                };
-                img.onerror = () => resolve(b64);
-                img.src = 'data:image/png;base64,' + b64;
+        // 배율 버튼을 원본 크기에 맞춰 만든다. 기본 선택은 가용 배율 중 최대 (공홈 동일).
+        function buildEnhanceResButtons(w, h) {
+            const box = document.getElementById('enhanceResBtns');
+            const opts = enhanceScaleOptions(w, h);
+            if (!opts.length) {
+                // 1x 조차 조건에 안 맞는 경우는 없지만(1배는 언제나 64 배수 유지) 방어해 둔다
+                box.innerHTML = '<div class="vol-label">이 크기는 Enhance 배율을 쓸 수 없습니다</div>';
+                enhanceState.scale = 1;
+                return;
+            }
+            // 기본 선택은 가용 배율 중 최대(공홈 동일), 버튼 배열은 1x 부터 오름차순으로 보인다
+            // (공홈도 `[...u].reverse()` 로 오름차순으로 그린다).
+            enhanceState.scale = opts[0];
+            box.innerHTML = [...opts].reverse().map(s => {
+                const [tw, th] = computeEnhanceTargetSize(w, h, s);
+                return `<button type="button" class="btn enhance-res-btn${s === opts[0] ? ' active' : ''}"
+                            data-scale="${s}" title="${tw} × ${th}">${s}x</button>`;
+            }).join('');
+            box.querySelectorAll('.enhance-res-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    box.querySelectorAll('.enhance-res-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    enhanceState.scale = parseFloat(btn.dataset.scale);
+                    updateEnhanceResInfo();
+                    updateEnhanceModalCost();
+                });
             });
         }
 
@@ -24104,43 +24400,70 @@
                     })
                 });
                 const data = await response.json();
+                const el = document.getElementById('enhanceModalAnlas');
+                const confirmBtn = document.getElementById('enhanceModalConfirm');
 
-                if (data.is_free) {
-                    document.getElementById('enhanceModalAnlas').textContent = 'Free';
-                } else {
-                    document.getElementById('enhanceModalAnlas').textContent = data.cost_per_image || data.total_cost || '?';
+                // ★1장당 140 Anlas 를 넘으면 공홈은 실행을 막는다. Enhance 는 언제나 1장이라
+                //   그대로 개별 비용 기준이다 (생성 쪽과 같은 판정).
+                const box = el.parentElement;
+                let note = box.querySelector('.enhance-cost-note');
+                el.textContent = data.over_limit
+                    ? data.cost_per_image
+                    : (data.is_free ? 'Free' : (data.cost_per_image || data.total_cost || '?'));
+                box.classList.toggle('anlas-over-limit', !!data.over_limit);
+                if (data.over_limit) {
+                    if (!note) {
+                        note = document.createElement('div');
+                        note.className = 'enhance-cost-note';
+                        note.style.cssText = 'margin-top:4px; font-size:0.78rem;';
+                        box.appendChild(note);
+                    }
+                    note.textContent = '1장당 140 Anlas를 넘어 실행할 수 없습니다';
+                } else if (note) {
+                    note.remove();
                 }
+                if (confirmBtn) confirmBtn.disabled = !!data.over_limit;
             } catch (e) {
-                // 백엔드 실패 시 로컬 계산 (fallback)
-                const pixels = w * h;
-                const basePixels = 1024 * 1024;
-                let cost = Math.ceil(pixels / basePixels * 20);
-                if (steps > 28) {
-                    cost = Math.ceil(cost * (steps / 28));
-                }
-                cost = Math.max(Math.ceil(cost * strength), 2);
+                // 백엔드를 못 부르면 같은 공식으로 직접 센다 (공홈 식 — backend.py 의 상수와 같은 값)
+                const px = w * h;
+                const base = Math.ceil(2.951823174884865e-6 * px + 5.753298233447344e-7 * px * steps);
+                const cost = Math.max(Math.ceil(base * strength), 2);
                 document.getElementById('enhanceModalAnlas').textContent = cost;
             }
+        }
+
+        // 사이드바에 세팅된 시드. -1(랜덤 표식)이거나 비어 있으면 새로 뽑는다.
+        function enhanceSeedFromUi() {
+            const v = parseInt(document.getElementById('seed').value);
+            return (Number.isFinite(v) && v >= 0) ? v : naiRandomSeed();
         }
 
         // 인핸스 요청 파라미터 구성 (단일 모달·배치 공용). 메타데이터 없으면 사이드바 설정 사용.
         function buildEnhanceRequest({ imageBase64, metadata, slotIndex, width, height, strength, noise }) {
             const normalized = metadata ? normalizeMetadata(metadata) : null;
+            const model = normalized?.nai_model || document.getElementById('naiModel').value;
+            // ★`-2::upscaled, blurry::` 삽입은 **백엔드가** 한다 (enhance_prompt_add 플래그).
+            //   공홈은 퀄리티 접미사를 붙인 **뒤에** 이 문구를 넣는데, 접미사를 붙이는 쪽이
+            //   백엔드라 여기서 미리 끼워 넣으면 순서가 뒤집힌다 (실측: 공홈 출력 PNG 의 prompt 와 대조).
             const prompt = normalized?.prompt || document.getElementById('prompt').value || '';
             const negativePrompt = normalized?.negative_prompt || document.getElementById('negativePrompt').value || '';
             const charPrompts = (normalized?.character_prompts) || [];  // 원본의 캐릭터 프롬프트 보존·기록
             const charNegatives = (normalized?.character_negatives) || [];  // 캐릭터별 네거티브 보존
             const params = {
                 provider: 'nai',
-                nai_model: normalized?.nai_model || document.getElementById('naiModel').value,
+                nai_model: model,
                 base_prompt: prompt,
+                enhance_prompt_add: true,
                 negative_prompt: negativePrompt,
                 character_prompts: charPrompts,
                 character_prompts_with_coords: charPrompts.map((p, i) => ({ prompt: p, uc: charNegatives[i] || '' })),
                 width, height,
                 steps: normalized?.steps || parseInt(document.getElementById('steps').value) || 28,
                 cfg: normalized?.cfg || parseFloat(document.getElementById('cfg').value) || 5,
-                seed: Math.floor(Math.random() * 2147483647),
+                // ★시드는 **사이드바에 세팅된 값**을 따른다. 공홈도 Enhance 요청에 현재 params 의
+                //   seed 를 그대로 싣고, 값이 없을 때만 새로 뽑는다 (chunks/2075:473715).
+                //   무조건 랜덤으로 뽑으면 시드를 고정해 두고 인핸스해도 매번 다른 그림이 나온다.
+                seed: enhanceSeedFromUi(),
                 sampler: normalized?.sampler || document.getElementById('sampler').value || 'k_euler_ancestral',
                 scheduler: normalized?.scheduler || document.getElementById('scheduler').value || 'karras',
                 smea: normalized?.smea || document.getElementById('smea').value || 'none',
@@ -24164,6 +24487,7 @@
                     image: v.image, info_extracted: v.info_extracted, strength: v.strength,
                     name: v.name || 'vibe', encoded: v.encoded, encoded_model: v.encoded_model
                 }));
+                params.normalize_vibe_strength = document.getElementById('normalizeVibeStrength').checked;
             }
             if (document.getElementById('enablePreciseRef').checked && preciseRefList.length > 0) {
                 params.precise_references = preciseRefList.map(ref => ({
@@ -24186,23 +24510,10 @@
             // 목표 해상도 (1.5x면 NAI 지원 해상도로 스냅)
             const [w, h] = getEnhanceTargetSize();
 
-            // 이미지 준비 (1.5x면 Canvas로 업스케일)
-            let imageBase64 = enhanceState.imageBase64;
-            if (enhanceState.scale > 1) {
-                const img = new Image();
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = reject;
-                    img.src = 'data:image/png;base64,' + enhanceState.imageBase64;
-                });
-
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, w, h);
-                imageBase64 = canvas.toDataURL('image/png').split(',')[1];
-            }
+            // ★원본을 미리 확대하지 않는다 — 공홈은 저장된 원본을 그대로 보내고
+            //   width/height 만 배율만큼 키운다 (chunks/2075:482365). Canvas 로 미리 늘리면
+            //   리샘플 커널이 달라 img2img 시작 latent 가 어긋난다.
+            const imageBase64 = enhanceState.imageBase64;
 
             // 요청 파라미터 구성 (단일·배치 공용 헬퍼)
             const enhanceParams = buildEnhanceRequest({
@@ -24248,6 +24559,8 @@
 
         // ===== 슬롯 전체(배치) 인핸스 (NAI 전용) =====
         let batchEnhanceEntries = [];  // [{ slotIndex, card, label }]
+        let batchScaleAdjusted = 0;    // 이번 배치에서 배율이 내려간 카드 수 (완료 토스트에 표시)
+        let naiCostOverLimit = false;  // 1장당 140 Anlas 초과 (공홈은 이때 생성을 막는다)
         let batchCostToken = 0;        // 비용 계산 경쟁 방지
         const batchEnhanceSettings = { magnitude: 3, advancedMode: false, strength: 0.5, noise: 0, scale: 1 };
 
@@ -24291,8 +24604,16 @@
             let imageBase64 = await resolveImageBase64(card._imageData);
             if (!imageBase64) return false;
             const [ow, oh] = await getSlotImageDims(card);
-            const [w, h] = computeEnhanceTargetSize(ow, oh, scale || 1);
-            if ((scale || 1) > 1 && (w !== ow || h !== oh)) imageBase64 = await upscaleBase64(imageBase64, w, h);
+            // 배치는 여러 크기를 한 배율로 돌린다. 그 카드에 쓸 수 없는 배율이면 건너뛰지 않고
+            // 쓸 수 있는 가장 큰 배율로 내린다 (공홈엔 배치 기능이 없어 대응 규칙이 없다).
+            const usable = enhanceScaleOptions(ow, oh);
+            let eff = scale || 1;
+            if (!usable.includes(eff)) {
+                eff = usable.find(s => s <= eff) ?? 1;
+                batchScaleAdjusted++;
+            }
+            const [w, h] = computeEnhanceTargetSize(ow, oh, eff);
+            // ★배치도 원본을 그대로 보낸다 (단일 경로와 같은 이유)
             const params = buildEnhanceRequest({ imageBase64, metadata: card._imageData.metadata, slotIndex, width: w, height: h, strength, noise });
             try {
                 const resp = await fetch(`${API_BASE}/api/generate/multi`, {
@@ -24431,26 +24752,21 @@
             const [strength, noise] = getBatchStrengthNoise();
             const scale = batchEnhanceSettings.scale;
             let ok = 0;
+            batchScaleAdjusted = 0;
             for (const e of entries) {
                 for (const card of e.pendingCards) {
                     if (await queueEnhanceForCard(card, e.slotIndex, strength, noise, scale)) ok++;
                 }
             }
-            showToast(ok ? `${ok}장 인핸스 큐에 추가됨` : '인핸스 큐 등록 실패', ok ? 'success' : 'error');
+            let msg = ok ? `${ok}장 인핸스 큐에 추가됨` : '인핸스 큐 등록 실패';
+            // ★배율이 내려간 것을 조용히 넘기지 않는다 — 몇 장이 다른 배율로 갔는지 알려 준다
+            if (ok && batchScaleAdjusted) msg += ` (${batchScaleAdjusted}장은 ${scale}x를 쓸 수 없어 낮은 배율로 조정)`;
+            showToast(msg, ok ? 'success' : 'error');
         }
 
         // Enhance 모달 이벤트 설정
         function setupEnhanceModalEvents() {
-            // Resolution 버튼 토글
-            document.querySelectorAll('.enhance-res-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.enhance-res-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    enhanceState.scale = parseFloat(btn.dataset.scale);
-                    updateEnhanceResInfo();
-                    updateEnhanceModalCost();
-                });
-            });
+            // Resolution 버튼은 openEnhanceModal 이 원본 크기에 맞춰 만든다 (buildEnhanceResButtons)
 
             // Magnitude 슬라이더
             const magnitudeSlider = document.getElementById('enhanceModalMagnitudeSlider');
