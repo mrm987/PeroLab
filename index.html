@@ -18485,7 +18485,7 @@
         
         // 64 배수로 조정. ★공홈은 올림이 아니라 **가까운 쪽으로 반올림**한다
         // (chunks/pages/_app:669215 K(): floor/ceil 중 원값에 가까운 쪽, 0 이하면 64).
-        // 예: 800 -> 공홈 768, 옛 PeroPix 832.
+        // 예: 780 -> 768 (올림이면 832). ★동률이면 큰 쪽 — 800 은 양쪽 32 라 832 다.
         function alignTo64(value) {
             const n = Math.floor(value / 64) * 64;
             const i = Math.ceil(value / 64) * 64;

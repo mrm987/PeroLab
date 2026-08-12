@@ -1583,7 +1583,8 @@ async def call_nai_api(req: GenerateRequest):
 
     # NAI API는 64 배수 해상도만 지원 - 비정렬 값 유입 시 조정.
     # ★공홈은 올림이 아니라 **가까운 쪽으로 반올림**한다 (chunks/pages/_app:669215 K()).
-    #   예: 800 -> 공홈 768, 옛 PeroPix 832. 올림은 없던 유료 재화 소모를 만든다.
+    #   예: 780 -> 768 (올림이면 832). ★동률이면 큰 쪽이다 — 800 은 양쪽 32 라 832 다.
+    #   올림은 없던 유료 재화 소모를 만든다.
     import math
 
     def _align64(v: int) -> int:
