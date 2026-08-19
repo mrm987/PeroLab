@@ -450,7 +450,7 @@ def build_inpaint_blend_mask(base64_mask: str, width: int, height: int):
     ★공홈의 dilate/blur 워커 본체는 지연 로드 청크라 번들에 없다 — 반경 값과 순서만 확인됐고
       커널 형태는 미확인이다. 픽셀 단위로 같지는 않고 "경계 32px 을 부드럽게 섞는다"가 같다.
     """
-    from PIL import Image as PILImage, ImageFilter
+    from PIL import Image as PILImage, ImageChops, ImageFilter
 
     mask = PILImage.open(io.BytesIO(base64.b64decode(base64_mask))).convert('L')
     if mask.size != (width, height):
@@ -458,11 +458,19 @@ def build_inpaint_blend_mask(base64_mask: str, width: int, height: int):
 
     sw, sh = max(1, width // 8), max(1, height // 8)
     small = mask.resize((sw, sh), PILImage.NEAREST).point(lambda v: 255 if v >= 155 else 0, mode='L')
+    # 칠한 영역 그대로 (와이어로 보내는 마스크와 같은 8px 격자)
+    hard = small.resize((width, height), PILImage.NEAREST)
     # dilate 반경 4 = 9x9 최대값 필터 (1/8 스케일)
     small = small.filter(ImageFilter.MaxFilter(9))
     blend = small.resize((width, height), PILImage.NEAREST)
     for _ in range(2):
         blend = blend.filter(ImageFilter.GaussianBlur(20))
+    # ★칠한 영역 **안**은 알파 255 로 고정한다 (2026-08-20, 사용자 제보 "인페인트 흔적").
+    #   PIL 의 GaussianBlur(radius) 는 radius 가 표준편차라 2회면 유효 시그마 약 28 이고,
+    #   팽창 32px 과 맞먹어 칠한 경계 안쪽 알파가 212~222(0.83~0.87) 까지만 올라갔다.
+    #   작은 마스크(40px)는 중심조차 221 이라 지운 것이 13% 비쳐 흔적으로 보인다.
+    #   전이 구간은 칠한 영역 **바깥**에만 있어야 한다 — 안쪽은 100% 새 그림.
+    blend = ImageChops.lighter(blend, hard)
     return blend
 
 
@@ -4649,6 +4657,7 @@ async def calculate_cost(request: dict):
     has_char_ref = request.get("has_char_ref", False)  # Legacy
     precise_ref_count = request.get("precise_ref_count", 0)  # 새 API
     count = request.get("count", 1)  # 생성 횟수
+    has_mask = bool(request.get("has_mask", False))  # 인페인트 여부 (vibe 과금 판정에 쓴다)
 
     # Vibe 캐시 체크 (vibes 배열이 제공된 경우)
     vibes = request.get("vibes", [])
@@ -4691,42 +4700,38 @@ async def calculate_cost(request: dict):
     smea = smea_val in ("SMEA", "SMEA+DYN")
     smea_dyn = smea_val == "SMEA+DYN"
 
-    # Vibe 인코딩 비용: 공홈은 **각 vibe 이미지의 해상도**로 정해진다 (표 e0). 옛 구현은 일괄 2였다.
-    vibe_encoding_cost = 0
-    if uncached_vibe_count > 0:
-        counted = 0
-        for v in (vibes or []):
-            if counted >= uncached_vibe_count:
-                break
-            img_b64 = v.get("image", "")
-            if not img_b64:
-                continue
-            try:
-                from PIL import Image as PILImage
-                vi = PILImage.open(io.BytesIO(base64.b64decode(img_b64)))
-                c = nai_vibe_encode_cost(vi.size[0], vi.size[1], is_opus)
-                vibe_encoding_cost += max(c, 0)
-            except Exception:
-                vibe_encoding_cost += 2   # 못 읽으면 옛 근사값
-            counted += 1
-        if counted == 0:  # vibes 배열 없이 개수만 온 경우
-            vibe_encoding_cost = uncached_vibe_count * 2
+    # Vibe 인코딩 비용: **개당 2 고정** (공홈 getPrice — 인코딩이 캐시에 있으면 0).
+    # ★해상도별 표(1/2/3/5/7)는 NAI Upscale 툴 가격이지 vibe 가 아니다. 옛 코드는 그 표를
+    #   쓰려고 정의되지 않은 함수(nai_vibe_encode_cost)를 불러 매번 예외로 떨어졌고,
+    #   결과적으로 except 의 2 를 쓰고 있었다 — 값만 우연히 맞았다.
+    # ★캐릭터 참조가 하나라도 있거나 인페인트면 공홈은 vibe 비용을 아예 더하지 않는다
+    #   (호출부 조건: vibes.length>0 && encodedVibes && !hasCharRefs && !mask).
+    ref_count = precise_ref_count if precise_ref_count > 0 else (1 if has_char_ref else 0)
+    vibe_billable = ref_count == 0 and not has_mask
+    vibe_encoding_cost = uncached_vibe_count * NAI_VIBE_ENCODE_COST if vibe_billable else 0
 
     cost_per_image = calculate_anlas_cost(
         width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength,
         precise_ref_count, vibe_encode_cost=0, smea=smea, smea_dyn=smea_dyn)
 
-    # 공홈은 Opus 무료 1장을 n_samples 에서 빼는 방식이라, 여러 장이면 나머지는 정가다.
-    opus_free = is_opus and width * height <= NAI_OPUS_FREE_PIXELS and steps <= 28
-    if opus_free:
-        per_sample = max(math.ceil(
-            nai_image_sample_cost(width, height, steps, smea, smea_dyn) * strength), 2)
-        total_cost = per_sample * max(0, count - 1)
-    else:
-        total_cost = cost_per_image * count
-    total_cost += vibe_encoding_cost
-    if uncached_vibe_count > 4:
-        total_cost += (uncached_vibe_count - 4) * 2
+    # ★Opus 무료는 **요청 하나의 n_samples 에서 1장**이다. PeroPix 는 언제나 n_samples=1 로
+    #   낱장 전송하므로(generate_nai_image) 배치의 **모든 장**이 무료다.
+    #   ☆옛 코드는 공홈의 배치 의미를 '배치 장 수'에 적용해 per_sample*(count-1) 을 냈다.
+    #     그래서 실제 차감이 0 인데 9슬롯×100회에 17,980 이 떴고(제보 2026-08-17),
+    #     그 분기가 참조비(장당 5×개수)를 통째로 빠뜨려 참조 1장 생성이 FREE 로 표시됐다
+    #     (실제로는 차감된다). 표시 방향이 서로 반대인 두 오류가 한 분기에서 나왔다.
+    total_cost = cost_per_image * count
+
+    # vibe 인코딩과 초과분 가산은 **요청당 한 번**이다 (장당 아님).
+    # ★초과 문턱은 4 이고, 세는 대상은 **켜진(enabled) 수**다 — 캐시 여부와 무관하다.
+    if vibe_billable:
+        total_cost += vibe_encoding_cost
+        total_cost += max(0, vibe_count - 4) * NAI_VIBE_ENCODE_COST
+
+    # ★1장 상한(140) 판정은 **참조비를 뺀 기본 생성비**로 한다 (공홈 `I > g.dZ ? -3 : I*v`).
+    #   I 는 무료여도 언제나 계산된다 — 무료는 I 를 0 으로 만드는 게 아니라 곱하는 쪽을 깎는다.
+    base_per_sample = max(math.ceil(
+        nai_image_sample_cost(width, height, steps, smea, smea_dyn) * strength), 2)
 
     return {
         "cost_per_image": cost_per_image,
@@ -4734,7 +4739,7 @@ async def calculate_cost(request: dict):
         "count": count,
         "is_free": total_cost == 0,
         # 공홈은 1장이 140 Anlas 를 넘으면 생성 버튼을 막는다 (g.dZ). 표시만 하고 막지는 않는다.
-        "over_limit": cost_per_image > NAI_MAX_COST_PER_IMAGE,
+        "over_limit": base_per_sample > NAI_MAX_COST_PER_IMAGE,
         "vibe_encoding_cost": vibe_encoding_cost,
         "cached_vibes": len(vibes) - uncached_vibe_count if vibes else 0,
         "uncached_vibes": uncached_vibe_count

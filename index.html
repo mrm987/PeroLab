@@ -18977,6 +18977,12 @@
             const unlockedSlots = getUnlockedSlotCount();
             const slotCount = genMode === 'single' ? 1 : (unlockedSlots || 1);
 
+            // 베이스 이미지(img2img/인페인트) 상태 — 비용 계산에 쓴다
+            const hasBase = !!(baseImageData.enabled && baseImageData.image);
+            const hasMask = !!(hasBase && baseImageData.mode === 'inpaint' && baseImageData.mask);
+            const baseStrengthForCost = hasMask ? (baseImageData.inpaintStrength ?? 1.0)
+                : (hasBase ? (baseImageData.strength ?? 0.7) : 1.0);
+
             // 슬롯 모드에서 슬롯은 있는데 전부 잠긴 경우만 생성이 막힌다 (addToQueue 와 동일 판정)
             if (genMode === 'slot' && getAllSlotList().length > 0 && unlockedSlots === 0) {
                 document.getElementById('anlasCost').style.display = 'inline';
@@ -19009,7 +19015,13 @@
                         precise_ref_count: preciseRefCount,
                         count: totalCount,
                         vibes: vibes,
-                        model: naiModel
+                        model: naiModel,
+                        // ★인페인트면 공홈은 vibe 비용을 아예 더하지 않는다 (참조가 있을 때도 같다).
+                        has_mask: hasMask,
+                        // ★강도 계수 (공홈 y = mask ? inpaintImg2ImgStrength : (image ? strength : 1)).
+                        //   Enhance 모달은 이미 보내고 있었는데 여기서만 빠져 있어, 베이스 이미지가
+                        //   있을 때 무료 구간 밖에서 실제보다 비싸게 표시됐다.
+                        strength: baseStrengthForCost
                     })
                 });
                 const data = await response.json();
