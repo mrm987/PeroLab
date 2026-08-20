@@ -16222,14 +16222,22 @@
         let lastWsActivity = 0;
         setInterval(() => {
             if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            // ★숨겨진 창에서는 판정하지 않는다. 크롬은 5분 넘게 숨겨진 페이지의 타이머를 60초에 한 번으로
+            //   묶으므로(intensive wake-up throttling, setInterval도 반복마다 chain에 포함), 임계가 60초보다
+            //   작으면 검사할 때마다 무조건 '무응답'이 되어 강제종료 → 재연결이 영원히 반복된다.
+            //   (2026-08-20 유저 제보 로그: 로컬 생성 13분 내내 connect/sync/disconnect 반복)
+            //   복귀 시점 점검은 아래 visibilitychange 핸들러가 맡는다.
+            if (document.hidden) return;
             const idle = performance.now() - lastWsActivity;
             if (idle < 25000) return;               // 최근 수신 있음 → 정상
-            if (idle > 50000) {                     // 50초+ 완전 무응답 → 죽은 연결로 판단, 재연결
-                console.warn('[WS] No activity for 50s, forcing reconnect');
+            if (idle > 180000) {                    // 3분+ 완전 무응답 → 죽은 연결로 판단, 재연결
+                // ★임계는 스로틀 주기(60초) + ping 프로브 왕복(2×40초) 위로 잡는다. 서버가 30초마다
+                //   heartbeat를 보내므로(backend.py WS_HEARTBEAT_INTERVAL) 정상 연결이면 여기 못 온다.
+                console.warn('[WS] No activity for 180s, forcing reconnect');
                 try { ws.close(); } catch (e) {}
                 return;
             }
-            // 25~50초 무응답: ping 프로브(생존 확인만, 이미지 replay 없음). pong 오면 onmessage가 activity 갱신.
+            // 25초+ 무응답: ping 프로브(생존 확인만, 이미지 replay 없음). pong 오면 onmessage가 activity 갱신.
             try { ws.send(JSON.stringify({ type: 'ping' })); } catch (e) {}
         }, 20000);
 
@@ -16558,6 +16566,11 @@
 
                 case 'pong':
                     // Heartbeat 응답
+                    break;
+
+                case 'heartbeat':
+                    // 서버가 유휴 상태에서도 30초마다 보내는 생존 신호.
+                    // 수신 자체가 lastWsActivity를 갱신하므로(onmessage) 여기서 할 일은 없다.
                     break;
             }
         }

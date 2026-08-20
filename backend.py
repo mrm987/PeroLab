@@ -2531,6 +2531,10 @@ def tiled_upscale(model, img_tensor, tile_size=512, overlap=32):
 # ============================================================
 # App Setup
 # ============================================================
+# WS 생존 신호 주기(초). 프론트의 강제 재연결 임계(180초)보다 충분히 짧아야 한다.
+WS_HEARTBEAT_INTERVAL = 30
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global install_status
@@ -2545,6 +2549,19 @@ async def lifespan(app: FastAPI):
     # 큐 처리 백그라운드 태스크 시작
     queue_task = asyncio.create_task(process_queue())
 
+    # 클라이언트 생존 신호 — 유휴 상태에서도 주기적으로 보낸다.
+    # ★프론트는 '마지막 수신 이후 경과'로 죽은 연결을 판정하는데(index.html WS 하트비트),
+    #   서버가 유휴일 때 아무것도 안 보내면 그 시계가 무한정 자란다. 로컬 엔진 생성은 스텝
+    #   진행률을 안 보내 한 장 내내 무음이라 특히 길다 (2026-08-20 유저 제보: 24.58s/it × 30스텝 = 13분).
+    #   uvicorn의 프로토콜 레벨 ping은 브라우저 네트워크 계층이 자동 응답해 JS onmessage를 안 깨우므로
+    #   앱 레벨 메시지가 따로 필요하다.
+    async def heartbeat_loop():
+        while True:
+            await asyncio.sleep(WS_HEARTBEAT_INTERVAL)
+            if gen_queue.clients:
+                await gen_queue.broadcast({"type": "heartbeat"})
+    heartbeat_task = asyncio.create_task(heartbeat_loop())
+
     # 서버 준비 완료 후 브라우저 열기
     async def open_browser_delayed():
         await asyncio.sleep(0.5)
@@ -2556,6 +2573,7 @@ async def lifespan(app: FastAPI):
 
     # 종료 시 태스크 취소
     queue_task.cancel()
+    heartbeat_task.cancel()
     upscale_cache.clear()
 
 
