@@ -2388,6 +2388,8 @@
 
         /* FREE 배지: 박스 높이 = 바 line box(캡 12px + line-height:1 + 세로 padding 0 = 1em)
            → 표시/숨김과 무관하게 행 리듬을 부풀리지 않음. 가로 간격은 flex gap. */
+        .anlas-info .opus-usage { font-weight: 600; opacity: 0.85; }
+        .anlas-info .opus-usage.opus-usage-low { color: var(--warning, #F5B942); opacity: 1; }
         .anlas-info .free-tag {
             display: inline-flex;
             align-items: center;
@@ -8978,8 +8980,13 @@
                         </div>
                         <div id="naiSettingsContent" class="collapsible-content">
                             <label>Model</label>
+                            <!-- ★새 모델이 위. 다만 **처음 켠 사람의 기본값은 V4.5 Full** 로 둔다
+                                 (selected) — V5 는 같은 해상도·스텝에서 Anlas 가 1.5배라
+                                 모르는 채로 기본이 바뀌면 안 된다. 고른 값은 저장되어 유지된다. -->
                             <select id="naiModel">
-                                <option value="nai-diffusion-4-5-full">V4.5 Full</option>
+                                <option value="nai-diffusion-5-full">V5 Full</option>
+                                <option value="nai-diffusion-5-curated">V5 Curated</option>
+                                <option value="nai-diffusion-4-5-full" selected>V4.5 Full</option>
                                 <option value="nai-diffusion-4-5-curated">V4.5 Curated</option>
                             </select>
 
@@ -9004,9 +9011,25 @@
                                 </div>
                             </div>
 
-                            <div class="checkbox-row">
-                                <input type="checkbox" id="qualityTags" checked>
-                                <label for="qualityTags">Add Quality Tags</label>
+                            <!-- ★퀄리티는 켬/끔이 아니라 **프리셋 목록**이다 (공홈 2026-08-21 재배포).
+                                 목록은 모델이 정한다 — V5 만 Light 가 있다.
+                                 ★라벨은 공홈 원문(영어) 그대로 쓴다. 번역하지 않는다. -->
+                            <div class="row">
+                                <div>
+                                    <label>Quality Preset</label>
+                                    <select id="qualityPreset">
+                                        <option value="standard">Standard</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                </div>
+                                <div id="transparentBgBox" class="checkbox-row" style="align-self: flex-end; padding-bottom: 8px;">
+                                    <input type="checkbox" id="transparentBg">
+                                    <label for="transparentBg">Transparent BG</label>
+                                </div>
+                            </div>
+                            <div id="straightAlphaBox" class="checkbox-row" style="display: none;">
+                                <input type="checkbox" id="straightAlpha">
+                                <label for="straightAlpha">Straight Alpha</label>
                             </div>
                         </div>
                     </div>
@@ -9436,6 +9459,9 @@
                     <span class="anlas-cost-label">-</span>
                     <span id="anlasCost">0</span>
                     <span id="anlasFreeTag" class="free-tag" style="display: none;">FREE</span>
+                    <!-- ★Opus 무료 잔량 — V5 부터 무료가 유한해졌다. Opus 계정에만 보인다. -->
+                    <span id="opusUsageSep" class="anlas-separator" style="display: none;">│</span>
+                    <span id="opusUsage" class="opus-usage" style="display: none;"></span>
                 </div>
 
                 <div class="status-text" id="statusText" style="text-align: left; margin-bottom: 4px;">준비</div>
@@ -10885,11 +10911,58 @@
         // ★프리셋 본문에 "nsfw, " 를 박지 말 것. 공홈은 조건이 맞을 때만 별도로 앞에 붙인다.
         // ★프리셋 목록의 순서가 곧 공홈 ucPreset 인덱스다. 마지막은 언제나 none.
         // ============================================================
-        const NAI_QUALITY_SUFFIX = {
-            'nai-diffusion-4-5-full': ', very aesthetic, masterpiece, no text',
-            'nai-diffusion-4-5-curated': ', very aesthetic, masterpiece, no text, -0.8::feet::, rating:general',
+        // 퀄리티 프리셋 (공홈 UM()). ★2026-08-21 재배포로 켬/끔이 아니라 **목록**이 됐다.
+        //   목록 순서가 곧 드롭다운 순서이고 마지막은 언제나 none 이다.
+        //   ★backend.py 의 NAI_QUALITY_PRESETS 와 **같은 값이어야 한다.**
+        const NAI_QUALITY_PRESETS = {
+            'nai-diffusion-5-full': [
+                { id: 'standard', name: 'Standard', text: ', very aesthetic, masterpiece, no text' },
+                { id: 'light', name: 'Light', text: ', very aesthetic, amazing quality, no text' },   // ★V5 에만 있다
+                { id: 'none', name: 'None', text: '' },
+            ],
+            'nai-diffusion-4-5-full': [
+                { id: 'standard', name: 'Standard', text: ', very aesthetic, masterpiece, no text' },
+                { id: 'none', name: 'None', text: '' },
+            ],
+            'nai-diffusion-4-5-curated': [
+                { id: 'standard', name: 'Standard', text: ', very aesthetic, masterpiece, no text, -0.8::feet::, rating:general' },
+                { id: 'none', name: 'None', text: '' },
+            ],
+            // ★아래 둘은 **만들지 않는 모델**이다 (드롭다운에 없다). 갤러리에 들어온 옛 그림에서
+            //   퀄리티 태그를 떼어내려면 그 모델의 접미사를 알아야 해서 표에만 둔다.
+            'nai-diffusion-4-full': [
+                { id: 'standard', name: 'Standard', text: ', no text, best quality, very aesthetic, absurdres' },
+                { id: 'none', name: 'None', text: '' },
+            ],
+            'nai-diffusion-4-curated-preview': [
+                { id: 'standard', name: 'Standard', text: ', rating:general, best quality, very aesthetic, absurdres' },
+                { id: 'none', name: 'None', text: '' },
+            ],
         };
+        NAI_QUALITY_PRESETS['nai-diffusion-5-curated'] = NAI_QUALITY_PRESETS['nai-diffusion-5-full'];
+
+        // 모델 -> standard 접미사 (옛 이름. 메타데이터 되읽기가 쓴다)
+        const NAI_QUALITY_SUFFIX = Object.fromEntries(
+            Object.entries(NAI_QUALITY_PRESETS).map(([m, list]) => [m, list[0].text]));
+
+        // 아는 접미사 **전부** — 모델을 모르는 그림에서 퀄리티 태그를 떼어낼 때 쓴다
+        const NAI_ALL_QUALITY_SUFFIXES = [...new Set(
+            Object.values(NAI_QUALITY_PRESETS).flatMap(l => l.map(p => p.text)).filter(Boolean))];
+
+        // ★투명 배경을 켜면 퀄리티 접미사 **앞에** 이것이 끼어든다 (공홈 rr()).
+        //   퀄리티 프리셋이 none 이어도 이 한 마디는 붙는다.
+        const NAI_TRANSPARENT_BG_TAG = 'transparent background';
+
         const NAI_UC_PRESETS = {
+            // ★V5 네 모델이 **한 목록을 공유**한다 (공홈 Z$()).
+            //   ★★`Light` 본문이 V4.5 의 것과 **전혀 다르다** — 베끼지 말 것.
+            'nai-diffusion-5-full': [
+                { cat: 'heavy', name: 'Heavy', text: 'lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page' },
+                { cat: 'light', name: 'Light', text: 'lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::' },
+                { cat: 'furry', name: 'Furry Focus', text: '{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic' },
+                { cat: 'human', name: 'Human Focus', text: 'lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy' },
+                { cat: 'none', name: 'None', text: '' },
+            ],
             'nai-diffusion-4-5-full': [
                 { cat: 'heavy', name: 'Heavy', text: 'lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page' },
                 { cat: 'light', name: 'Light', text: 'lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page' },
@@ -10903,6 +10976,39 @@
                 { cat: 'human', name: 'Human Focus', text: 'blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page' },
                 { cat: 'none', name: 'None', text: '' },
             ],
+        };
+        // ★V5 Curated 는 Full 과 **같은 목록**이다 (공홈이 한 case 로 묶어 둔다).
+        NAI_UC_PRESETS['nai-diffusion-5-curated'] = NAI_UC_PRESETS['nai-diffusion-5-full'];
+
+        // ══ 모델 능력표 ══════════════════════════════════════════════════════════
+        // ★★공홈 PE(model) 에서 우리가 실제로 쓰는 항목만 추린 것이다 (2026-08-21 대조).
+        //   정본은 d:/ClaudeCode/PeroPix3/docs/nai-web-reference.md 의 「능력표」 절.
+        // ★★**모델 분기를 이 표 밖에서 새로 만들지 말 것.** V5 가 오면서
+        //   「바이브 되나 · 스케줄러 고를 수 있나 · Variety+ 되나」가 전부 갈라졌다 —
+        //   흩어진 문자열 검사는 하나를 빠뜨리면 조용히 틀린다.
+        // ★★backend.py 의 NAI_MODEL_CAPS 와 **같은 값이어야 한다.**
+        const NAI_CAPS_V45 = {
+            vibe: true, char_ref: true, noise_schedule: true, cfg_rescale: true,
+            cfg_delay: true, transparency: false, enhance_prompt_add: true, text: true,
+            freeform_position: false, max_characters: 6, cfg_delay_sigma: 58,
+            opus_usage_limit: false, anlas_multiplier: 1.0,
+        };
+        const NAI_CAPS_V5 = {
+            ...NAI_CAPS_V45,
+            // ★★V5 에서 **꺼진 것들.** 공홈 FAQ: 바이브·정밀 참조는 "post-launch additions".
+            vibe: false, char_ref: false, noise_schedule: false, cfg_delay: false,
+            transparency: true, freeform_position: true, max_characters: 32,
+            opus_usage_limit: true, anlas_multiplier: 1.5,
+        };
+        const NAI_MODEL_CAPS = {
+            'nai-diffusion-5-full': NAI_CAPS_V5,
+            'nai-diffusion-5-curated': NAI_CAPS_V5,
+            'nai-diffusion-4-5-full': NAI_CAPS_V45,
+            'nai-diffusion-4-5-curated': NAI_CAPS_V45,
+        };
+        // ★모르는 모델(= 목록에 없는 V4.0 계열)의 능력. 공홈의 V4.0 행 그대로다.
+        const NAI_CAPS_FALLBACK = {
+            ...NAI_CAPS_V45, char_ref: false, enhance_prompt_add: false, cfg_delay_sigma: 19,
         };
         // 모델을 바꿀 때 없는 프리셋을 무엇으로 대체할지 (공홈 eN)
         const NAI_UC_CATEGORY_FALLBACK = {
@@ -10928,6 +11034,31 @@
         }
         function naiUcPresets(model) {
             return NAI_UC_PRESETS[naiBaseModel(model)] || NAI_UC_PRESETS[NAI_DEFAULT_MODEL];
+        }
+        // 그 모델의 능력. ★인페인트 모델도 원본으로 되돌려 조회한다.
+        function naiCaps(model) {
+            return NAI_MODEL_CAPS[naiBaseModel(model)] || NAI_CAPS_FALLBACK;
+        }
+        // 지금 화면에서 고른 모델의 능력 (이 파일에서 제일 많이 부르는 형태)
+        function currentNaiCaps() {
+            return naiCaps(document.getElementById('naiModel').value);
+        }
+        function naiQualityPresets(model) {
+            return NAI_QUALITY_PRESETS[naiBaseModel(model)]
+                || NAI_QUALITY_PRESETS[NAI_DEFAULT_MODEL];
+        }
+        // ★모델을 바꿔서 없는 프리셋이 되면(V5 의 light -> V4.5) standard 로 내린다.
+        //   껐던 것(none)은 그대로 꺼 둔다. (공홈은 이때 퀄리티 태그를 통째로 빼 버리는데,
+        //   켜 둔 채 조용히 꺼지는 셈이라 그 동작은 따르지 않았다 — backend 와 같은 규칙)
+        function naiMapQualityPreset(id, toModel) {
+            const list = naiQualityPresets(toModel);
+            if (list.some(p => p.id === id)) return id;
+            return id === 'none' ? 'none' : 'standard';
+        }
+        function naiQualitySuffix(model, presetId) {
+            const list = naiQualityPresets(model);
+            const hit = list.find(p => p.id === naiMapQualityPreset(presetId, model));
+            return hit ? hit.text : '';
         }
         // 다른 모델의 프리셋 이름을 현재 모델의 프리셋 이름으로 옮긴다 (공홈 eR)
         function naiMapUcPreset(name, toModel) {
@@ -11011,6 +11142,73 @@
             if (prev && next !== prev) {
                 console.log(`[NAI] UC preset "${prev}" is not in ${model} -> "${next}"`);
             }
+        }
+
+        // 퀄리티 프리셋 목록도 모델이 정한다 (V5 만 Light 가 있다). UC 와 같은 규약.
+        function refreshQualityPresetOptions() {
+            const sel = document.getElementById('qualityPreset');
+            if (!sel) return;
+            const model = document.getElementById('naiModel').value;
+            const list = naiQualityPresets(model);
+            const prev = sel.value;
+            const next = naiMapQualityPreset(prev, model);
+            sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            sel.value = next;
+            if (prev && next !== prev) {
+                console.log(`[NAI] Quality preset "${prev}" is not in ${model} -> "${next}"`);
+            }
+        }
+
+        // 저장된 설정/프리셋에서 퀄리티 관련 값을 화면에 되살린다.
+        // ★옛 설정에는 켬/끔(qualityTags)만 있다 — 그것을 프리셋 id 로 옮겨 온다.
+        function applyQualitySettings(src) {
+            if (!src) return;
+            const model = document.getElementById('naiModel').value;
+            if (src.qualityPreset !== undefined || src.qualityTags !== undefined) {
+                document.getElementById('qualityPreset').value = naiMapQualityPreset(
+                    src.qualityPreset || (src.qualityTags === false ? 'none' : 'standard'), model);
+            }
+            if (src.transparentBg !== undefined) {
+                document.getElementById('transparentBg').checked = !!src.transparentBg;
+            }
+            if (src.straightAlpha !== undefined) {
+                document.getElementById('straightAlpha').checked = !!src.straightAlpha;
+            }
+            updateModelCapUI();
+        }
+
+        // ★★모델이 지원하지 않는 기능은 **아예 안 보이게** 한다 (사용자 지시).
+        //   비활성(회색)으로 두면 "왜 안 눌리지"가 되고, 값이 남아 있으면 요청에도 새어 나간다.
+        //   ★판정은 언제나 능력표 하나로 한다 — 문자열 검사를 여기 새로 만들지 말 것.
+        function updateModelCapUI() {
+            const cap = currentNaiCaps();
+            const show = (id, on) => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = on ? '' : 'none';
+            };
+            // Vibe Transfer / Precise Reference — V5 에는 없다 (공홈: post-launch 예정)
+            const vibeSub = document.getElementById('vibeTransferSettings');
+            const vibeSection = vibeSub ? vibeSub.closest('.subsection') : null;
+            if (vibeSection) vibeSection.style.display = cap.vibe ? '' : 'none';
+            show('preciseRefSection', cap.char_ref);
+            // 섹션 둘 다 사라지면 바깥 묶음도 감춘다
+            const vcSection = document.getElementById('vibeCharRefContent');
+            if (vcSection && vcSection.parentElement) {
+                vcSection.parentElement.style.display = (cap.vibe || cap.char_ref) ? '' : 'none';
+            }
+            // Variety+ / Guidance Rescale / Scheduler
+            const vp = document.getElementById('varietyPlus');
+            if (vp && vp.parentElement) vp.parentElement.style.display = cap.cfg_delay ? '' : 'none';
+            const sch = document.getElementById('scheduler');
+            if (sch && sch.parentElement) {
+                // ★V5 는 공홈이 전송 직전에 karras 로 덮어쓴다 — 고를 수 있는 척하지 않는다.
+                sch.parentElement.style.display = cap.noise_schedule ? '' : 'none';
+            }
+            // 투명 배경 — transparency 능력이 있는 모델만
+            show('transparentBgBox', cap.transparency);
+            const tb = document.getElementById('transparentBg');
+            const saBox = document.getElementById('straightAlphaBox');
+            if (saBox) saBox.style.display = (cap.transparency && tb && tb.checked) ? '' : 'none';
         }
 
         let currentProvider = 'nai';
@@ -14577,6 +14775,8 @@
                 
                 updateAnlasVisibility();
                 updateProviderLabels();
+                updateModelCapUI();            // NAI 모델 능력에 맞춰 컨트롤 감추기/보이기
+                clampEnabledCharacters();      // 상한이 provider·모델마다 다르다
                 updateBaseImageNoiseVisibility();
                 autoSaveSettings();
             });
@@ -14874,12 +15074,13 @@
             enableToggle.checked = enabled;
             enableToggle.title = enabled ? '활성화됨 (클릭하여 비활성화)' : '비활성화됨 (클릭하여 활성화)';
             enableToggle.onchange = () => {
-                // 활성화하려는 경우 6명 제한 체크
+                // ★활성 상한은 모델이 정한다 (V4.5 6명 · V5 32명). 6 을 박아 두지 말 것.
                 if (enableToggle.checked) {
+                    const limit = currentCharLimit();
                     const enabledCount = charactersList.querySelectorAll('.character-item:not(.disabled)').length;
-                    if (enabledCount >= 6) {
+                    if (enabledCount >= limit) {
                         enableToggle.checked = false;
-                        showToast('최대 6명의 캐릭터만 활성화 가능', 'warning');
+                        showToast(`최대 ${limit}명의 캐릭터만 활성화 가능`, 'warning');
                         return;
                     }
                 }
@@ -15175,6 +15376,37 @@
             return charactersList.querySelectorAll('.character-item:not(.disabled)').length;
         }
 
+        // 지금 모델이 받는 캐릭터 수. ★로컬 생성은 NAI 상한과 무관하므로 옛 값(6)을 그대로 쓴다.
+        function currentCharLimit() {
+            return currentProvider === 'nai' ? currentNaiCaps().max_characters : 6;
+        }
+
+        // ★★상한을 넘은 활성 캐릭터를 **뒤에서부터 비활성으로 내린다.**
+        //
+        //   칸을 추가할 때도, 토글을 켤 때도, 설정·프리셋을 복원할 때도 이미 상한에서 막는다.
+        //   넘은 상태가 생길 수 있는 자리는 **상한이 줄어드는 순간**뿐이다 —
+        //   모델을 V5(32명) -> V4.5(6명) 로 바꾸거나 provider 를 바꿀 때.
+        //   그 자리에서 똑같이 내려 주면 「넘은 상태」 자체가 존재하지 않는다.
+        //   ★경고 문구로 알리고 마는 방식은 쓰지 않는다 — 다른 경로는 전부 막는데 여기만
+        //     알리고 두면 그대로 생성했을 때 뒤쪽이 조용히 빠진다 (사용자 지적 2026-08-21).
+        function clampEnabledCharacters() {
+            const limit = currentCharLimit();
+            const items = Array.from(charactersList.querySelectorAll('.character-item:not(.disabled)'));
+            const over = items.slice(limit);
+            if (over.length === 0) return 0;
+            over.forEach(item => {
+                const toggle = item.querySelector('.char-enable-toggle');
+                if (toggle) {
+                    toggle.checked = false;
+                    toggle.title = '비활성화됨 (클릭하여 활성화)';
+                }
+                item.classList.add('disabled');
+            });
+            showToast(`이 모델은 캐릭터 ${limit}명까지 — 뒤 ${over.length}명을 비활성화했습니다`, 'info');
+            autoSaveSettings();
+            return over.length;
+        }
+
         function addCharacter(content = '', uc = '') {
             // Characters 섹션이 접혀있으면 펼치기
             const charactersContent = document.getElementById('charactersContent');
@@ -15187,15 +15419,17 @@
                     localStorage.setItem('collapse_charactersContent', 'expanded');
                 }
             }
-            // 활성화된 캐릭터가 6명 이상이면 새 캐릭터는 비활성화 상태로 추가
+            // ★활성 캐릭터가 모델 상한에 닿으면 새 캐릭터는 비활성 상태로 추가한다.
+            //   상한은 모델이 정한다 (V4.5 6명 · V5 32명) — 6 을 박아 두지 말 것.
+            const limit = currentCharLimit();
             const enabledCount = getEnabledCharacterCount();
-            const shouldBeEnabled = enabledCount < 6;
+            const shouldBeEnabled = enabledCount < limit;
             const item = createCharacterItem(content, false, shouldBeEnabled, '', null, uc, false);
             charactersList.appendChild(item);
             updateCharacterNumbers();
             item.querySelector('.char-prompt-textarea').focus();
             if (!shouldBeEnabled) {
-                showToast('활성화된 캐릭터가 6명이므로 비활성화 상태로 추가됨', 'info');
+                showToast(`활성화된 캐릭터가 ${limit}명이므로 비활성화 상태로 추가됨`, 'info');
             }
         }
         
@@ -15285,8 +15519,8 @@
                     const content = charData.content || '';
                     const height = charData.height || null;
                     let enabled = charData.enabled !== false;
-                    // 활성화 6명 제한 적용
-                    if (enabled && enabledCount >= 6) {
+                    // ★활성 상한은 모델이 정한다 (V4.5 6명 · V5 32명)
+                    if (enabled && enabledCount >= currentCharLimit()) {
                         enabled = false;
                     }
                     if (enabled) enabledCount++;
@@ -15967,7 +16201,12 @@
                 request.nai_model = document.getElementById('naiModel').value;
                 request.smea = document.getElementById('smea').value;
                 request.uc_preset = document.getElementById('ucPreset').value;
-                request.quality_tags = document.getElementById('qualityTags').checked;
+                // 퀄리티는 프리셋 id 로 보낸다. quality_tags 는 옛 필드라 함께 채워 둔다
+                // (큐에 남아 있던 옛 작업과 갤러리 되읽기가 아직 본다).
+                request.quality_preset = document.getElementById('qualityPreset').value;
+                request.quality_tags = request.quality_preset !== 'none';
+                request.transparent_bg = document.getElementById('transparentBg').checked;
+                request.straight_alpha = document.getElementById('straightAlpha').checked;
                 request.furry_mode = furryModeEnabled;
                 request.cfg_rescale = parseFloat(document.getElementById('cfgRescale').value);
                 request.variety_plus = document.getElementById('varietyPlus').checked;
@@ -16442,7 +16681,8 @@
                         // V4+ 모델에서 바이브가 사용된 경우, vibeList의 인코딩 상태 갱신
                         // (생성 완료 후 해당 설정으로 캐시됨)
                         const currentModel = document.getElementById('naiModel').value;
-                        if (currentModel.includes('diffusion-4') && vibeList.length > 0) {
+                        // ★바이브를 지원하는 모델일 때만 (V5 는 애초에 안 보낸다)
+                        if (naiCaps(currentModel).vibe && vibeList.length > 0) {
                             let updated = false;
                             vibeList.forEach(v => {
                                 // 현재 모델과 info_extracted가 인코딩된 값과 다르면 갱신
@@ -17627,6 +17867,89 @@
             setTimeout(() => input.focus(), 100);
         }
 
+        // ============================================================
+        // 따옴표 -> `teXt:` 자동 조립의 **되읽기** (backend.py 의 nait_* 와 같은 규약)
+        //
+        // ★★프런트에는 **되읽기만** 있다. 붙이는 것은 전송 직전에 백엔드가 한다 —
+        //   양쪽에서 붙이면 두 겹이 된다. 여기서는 갤러리 이미지의 프롬프트를 편집기로
+        //   되돌릴 때 그 블록을 떼어내기만 한다.
+        // ★★**다시 만들어 보고 같을 때만** 뗀다 — 사람이 손으로 적은 `teXt:` 를 지우지 않으려는 것.
+        // ============================================================
+        const NAIT_SEP = '|', NAIT_ESCAPED_SEP = '||', NAIT_MAX_PARTS = 6;
+        const NAIT_AUTO_RE = /(?:^|\s|[,.:\[\]{}、。])teXt:(?!:)/;   // ★대소문자 구분
+        const NAIT_QUOTES = { '"': '"', '“': '”', '「': '」', "'": "'", '‘': '’' };
+        const NAIT_CJK_RE = /[　-〿぀-ゟ゠-ヿ＀-ﾟ一-龯㐀-䶿]/g;
+        const NAIT_CJK_RATIO = 0.3, NAIT_GAP_MAX = 0.1, NAIT_SPAN_MAX = 0.15;
+        const NAIT_TMP_SEP = '\u{103b9}', NAIT_TMP_ESC = '\u{12137}';
+
+        function naitSplitParts(prompt) {
+            const swapped = (prompt || '').split(NAIT_ESCAPED_SEP)
+                .map((p, i) => (i % 2 === 1 ? p.split(NAIT_SEP).join(NAIT_TMP_SEP) : p))
+                .join(NAIT_TMP_ESC);
+            const parts = swapped.split(NAIT_SEP);
+            const out = parts.slice(0, NAIT_MAX_PARTS - 1);
+            if (parts.length > NAIT_MAX_PARTS - 1) out.push(parts.slice(NAIT_MAX_PARTS - 1).join(NAIT_SEP));
+            return out.map(p => p.split(NAIT_TMP_SEP).join(NAIT_SEP).split(NAIT_TMP_ESC).join(NAIT_ESCAPED_SEP));
+        }
+        const naitWordish = (ch) => !!ch && /[\p{L}\p{N}]/u.test(ch);
+        function naitQuoted(text) {
+            text = text || '';
+            const out = [];
+            let i = 0;
+            while (i < text.length) {
+                const close = NAIT_QUOTES[text[i]];
+                // ★`'` 는 앞 글자가 문자·숫자면 아포스트로피다 (don't)
+                if (close === undefined || (text[i] === "'" && naitWordish(i ? text[i - 1] : null))) { i++; continue; }
+                const apostrophe = (close === "'" || close === '’');
+                let j = i + 1;
+                while (j < text.length && (text[j] !== close
+                    || (apostrophe && naitWordish(j + 1 < text.length ? text[j + 1] : null)))) j++;
+                if (j >= text.length) { i++; continue; }
+                const inner = text.substring(i + 1, j).trim();
+                if (inner) out.push(inner);
+                i = j + 1;
+            }
+            return out;
+        }
+        function naitRows(chars) {
+            const cy = c => Number((c.center || {}).y ?? 0.5);
+            const cx = c => Number((c.center || {}).x ?? 0.5);
+            const group = (items) => {
+                if (items.length <= 1) return [items];
+                const span = cy(items[items.length - 1]) - cy(items[0]);
+                let cut = 1, widest = -1;
+                for (let k = 1; k < items.length; k++) {
+                    const gap = cy(items[k]) - cy(items[k - 1]);
+                    if (gap > widest) { widest = gap; cut = k; }
+                }
+                if (span <= NAIT_SPAN_MAX && widest <= NAIT_GAP_MAX) return [items];
+                return [...group(items.slice(0, cut)), ...group(items.slice(cut))];
+            };
+            const sorted = [...chars].sort((a, b) => cy(a) - cy(b));
+            return group(sorted).flatMap(row => [...row].sort((a, b) => cx(a) - cx(b)));
+        }
+        function naitCollect(base, chars, useCoords) {
+            const live = (chars || []).filter(c => (c.prompt || '').trim());
+            const ordered = useCoords ? naitRows(live) : live;
+            const groups = [naitQuoted(base), ...ordered.map(c => naitQuoted(c.prompt || ''))];
+            const joined = groups.flat().join('');
+            if (joined && (joined.match(NAIT_CJK_RE) || []).length / joined.length > NAIT_CJK_RATIO) {
+                groups.forEach(g => g.reverse());
+            }
+            return groups.flat();
+        }
+        function naitStrip(prompt, chars, useCoords) {
+            const live = (chars || []).filter(c => (c.prompt || '').trim());
+            return naitSplitParts(prompt || '').map(part => {
+                const m = NAIT_AUTO_RE.exec(part);
+                if (!m) return part;
+                const head = part.substring(0, m.index);
+                const tail = part.substring(m.index + m[0].length).trim();
+                if (tail !== naitCollect(head, live, useCoords).join('\n\n')) return part;
+                return head.replace(/[\s,]+$/, '');
+            }).join(NAIT_SEP);
+        }
+
         // NAI 형식 메타데이터를 앱 내부 형식으로 변환
         function normalizeMetadata(meta) {
             if (!meta) return null;
@@ -17671,6 +17994,12 @@
                 ? imgPresets[meta.ucPreset].name
                 : (meta.ucPreset || 'Heavy');
             let qualityTags = meta.qualityToggle;
+            // ★퀄리티는 켬/끔이 아니라 프리셋 id 다 (V5 는 standard/light 둘). 어느 쪽이었는지까지
+            //   되살려야 다시 그렸을 때 같은 문자열이 나간다. 못 떼어내면 'none' 이다.
+            let qualityPreset = 'none';
+            // ★투명 배경 — 공홈은 tag_hint_transparent_background 를 싣고, 우리는 접미사에서도
+            //   되읽는다. 둘 중 하나라도 참이면 켜진 것이다.
+            let transparentBg = !!meta.tag_hint_transparent_background;
 
             // 순수 NAI 이미지 여부 확인 (peropix 확장이 없으면 순수 NAI)
             const isPureNai = !meta.peropix;
@@ -17682,12 +18011,47 @@
             let prompt = meta.prompt || '';
             let negativePrompt = meta.uc || '';
 
+            // ★★따옴표 -> `teXt:` 자동 조립을 **먼저** 되돌린다.
+            //   붙는 자리가 맨 끝이라, 안 떼면 퀄리티 접미사가 그 뒤에 있는 셈이 되어 안 걸린다.
+            //   ★다시 만들어 보고 **같을 때만** 뗀다 — 손으로 적은 `teXt:` 는 안 건드린다.
+            if (prompt) {
+                const textChars = (meta.v4_prompt?.caption?.char_captions || []).map(c => ({
+                    prompt: c.char_caption || '',
+                    center: (c.centers && c.centers[0]) || { x: 0.5, y: 0.5 }
+                }));
+                prompt = naitStrip(prompt, textChars, !!meta.v4_prompt?.use_coords);
+            }
+
             // 퀄리티 태그 패턴 — 이 이미지 모델의 접미사 기준.
             // ★Enhance 변형(`-2::upscaled, blurry::`)을 함께 본다. 공홈은 자기가 붙여 놓고도
             //   임포트 때 감안하지 않아 자기 Enhance 이미지의 퀄리티 태그를 못 알아본다.
             //   이건 공홈에 맞추지 않고 우리 쪽을 유지한다.
             const imgQualitySuffix = NAI_QUALITY_SUFFIX[naiBaseModel(naiModel || NAI_DEFAULT_MODEL)]
                 || NAI_QUALITY_SUFFIX[NAI_DEFAULT_MODEL];
+            // ★그 모델의 프리셋을 **전부** 대 본다 (V5 는 standard·light 둘).
+            // ★★퀄리티 프리셋과 투명 배경을 **갈라** 본다 — 붙는 자리가 같을 뿐 서로 다른
+            //   스위치다. 투명 배경만 켜고 퀄리티는 끈 조합이 있어서(꼬리가 `, transparent
+            //   background` 하나뿐), 하나로 뭉치면 되읽을 때 퀄리티가 저절로 켜진다.
+            // ★긴 것부터 본다 — Enhance 변형과 투명 배경 변형이 짧은 쪽에 먼저 걸리면 안 된다.
+            const imgQualityPatterns = (() => {
+                const list = naiQualityPresets(naiModel || NAI_DEFAULT_MODEL)
+                    .filter(p => p.text).map(p => [p.id, p.text]);
+                const bg = ', ' + NAI_TRANSPARENT_BG_TAG;
+                const cands = [];
+                for (const [pid, suf] of list) {
+                    cands.push([bg + suf, pid, true]);   // 투명 배경 + 퀄리티
+                    cands.push([suf, pid, false]);       // 퀄리티만
+                }
+                cands.push([bg, 'none', true]);          // 투명 배경만
+                const out = [];
+                for (const [text, pid, tb] of cands) {
+                    out.push([text + ', -2::upscaled, blurry::,', pid, tb]);   // Enhance 변형
+                    out.push([text, pid, tb]);
+                }
+                out.sort((a, b) => b[0].length - a[0].length);
+                return out;
+            })();
+            // 옛 이름 — 아래 v2 하위호환 경로가 아직 쓴다
             const v45QualityTagsPatterns = [
                 imgQualitySuffix + ", -2::upscaled, blurry::,",  // Enhance
                 imgQualitySuffix                                  // 일반
@@ -17740,10 +18104,13 @@
             if (isPureNai) {
                 // 순수 NAI 이미지: 프롬프트 끝에서 퀄리티 태그 제거
                 let tagRemoved = false;
-                for (const pattern of v45QualityTagsPatterns) {
+                for (const [pattern, pid, wasBg] of imgQualityPatterns) {
                     if (prompt.endsWith(pattern)) {
                         prompt = prompt.slice(0, -pattern.length);
-                        qualityTags = true;
+                        // ★퀄리티 프리셋과 투명 배경을 따로 되살린다 (같은 자리에 붙을 뿐 다른 스위치)
+                        qualityPreset = pid;
+                        qualityTags = pid !== 'none';
+                        transparentBg = wasBg;
                         tagRemoved = true;
                         break;
                     }
@@ -17786,11 +18153,18 @@
                 }
 
                 // 3) Quality Tags: 저장값 우선(신규). 없으면 meta.prompt 끝 태그로 복원(구버전).
-                if (ppx.quality_tags !== undefined && ppx.quality_tags !== null) {
+                if (ppx.quality_preset) {
+                    // ★프리셋 id 를 저장한 신버전 — 어느 프리셋이었는지까지 그대로 살아난다
+                    qualityPreset = ppx.quality_preset;
+                    qualityTags = qualityPreset !== 'none';
+                } else if (ppx.quality_tags !== undefined && ppx.quality_tags !== null) {
                     qualityTags = ppx.quality_tags;
+                    qualityPreset = qualityTags ? 'standard' : 'none';
                 } else {
                     qualityTags = v45QualityTagsPatterns.some(p => (meta.prompt || '').endsWith(p));
+                    qualityPreset = qualityTags ? 'standard' : 'none';
                 }
+                if (ppx.transparent_bg !== undefined) transparentBg = !!ppx.transparent_bg;
             }
 
             // PeroPix 이미지: base_prompt가 있으면 직접 사용 (v3+)
@@ -17856,6 +18230,10 @@
                 smea: meta.sm_dyn ? 'SMEA+DYN' : (meta.sm ? 'SMEA' : 'none'),
                 uc_preset: ucPreset,
                 quality_tags: qualityTags,
+                quality_preset: qualityPreset,
+                transparent_bg: transparentBg,
+                straight_alpha: (ppx.straight_alpha !== undefined
+                    ? !!ppx.straight_alpha : !!meta.straight_alpha),
                 cfg_rescale: meta.cfg_rescale,
                 variety_plus: varietyPlus,
                 furry_mode: furryMode,
@@ -18062,6 +18440,8 @@
                 // 더 이상 지원하지 않는 모델(옛 V4 Curated 등)이면 조용히 바꾸지 않고 경고 상태로 둔다
                 setSelectSafe('naiModel', metadata.nai_model, '모델');
                 refreshUcPresetOptions();   // 모델이 바뀌었으니 프리셋 목록부터 맞춘다
+                refreshQualityPresetOptions();
+                updateModelCapUI();
                 highlight('naiModel');
             }
             if (metadata.smea) {
@@ -18074,9 +18454,21 @@
                     document.getElementById('naiModel').value), 'UC 프리셋');
                 highlight('ucPreset');
             }
-            if (metadata.quality_tags !== undefined) {
-                document.getElementById('qualityTags').checked = metadata.quality_tags;
-                highlight('qualityTags');
+            // 퀄리티 프리셋 — 그 모델에 없는 프리셋이면 standard 로 내린다 (backend 와 같은 규칙)
+            if (metadata.quality_preset !== undefined || metadata.quality_tags !== undefined) {
+                const pid = metadata.quality_preset
+                    || (metadata.quality_tags ? 'standard' : 'none');
+                document.getElementById('qualityPreset').value =
+                    naiMapQualityPreset(pid, document.getElementById('naiModel').value);
+                highlight('qualityPreset');
+            }
+            if (metadata.transparent_bg !== undefined) {
+                document.getElementById('transparentBg').checked = !!metadata.transparent_bg;
+                if (metadata.straight_alpha !== undefined) {
+                    document.getElementById('straightAlpha').checked = !!metadata.straight_alpha;
+                }
+                updateModelCapUI();
+                highlight('transparentBg');
             }
             if (metadata.cfg_rescale !== undefined) {
                 document.getElementById('cfgRescale').value = metadata.cfg_rescale;
@@ -18944,6 +19336,16 @@
         // ============================================================
         let currentAnlas = null;
         let isOpusTier = false;
+        // ★★V5 부터 Opus 무료가 **유한**하다. /user/subscription 의 usage:
+        //     percent 남은 비율 0~100 · timeUntilNextPercent 1% 회복까지 남은 초 · isNegative 바닥남
+        //   ★무료 판정을 끄는 것은 isNegative **하나**다 — 퍼센트가 낮아도 바닥나기 전까지는 무료다.
+        let opusUsage = null;
+
+        // 공홈 식 그대로 ($0·S3·$·OH)
+        const opusUsagePercent = (u) => (!u ? null : (u.isNegative ? 0 : Math.min(100, Math.max(0, u.percent))));
+        const opusUsageLow = (u) => !!u && (u.isNegative || u.percent < 5);
+        const opusRefillPerHour = (u) => (!u || u.timeUntilNextPercent <= 0
+            ? 0 : Math.round(3600 / u.timeUntilNextPercent * 10) / 10);
 
         async function fetchAnlasBalance() {
             try {
@@ -18957,10 +19359,12 @@
 
                 currentAnlas = data.anlas;
                 isOpusTier = data.tier >= 3; // Tier 3 = Opus
-                console.log('[Anlas] Subscription loaded:', { tier: data.tier, isOpusTier, anlas: currentAnlas });
+                opusUsage = data.usage || null;
+                console.log('[Anlas] Subscription loaded:', { tier: data.tier, isOpusTier, anlas: currentAnlas, usage: opusUsage });
 
                 document.getElementById('anlasBalance').textContent =
                     currentAnlas !== null ? currentAnlas.toLocaleString() : '--';
+                updateOpusUsageDisplay();
 
                 updateAnlasCost();
             } catch (e) {
@@ -18977,12 +19381,15 @@
             const width = alignTo64(parseInt(document.getElementById('width').value) || 832);
             const height = alignTo64(parseInt(document.getElementById('height').value) || 1216);
             const steps = parseInt(document.getElementById('steps').value) || 28;
-            const vibeEnabled = document.getElementById('enableVibeTransfer').checked;
-            const vibeCount = vibeEnabled ? vibeList.length : 0;
-            const preciseRefEnabled = document.getElementById('enablePreciseRef').checked;
-            const preciseRefCount = preciseRefEnabled ? preciseRefList.length : 0;
             const repeatCount = parseInt(document.getElementById('repeatCount').value) || 1;
             const naiModel = document.getElementById('naiModel').value;
+            // ★능력이 없는 모델(V5)은 바이브·정밀참조를 **보내지 않는다** — 값도 붙지 않아야
+            //   화면과 실제 청구가 어긋나지 않는다 (backend 의 call_nai_api 와 같은 규칙).
+            const cap = naiCaps(naiModel);
+            const vibeEnabled = cap.vibe && document.getElementById('enableVibeTransfer').checked;
+            const vibeCount = vibeEnabled ? vibeList.length : 0;
+            const preciseRefEnabled = cap.char_ref && document.getElementById('enablePreciseRef').checked;
+            const preciseRefCount = preciseRefEnabled ? preciseRefList.length : 0;
 
             // ★생성 장 수는 **생성 모드**를 따른다. 싱글은 슬롯과 무관하게 1장씩이다.
             //   addToQueue 의 `promptCount = genMode === 'single' ? 1 : (slotList.length || 1)` 와
@@ -19024,6 +19431,9 @@
                     body: JSON.stringify({
                         width, height, steps,
                         is_opus: isOpusTier,
+                        // ★★Opus 무료 잔량이 바닥났나 (V5 부터 유한하다). 퍼센트가 낮다고
+                        //   미리 끄지 않는다 — 공홈도 isNegative 하나만 본다.
+                        opus_exhausted: !!(opusUsage && opusUsage.isNegative),
                         vibe_count: vibeCount,
                         precise_ref_count: preciseRefCount,
                         count: totalCount,
@@ -19097,6 +19507,27 @@
             }
         }
 
+        // Opus 무료 잔량 표시. ★값이 없으면(구버전 응답·비 Opus 계정) 아무것도 그리지 않는다.
+        function updateOpusUsageDisplay() {
+            const el = document.getElementById('opusUsage');
+            const sep = document.getElementById('opusUsageSep');
+            if (!el || !sep) return;
+            const pct = opusUsagePercent(opusUsage);
+            if (pct === null || !isOpusTier) {
+                el.style.display = 'none';
+                sep.style.display = 'none';
+                return;
+            }
+            const perHour = opusRefillPerHour(opusUsage);
+            el.textContent = `Opus ${pct}%`;
+            el.title = perHour > 0
+                ? `Opus 무료 생성 잔량 ${pct}% — 시간당 ${perHour}% 회복`
+                : `Opus 무료 생성 잔량 ${pct}%`;
+            el.classList.toggle('opus-usage-low', opusUsageLow(opusUsage));
+            el.style.display = 'inline';
+            sep.style.display = 'inline';
+        }
+
         // Anlas UI 표시/숨김 (provider에 따라)
         function updateAnlasVisibility() {
             const anlasInfo = document.getElementById('anlasInfo');
@@ -19129,17 +19560,24 @@
         document.getElementById('naiModel').addEventListener('change', () => {
             clearSelectUnsupported(document.getElementById('naiModel'));
             refreshUcPresetOptions();   // 모델마다 프리셋 목록이 다르다 (공홈 동일)
+            refreshQualityPresetOptions();
+            updateModelCapUI();         // 모델이 못 하는 기능은 감춘다
             updateAnlasCost();
             updateSmeaVisibility();
+            clampEnabledCharacters();   // 상한이 줄면 초과분을 그 자리에서 내린다
         });
         document.getElementById('ucPreset').addEventListener('change', () => {
             clearSelectUnsupported(document.getElementById('ucPreset'));
         });
+        document.getElementById('transparentBg').addEventListener('change', updateModelCapUI);
 
         // V4+ 모델에서 SMEA 비활성화
+        // ★★`includes('diffusion-4')` 로 판정하지 말 것 — **V5 는 그 문자열이 없는데도**
+        //   SMEA 를 지원하지 않는다 (공홈 능력표: smea·smeaDyn·autoSmea 전부 거짓).
+        //   그 검사로 두면 V5 에서 SMEA 드롭다운이 살아나 보낸 값이 무시된다.
         function updateSmeaVisibility() {
             const model = document.getElementById('naiModel').value;
-            const isV4 = model.includes('diffusion-4');
+            const isV4 = /nai-diffusion-[45]/.test(naiBaseModel(model));
             const smeaSelect = document.getElementById('smea');
             const smeaContainer = smeaSelect.parentElement;
 
@@ -19156,6 +19594,8 @@
         }
         updateSmeaVisibility(); // 초기 실행
         refreshUcPresetOptions(); // 초기 실행 — 현재 모델의 프리셋 목록으로 맞춘다
+        refreshQualityPresetOptions();
+        updateModelCapUI();
 
         // ============================================================
         // Prompt Weight Highlighting System
@@ -19909,6 +20349,31 @@
 
         let ALL_TAGS = [];
         let TAG_INDEX = {}; // 첫 글자 인덱싱 for O(1) access
+
+        // ★NAI Diffusion **V5 에서 새로 생긴 태그** (NAI 공지 2026-08-21).
+        //
+        //  ★★근거는 **공지문뿐**이다 — 공홈은 자동완성을 서버에 물어보는 구조라
+        //    번들에 태그 사전이 없다. 번들에서 교차 확인된 것은 실제 생성 프롬프트에 쓰인
+        //    `medium complexity` 하나다.
+        //  ★★**표기를 손대지 않는다** — 밑줄로 바꾸거나 콜론을 빼면 자동완성이 넣어 주는
+        //    문자열이 실제 태그와 달라진다. 프롬프트에 그대로 나가는 문자열이 정본이다.
+        //  ★count 는 0 이다 — 새 태그라 사용량 자료가 없다. 지어내지 않는다.
+        const NAI_V5_TAGS = [
+            ['depthness', 0], ['attractive male', 0],
+            ['low complexity', 0], ['medium complexity', 0],
+            ['high complexity', 0], ['ultra complexity', 0],
+            ['has alpha', 0], ['alpha transparency', 0],
+            ['visual novel art', 0], ['visual novel bg', 0], ['visual novel cg', 0],
+            ['visual novel chibi', 0], ['visual novel sprite', 0],
+            // ★`meta:` 접두가 붙은 둘. 콜론을 친 뒤에 골라도 제대로 들어간다
+            //   (getCurrentWord 가 홑콜론을 태그 글자로 본다).
+            ['meta:novel era', 5], ['meta:golden era', 5],
+        ];
+        // 사전에 없어서 우리가 메우는 태그들
+        const NAI_EXTRA_TAGS = NAI_V5_TAGS.map(([label, category]) => ({
+            label, value: label, count: 0,
+            type: category === 5 ? 'meta' : 'general', category,
+        }));
         let tagAutocompleteEnabled = true;
         let tagsLoaded = false;
 
@@ -19926,21 +20391,30 @@
                 }
 
                 const tags = await response.json();
-                ALL_TAGS = tags;
-                console.log('[TagAutocomplete] Parsed', ALL_TAGS.length, 'tags from JSON');
+                console.log('[TagAutocomplete] Parsed', tags.length, 'tags from JSON');
 
                 // Build first-letter index for fast lookup
                 TAG_INDEX = {};
+                const seen = new Set();
                 tags.forEach(tag => {
-                    const firstChar = tag.label[0].toLowerCase();
+                    tag._lower = tagNorm(tag.label);
+                    seen.add(tag._lower);
+                    const firstChar = tag._lower[0];
                     if (!TAG_INDEX[firstChar]) {
                         TAG_INDEX[firstChar] = [];
                     }
                     TAG_INDEX[firstChar].push(tag);
-
-                    // Add lowercase cache
-                    tag._lower = tag.label.toLowerCase();
                 });
+
+                // ★사전(단부루 덤프)에 없는 태그를 여기서 메운다. 중복은 같은 표기로 거른다.
+                const extra = NAI_EXTRA_TAGS.filter(t => !seen.has(tagNorm(t.label)));
+                extra.forEach(tag => {
+                    tag._lower = tagNorm(tag.label);
+                    const firstChar = tag._lower[0];
+                    if (!TAG_INDEX[firstChar]) TAG_INDEX[firstChar] = [];
+                    TAG_INDEX[firstChar].unshift(tag);   // 앞에 넣어 먼저 보이게
+                });
+                ALL_TAGS = [...extra, ...tags];
 
                 tagsLoaded = true;
                 console.log('[TagAutocomplete] Ready! Loaded', ALL_TAGS.length, 'tags, indexed', Object.keys(TAG_INDEX).length, 'letters');
@@ -19963,10 +20437,22 @@
             let start = cursorPos;
             while (start > 0) {
                 const char = value[start - 1];
-                // 콤마, 개행, 괄호, 콜론은 단어 경계
+                if (char === ':') {
+                    // ★★홑콜론은 **태그 글자**다 (`meta:novel era` · `honkai:_star_rail`).
+                    //   경계로 두면 콜론을 친 뒤에 고를 때 앞의 `meta:` 가 남아
+                    //   `meta:meta:novel era` 가 된다.
+                    // ★★단 `::` 는 **강조 문법**이라 경계다 — 안 그러면 `1.5::fee` 가 통째로
+                    //   한 낱말이 되어, 고르는 순간 강조 문법이 지워진다.
+                    // ★경계로 두는 것**만**으로 충분하다 — 강조 안에서도 자동완성은 그대로 된다
+                    //   (`-0.8::feet::` 처럼 강조 안에 태그를 쓰는 것이 흔하다).
+                    if (value[start - 2] === ':' || value[start] === ':') break;
+                    start--;
+                    continue;
+                }
+                // 콤마, 개행, 괄호는 단어 경계
                 if (char === ',' || char === '\n' || char === '\r' ||
                     char === '{' || char === '}' || char === '[' || char === ']' ||
-                    char === '(' || char === ')' || char === ':') {
+                    char === '(' || char === ')') {
                     break;
                 }
                 if (!isTagChar(char)) {
@@ -20009,10 +20495,15 @@
         }
 
         // Search tags with 2-stage algorithm
+        // ★검색 표기 — **밑줄과 띄어쓰기를 같은 것으로 본다.**
+        //   단부루 사전은 `high_complexity` 꼴이고 V5 새 태그는 `high complexity` 꼴이다.
+        //   한쪽으로 맞추는 자리를 여기 하나로 둔다.
+        const tagNorm = (t) => t.toLowerCase().replace(/_/g, ' ');
+
         function searchTags(query, maxResults = 15) {
             if (!query || query.length < 2) return [];
 
-            const lowerQuery = query.toLowerCase();
+            const lowerQuery = tagNorm(query);
             const firstChar = lowerQuery[0];
             const results = [];
 
@@ -20488,8 +20979,10 @@
 
                     const { word } = getCurrentWord(textarea);
 
-                    // 스페이스를 언더바로 치환하여 검색
-                    const searchWord = word.replace(/ /g, '_');
+                    // ★★질의의 띄어쓰기를 밑줄로 바꾸지 **않는다.** 바꾸면 `high complexity`
+                    //   처럼 **띄어쓰기 표기의 태그가 영영 안 걸린다** (V5 새 태그가 전부 그렇다).
+                    //   표기를 맞추는 자리는 searchTags 하나뿐이다.
+                    const searchWord = word;
 
                     if (searchWord.length >= 2) {
                         const results = searchTags(searchWord);
@@ -20815,7 +21308,10 @@
                 naiModel: document.getElementById('naiModel').value,
                 smea: document.getElementById('smea').value,
                 ucPreset: document.getElementById('ucPreset').value,
-                qualityTags: document.getElementById('qualityTags').checked,
+                qualityTags: document.getElementById('qualityPreset').value !== 'none',
+                qualityPreset: document.getElementById('qualityPreset').value,
+                transparentBg: document.getElementById('transparentBg').checked,
+                straightAlpha: document.getElementById('straightAlpha').checked,
                 furryModeEnabled: furryModeEnabled,
                 cfgRescale: document.getElementById('cfgRescale').value,
                 varietyPlus: document.getElementById('varietyPlus').checked,
@@ -20883,13 +21379,17 @@
                 const charactersList = document.getElementById('charactersList');
                 charactersList.innerHTML = '';
                 let enabledCount = 0;
+                // ★★상한은 **저장된 모델**로 잰다 — 이 함수는 캐릭터를 먼저 복원하고 모델을
+                //   **나중에** 적용한다. 지금 셀렉트를 읽으면 옛 모델의 상한이라, V5 로 8명을
+                //   켜 둔 설정이 켤 때마다 6명으로 깎인다.
+                const restoreLimit = settings.naiModel
+                    ? naiCaps(settings.naiModel).max_characters : currentCharLimit();
                 settings.characterPromptsLayout.forEach(charData => {
                     const content = charData.content || '';
                     const collapsed = charData.collapsed || false;
                     const height = charData.height || null;
                     let enabled = charData.enabled !== false;
-                    // 활성화 6명 제한 적용
-                    if (enabled && enabledCount >= 6) {
+                    if (enabled && enabledCount >= restoreLimit) {
                         enabled = false;
                     }
                     if (enabled) enabledCount++;
@@ -21027,13 +21527,22 @@
                 if (settings.naiModel) {
                     setSelectSafe('naiModel', settings.naiModel, '모델');
                     refreshUcPresetOptions();
+                    refreshQualityPresetOptions();
                 }
                 if (settings.smea) document.getElementById('smea').value = settings.smea;
                 if (settings.ucPreset) {
                     setSelectSafe('ucPreset', naiMapUcPreset(settings.ucPreset,
                         document.getElementById('naiModel').value), 'UC 프리셋');
                 }
-                if (settings.qualityTags !== undefined) document.getElementById('qualityTags').checked = settings.qualityTags;
+                // ★프리셋 id 우선. 옛 설정(켬/끔)만 있으면 그것을 옮겨 온다.
+                if (settings.qualityPreset !== undefined || settings.qualityTags !== undefined) {
+                    document.getElementById('qualityPreset').value = naiMapQualityPreset(
+                        settings.qualityPreset || (settings.qualityTags === false ? 'none' : 'standard'),
+                        document.getElementById('naiModel').value);
+                }
+                if (settings.transparentBg !== undefined) document.getElementById('transparentBg').checked = settings.transparentBg;
+                if (settings.straightAlpha !== undefined) document.getElementById('straightAlpha').checked = settings.straightAlpha;
+                updateModelCapUI();
                 if (settings.furryModeEnabled !== undefined) {
                     furryModeEnabled = settings.furryModeEnabled;
                     if (furryModeEnabled) {
@@ -21449,7 +21958,7 @@
                             setSelectSafe('ucPreset', naiMapUcPreset(naiSettings.ucPreset,
                                 document.getElementById('naiModel').value), 'UC 프리셋');
                         }
-                        if (naiSettings.qualityTags !== undefined) document.getElementById('qualityTags').checked = naiSettings.qualityTags;
+                        applyQualitySettings(naiSettings);
                         if (naiSettings.furryModeEnabled) {
                             furryModeEnabled = true;
                             modeToggle.textContent = '🐾';
@@ -21531,6 +22040,10 @@
                     smea: settings.smea || 'none',
                     ucPreset: settings.ucPreset || 'none',
                     qualityTags: settings.qualityTags !== false,
+                    qualityPreset: settings.qualityPreset
+                        || (settings.qualityTags === false ? 'none' : 'standard'),
+                    transparentBg: settings.transparentBg || false,
+                    straightAlpha: settings.straightAlpha || false,
                     furryModeEnabled: settings.furryModeEnabled || false,
                     cfgRescale: settings.cfgRescale || 0,
                     varietyPlus: settings.varietyPlus || false,
@@ -21647,10 +22160,11 @@
                 // NAI-specific
                 setSelectSafe('naiModel', naiSettings.naiModel, '모델');
                 refreshUcPresetOptions();
+                refreshQualityPresetOptions();
                 document.getElementById('smea').value = naiSettings.smea;
                 setSelectSafe('ucPreset', naiMapUcPreset(naiSettings.ucPreset,
                     document.getElementById('naiModel').value), 'UC 프리셋');
-                document.getElementById('qualityTags').checked = naiSettings.qualityTags;
+                applyQualitySettings(naiSettings);
                 if (naiSettings.furryModeEnabled) {
                     furryModeEnabled = true;
                     modeToggle.textContent = '🐾';
@@ -21744,7 +22258,8 @@
             const inputs = [
                 'basePrompt', 'negativePrompt', 'width', 'height', 'steps', 'cfg',
                 'sampler', 'scheduler', 'seed', 'randomSeed', 'naiModel', 'smea',
-                'ucPreset', 'qualityTags', 'localModel', 'enableUpscale', 'upscaleModel',
+                'ucPreset', 'qualityPreset', 'transparentBg', 'straightAlpha',
+                'localModel', 'enableUpscale', 'upscaleModel',
                 'downscaleRatio', 'sizeAlignment', 'upscaleSteps', 'upscaleCfg',
                 'upscaleDenoise', 'repeatCount', 'sizePreset',
                 'cfgRescale', 'varietyPlus', 'lockSeed',
@@ -21841,8 +22356,8 @@
                 const collapsed = charData.collapsed || false;
                 const height = charData.height || null;
                 let enabled = charData.enabled !== false;  // 기본값 true (하위 호환)
-                // 활성화 6명 제한 적용
-                if (enabled && enabledCount >= 6) {
+                // ★활성 상한은 모델이 정한다 (V4.5 6명 · V5 32명)
+                if (enabled && enabledCount >= currentCharLimit()) {
                     enabled = false;
                 }
                 if (enabled) enabledCount++;
@@ -24506,7 +25021,14 @@
                 scheduler: normalized?.scheduler || document.getElementById('scheduler').value || 'karras',
                 smea: normalized?.smea || document.getElementById('smea').value || 'none',
                 uc_preset: normalized?.uc_preset || document.getElementById('ucPreset').value || 'Heavy',
-                quality_tags: normalized?.quality_tags !== undefined ? normalized.quality_tags : document.getElementById('qualityTags').checked,
+                quality_preset: normalized?.quality_preset
+                    || naiMapQualityPreset(document.getElementById('qualityPreset').value, model),
+                quality_tags: normalized?.quality_tags !== undefined
+                    ? normalized.quality_tags : document.getElementById('qualityPreset').value !== 'none',
+                transparent_bg: normalized?.transparent_bg !== undefined
+                    ? normalized.transparent_bg : document.getElementById('transparentBg').checked,
+                straight_alpha: normalized?.straight_alpha !== undefined
+                    ? normalized.straight_alpha : document.getElementById('straightAlpha').checked,
                 cfg_rescale: normalized?.cfg_rescale || parseFloat(document.getElementById('cfgRescale').value) || 0,
                 variety_plus: normalized?.variety_plus || false,
                 base_image: imageBase64,

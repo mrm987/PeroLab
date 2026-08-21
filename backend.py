@@ -991,7 +991,12 @@ class GenerateRequest(BaseModel):
     nai_model: str = "nai-diffusion-4-5-full"
     smea: str = "none"
     uc_preset: str = "Heavy"
-    quality_tags: bool = True
+    quality_tags: bool = True            # 옛 켬/끔. 아래 quality_preset 이 없을 때만 쓴다
+    # ★퀄리티 프리셋 id (standard/light/none). 공홈이 2026-08-21 재배포에서 목록으로 바꿨다.
+    #   옛 큐에 남은 작업은 quality_preset 이 없으므로 quality_tags 에서 옮겨 온다.
+    quality_preset: str = ""
+    transparent_bg: bool = False         # 투명 배경 (transparency 능력이 있는 모델만)
+    straight_alpha: bool = False         # Straight/Premultiplied 알파
     furry_mode: bool = False
     cfg_rescale: float = 0.0
     variety_plus: bool = False
@@ -1076,7 +1081,12 @@ class MultiGenerateRequest(BaseModel):
     nai_model: str = "nai-diffusion-4-5-full"
     smea: str = "none"
     uc_preset: str = "Heavy"
-    quality_tags: bool = True
+    quality_tags: bool = True            # 옛 켬/끔. 아래 quality_preset 이 없을 때만 쓴다
+    # ★퀄리티 프리셋 id (standard/light/none). 공홈이 2026-08-21 재배포에서 목록으로 바꿨다.
+    #   옛 큐에 남은 작업은 quality_preset 이 없으므로 quality_tags 에서 옮겨 온다.
+    quality_preset: str = ""
+    transparent_bg: bool = False         # 투명 배경 (transparency 능력이 있는 모델만)
+    straight_alpha: bool = False         # Straight/Premultiplied 알파
     furry_mode: bool = False
     cfg_rescale: float = 0.0
     variety_plus: bool = False
@@ -1195,15 +1205,59 @@ NAI_SCHEDULER_MAP = {
 # ★프리셋 본문에 "nsfw, " 를 박아 두지 말 것. 공홈은 본문과 별개로 조건이 맞을 때만 앞에 붙인다.
 # ============================================================
 
-# 모델별 퀄리티 접미사 (공홈 ed(): V4.5 계열은 prefix 없이 suffix만 쓴다)
-NAI_QUALITY_SUFFIX = {
-    "nai-diffusion-4-5-full": ", very aesthetic, masterpiece, no text",
-    "nai-diffusion-4-5-curated": ", very aesthetic, masterpiece, no text, -0.8::feet::, rating:general",
+# 모델별 퀄리티 프리셋 (공홈 UM()). ★2026-08-21 재배포로 **목록**이 됐다 —
+# V5 는 standard/light/none 셋이고 나머지는 standard/none 둘이다 (예전에는 켬/끔 하나).
+# 각 항목 `(id, 접미사)`. 목록 순서가 곧 드롭다운 순서이고 마지막은 언제나 none 이다.
+# ★접미사 앞의 ", " 는 우리 표기다 (공홈 목록에는 없고 붙일 때 잇는다) — 결과는 같다.
+NAI_QUALITY_PRESETS = {
+    "nai-diffusion-5-full": [
+        ("standard", ", very aesthetic, masterpiece, no text"),
+        ("light", ", very aesthetic, amazing quality, no text"),   # ★V5 에만 있는 새 프리셋
+        ("none", ""),
+    ],
+    "nai-diffusion-4-5-full": [
+        ("standard", ", very aesthetic, masterpiece, no text"),
+        ("none", ""),
+    ],
+    "nai-diffusion-4-5-curated": [
+        ("standard", ", very aesthetic, masterpiece, no text, -0.8::feet::, rating:general"),
+        ("none", ""),
+    ],
+    "nai-diffusion-4-full": [
+        ("standard", ", no text, best quality, very aesthetic, absurdres"),
+        ("none", ""),
+    ],
+    "nai-diffusion-4-curated-preview": [
+        ("standard", ", rating:general, best quality, very aesthetic, absurdres"),
+        ("none", ""),
+    ],
 }
+NAI_QUALITY_PRESETS["nai-diffusion-5-curated"] = NAI_QUALITY_PRESETS["nai-diffusion-5-full"]
+
+# 모델 → **standard 접미사**. 옛 이름을 남긴다 (읽는 쪽이 여럿이다).
+NAI_QUALITY_SUFFIX = {m: p[0][1] for m, p in NAI_QUALITY_PRESETS.items()}
+
+# 아는 접미사 **전부** — 모델을 모르는 그림에서 퀄리티 태그를 떼어낼 때 쓴다.
+NAI_ALL_QUALITY_SUFFIXES = tuple(
+    dict.fromkeys(s for plist in NAI_QUALITY_PRESETS.values() for _id, s in plist if s)
+)
+
+# ★투명 배경을 켜면 퀄리티 접미사 **앞에** 이것이 끼어든다 (공홈 rr()).
+#   퀄리티 프리셋이 none 이어도 이 한 마디는 붙는다.
+NAI_TRANSPARENT_BG_TAG = "transparent background"
 
 # 모델별 UC 프리셋. 목록 순서가 곧 공홈 ucPreset 인덱스다. (category, 표시이름, 본문)
 # 마지막 항목은 언제나 none 이며 매칭·nsfw 대상에서 제외된다.
 NAI_UC_PRESETS = {
+    # ★V5 네 모델이 **한 목록을 공유**한다 (공홈 Z$()).
+    #   ★★`Light` 본문이 V4.5 의 것과 **전혀 다르다** — 베끼지 말고 이 문자열을 쓸 것.
+    "nai-diffusion-5-full": [
+        ("heavy", "Heavy", "lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"),
+        ("light", "Light", "lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::"),
+        ("furry", "Furry Focus", "{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"),
+        ("human", "Human Focus", "lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"),
+        ("none", "None", ""),
+    ],
     "nai-diffusion-4-5-full": [
         ("heavy", "Heavy", "lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"),
         ("light", "Light", "lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"),
@@ -1218,11 +1272,38 @@ NAI_UC_PRESETS = {
         ("none", "None", ""),
     ],
 }
+# ★V5 Curated 는 Full 과 **같은 목록**이다 (공홈이 한 case 로 묶어 둔다).
+NAI_UC_PRESETS["nai-diffusion-5-curated"] = NAI_UC_PRESETS["nai-diffusion-5-full"]
 
 # uc 앞에 "nsfw, " 를 붙이지 않는 모델 (공홈 V 집합 중 PeroPix 가 쓰는 것)
 NAI_NO_NSFW_PREFIX = {
     "nai-diffusion-4-5-curated",
     "nai-diffusion-4-5-curated-inpainting",
+    # ★2026-08-21 재배포에서 **V5 Curated 두 개가 추가**됐다 (공홈 sg)
+    "nai-diffusion-5-curated",
+    "nai-diffusion-5-curated-inpainting",
+}
+
+# `tag_hint_qt` · `tag_hint_uc_preset` 이 쓰는 **전역 번호표** (공홈 Nb()).
+# ★목록 안의 인덱스가 **아니다.** 모델마다 순서가 달라도 번호는 같다 —
+#   인덱스로 계산하면 조용히 틀린다 (V5 에서 heavy 는 0번째지만 번호는 2다).
+NAI_TAG_HINT_ID = {
+    "none": 0,
+    "standard": 1,
+    "heavy": 2,
+    "light": 3,
+    "human": 4,      # humanFocus
+    "furry": 5,      # furryFocus
+}
+
+# 우리 표의 **카테고리** → 공홈의 프리셋 **id** (`ucPresetId` 로 나가는 값).
+# ★우리는 카테고리를 human·furry 로 줄여 쓴다 — 공홈 id 는 humanFocus·furryFocus 다.
+NAI_UC_PRESET_ID = {
+    "heavy": "heavy",
+    "light": "light",
+    "human": "humanFocus",
+    "furry": "furryFocus",
+    "none": "none",
 }
 
 # 모델을 바꿀 때 없는 프리셋을 무엇으로 대체할지 (공홈 eN)
@@ -1236,6 +1317,14 @@ NAI_UC_CATEGORY_FALLBACK = {
 
 # 인페인트 모델 매핑 (공홈 el()). 접미사 규칙으로 만들지 말 것 — 없는 모델 id 가 생긴다.
 NAI_INPAINT_MODEL = {
+    "nai-diffusion-5-full": "nai-diffusion-5-full-inpainting",
+    # ★★V5 Curated 는 **V4.5 Curated 인페인트로 떨어진다** — 공홈과 같고, **이게 맞다.**
+    #   ★결함이 아니다: `nai-diffusion-5-curated-inpainting` 은 **API 에 없는 모델**이다.
+    #     실측 2026-08-21 — 그 id 로 쏘면 400 "model ... doesn't exist" 가 온다
+    #     (같은 조건에서 nai-diffusion-5-full-inpainting 과 아래 V4.5 id 는 200).
+    #   ★★그러니 **V5 Curated 로 인페인트하면 실제로 그리는 것은 V4.5 Curated 다.**
+    #     NAI 가 V5 Curated 인페인팅을 내면 그때 이 줄을 바꾼다.
+    "nai-diffusion-5-curated": "nai-diffusion-4-5-curated-inpainting",
     "nai-diffusion-4-5-full": "nai-diffusion-4-5-full-inpainting",
     "nai-diffusion-4-5-curated": "nai-diffusion-4-5-curated-inpainting",
     "nai-diffusion-4-full": "nai-diffusion-4-full-inpainting",
@@ -1245,12 +1334,143 @@ NAI_INPAINT_MODEL = {
 NAI_INPAINT_MODEL_DEFAULT = "nai-diffusion-4-5-curated-inpainting"
 
 
+# 인페인트 모델 → 원본 (공홈 Fo()). ★★`NAI_INPAINT_MODEL` 을 **뒤집어 쓰면 안 된다** —
+# V5 Curated 가 V4.5 Curated 인페인트로 떨어지는 바람에 그 표는 **일대일이 아니다.**
+# 뒤집으면 V4.5 Curated 인페인트가 V5 표로 조회돼 프리셋이 통째로 바뀐다.
+NAI_BASE_MODEL = {
+    "nai-diffusion-5-full-inpainting": "nai-diffusion-5-full",
+    "nai-diffusion-5-curated-inpainting": "nai-diffusion-5-curated",
+    "nai-diffusion-4-5-full-inpainting": "nai-diffusion-4-5-full",
+    "nai-diffusion-4-5-curated-inpainting": "nai-diffusion-4-5-curated",
+    "nai-diffusion-4-full-inpainting": "nai-diffusion-4-full",
+    "nai-diffusion-4-curated-inpainting": "nai-diffusion-4-curated-preview",
+}
+
+
 def nai_base_model(model: str) -> str:
     """인페인트 모델을 원본 모델로 되돌린다 (표 조회용)."""
-    for base, inpaint in NAI_INPAINT_MODEL.items():
-        if model == inpaint:
-            return base
-    return model
+    return NAI_BASE_MODEL.get(model, model)
+
+
+# ══ 모델 능력표 ═══════════════════════════════════════════════════════════════════
+#
+# ★★공홈 PE(model) 에서 **우리가 실제로 쓰는 항목만** 추린 것이다 (2026-08-21 대조).
+#   정본은 d:/ClaudeCode/PeroPix3/docs/nai-web-reference.md 의 「능력표」 절.
+#
+# ★★**모델 분기를 이 표 밖에서 새로 만들지 말 것.** 예전에는 `"diffusion-4" in model` 같은
+#   문자열 검사가 파일 곳곳에 흩어져 있었다. V5 가 오면서 「바이브 되나 · 스케줄러 고를 수
+#   있나 · Variety+ 되나」가 전부 갈라졌고, 흩어진 검사는 하나를 빠뜨리면 조용히 틀린다.
+# ★★화면 쪽 사본은 index.html 의 NAI_MODEL_CAPS 다. 두 벌은 **같은 값이어야 한다.**
+_NAI_CAPS_V45 = {
+    "vibe": True,            # Vibe Transfer
+    "char_ref": True,        # Precise Reference (director_reference_*)
+    "noise_schedule": True,  # 스케줄러를 고를 수 있나
+    "cfg_rescale": True,
+    "cfg_delay": True,       # Variety+ (skip_cfg_above_sigma)
+    "transparency": False,   # 투명 배경
+    "enhance_prompt_add": True,
+    # 따옴표 → `teXt:` 자동 조립이 걸리나 (공홈 PE().text) — V4.0 이상 전부 참, V3 이하 거짓
+    "text": True,
+    "freeform_position": False,  # 캐릭터 좌표를 격자 밖에 둘 수 있나
+    "max_characters": 6,
+    "cfg_delay_sigma": 58,
+    "opus_usage_limit": False,   # Opus 무료가 유한한가
+    "anlas_multiplier": 1.0,
+}
+_NAI_CAPS_V5 = {
+    **_NAI_CAPS_V45,
+    # ★★V5 에서 **꺼진 것들.** 공홈 FAQ: 바이브·정밀 참조는 "post-launch additions".
+    "vibe": False,
+    "char_ref": False,
+    "noise_schedule": False,  # 전송 구간이 karras 로 덮어쓴다
+    "cfg_delay": False,       # Variety+ 자체가 없다
+    "transparency": True,
+    "freeform_position": True,
+    "max_characters": 32,     # ★코드값. 공홈 홍보 문구의 "22" 는 마케팅이다
+    "opus_usage_limit": True,
+    "anlas_multiplier": 1.5,  # ★★같은 해상도·스텝에서 V4.5 의 1.5배
+}
+NAI_MODEL_CAPS = {
+    "nai-diffusion-5-full": _NAI_CAPS_V5,
+    "nai-diffusion-5-curated": _NAI_CAPS_V5,
+    "nai-diffusion-4-5-full": _NAI_CAPS_V45,
+    "nai-diffusion-4-5-curated": _NAI_CAPS_V45,
+}
+# ★모르는 모델(= 목록에 없는 **V4.0 계열**)의 능력. 공홈의 V4.0 행 그대로다 —
+#   V4.5 를 그대로 물려주면 Enhance 문구가 붙지 않아야 할 모델에 붙고, Variety+ 시그마도
+#   58 로 나가 CFG 지연 구간이 3배로 길어진다.
+NAI_CAPS_FALLBACK = {
+    **_NAI_CAPS_V45,
+    "char_ref": False,
+    "enhance_prompt_add": False,
+    "cfg_delay_sigma": 19,
+}
+
+
+def nai_caps(model: str) -> dict:
+    """그 모델의 능력. **인페인트 모델도 원본으로 되돌려** 조회한다."""
+    return NAI_MODEL_CAPS.get(nai_base_model(model), NAI_CAPS_FALLBACK)
+
+
+def nai_is_v5(model: str) -> bool:
+    """공홈 모델 그룹 Jg(model) === v5 와 같다."""
+    return nai_base_model(model).startswith("nai-diffusion-5")
+
+
+def nai_uses_v4_prompt(model: str) -> bool:
+    """`v4_prompt`/`characterPrompts` 구조를 쓰는 모델인가 (공홈 PE().v4Prompts).
+
+    ★★**`"diffusion-4" in model` 로 판정하지 말 것.** V5 는 그 문자열이 없는데도 같은
+      `v4_prompt` 구조를 쓴다 (`v5_prompt` 는 없다). 그 검사로 두면 V5 요청에서 캐릭터·UC
+      구조가 통째로 빠져 **조용히 다른 그림**이 나온다."""
+    base = nai_base_model(model)
+    return base.startswith("nai-diffusion-4-") or base.startswith("nai-diffusion-5")
+
+
+# 캐릭터 좌표 격자 (공홈 $n()). freeform 이 아닌 모델은 전송 직전에 여기로 스냅한다.
+NAI_CENTER_GRID = (0.1, 0.3, 0.5, 0.7, 0.9)
+
+
+def nai_snap_center(center: dict) -> dict:
+    """좌표를 5×5 격자로 스냅한다 (공홈 $n() 그대로: `u[min(4, max(0, floor(5v)))]`).
+
+    ★★**가까운 눈금 찾기가 아니다** — 구간을 5등분해 떨어뜨린다. 0.2 는 가까운 쪽으로 하면
+      0.1 과 동률이지만 공홈 식으로는 0.3 이다. ★freeform 모델(V5)에는 쓰지 않는다."""
+    import math as _math
+
+    def q(v):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            v = 0.5
+        return NAI_CENTER_GRID[min(4, max(0, int(_math.floor(5 * v))))]
+
+    center = center or {}
+    return {"x": q(center.get("x", 0.5)), "y": q(center.get("y", 0.5))}
+
+
+def nai_quality_presets(model: str) -> list:
+    """그 모델의 퀄리티 프리셋 목록. 모르는 모델은 V4.5 Full 목록으로 본다."""
+    return NAI_QUALITY_PRESETS.get(nai_base_model(model),
+                                   NAI_QUALITY_PRESETS["nai-diffusion-4-5-full"])
+
+
+def nai_quality_preset_id(model: str, preset: str) -> str:
+    """그 모델에서 실제로 쓸 프리셋 id.
+
+    ★★모델을 바꿔서 **없는 프리셋**이 되면(V5 의 light → V4.5) `standard` 로 내린다.
+      공홈은 이때 퀄리티 태그를 통째로 빼 버리는데(켜 둔 채 조용히 꺼진다) 따르지 않았다.
+      껐던 것(none)은 그대로 꺼 둔다."""
+    ids = [i for i, _s in nai_quality_presets(model)]
+    if preset in ids:
+        return preset
+    return "none" if preset == "none" else "standard"
+
+
+def nai_quality_suffix(model: str, preset: str = "standard") -> str:
+    """그 모델·그 프리셋의 퀄리티 접미사."""
+    pid = nai_quality_preset_id(model, preset)
+    return dict(nai_quality_presets(model)).get(pid, "")
 
 
 def nai_uc_presets(model: str) -> list:
@@ -1278,6 +1498,19 @@ def nai_uc_preset_index(model: str, preset_name: str) -> int:
             if c == cat:
                 return i
     return len(presets) - 1  # 마지막 = none
+
+
+def nai_uc_preset_id(model: str, preset_name: str) -> str:
+    """표시이름 -> 공홈 `ucPresetId`. 그 모델에 없으면 인덱스와 **같은 폴백**을 탄다."""
+    presets = nai_uc_presets(model)
+    cat = presets[nai_uc_preset_index(model, preset_name)][0]
+    return NAI_UC_PRESET_ID.get(cat, "none")
+
+
+def nai_tag_hint_uc(model: str, preset_name: str):
+    """`tag_hint_uc_preset` — **전역 번호표**로 옮긴다 (목록 인덱스가 아니다)."""
+    presets = nai_uc_presets(model)
+    return NAI_TAG_HINT_ID.get(presets[nai_uc_preset_index(model, preset_name)][0])
 
 
 # ★공홈은 `text:` 지시가 있으면 그 **앞에** 덧붙인다 (퀄리티 접미사·인핸스 문구 모두).
@@ -1317,6 +1550,175 @@ def nai_resolve_uc(model: str, preset_name: str, prompt: str, user_negative: str
             return user_negative
         return (text + ", " + user_negative) if text else user_negative
     return text
+
+
+# ============================================================
+# 따옴표 -> `teXt:` **자동 조립** (공홈 번들 모듈 51964, 2026-08-21)
+#
+# ★★**V5 전용이 아니다.** 공홈은 PE(model).text 능력으로 거는데 그 능력은
+#   **V4.0·V4.5·V5 모두 참**이다 (V3 이하만 거짓). 즉 V4.5 에서도 걸린다.
+# ★★**켬/끔 옵션이 없다** (공홈 설정 기본값에도, 호출부에도 없다 — 전수 확인).
+#   빠져나가는 길은 둘뿐이다: 따옴표를 안 쓰거나, `text:` 를 손으로 적거나.
+# ★붙는 자리는 **퀄리티 접미사보다 뒤**다 (공홈 순서: 접미사 -> uc 해결 -> furry 접두 ->
+#   매크로 -> 여기). 그래서 nsfw 판정도 uc 도 이 문구를 안 본다.
+# ★표기는 **`teXt:`** (가운데 X 만 대문자). 되읽는 정규식은 대소문자를 **구분**한다 —
+#   사람이 손으로 적은 `text:` 와 갈라 보려는 것이다.
+# ============================================================
+
+NAIT_SEP = "|"
+NAIT_ESCAPED_SEP = "||"
+NAIT_MAX_PARTS = 6
+NAIT_AUTO_TAG = "teXt:"
+# 우리가 만든 블록 (공홈 u). ★대소문자 **구분**
+NAIT_AUTO_RE = re.compile(r"(?:^|\s|[,.:\[\]{}、。])teXt:(?!:)")
+# 따옴표 짝 (공홈 h)
+NAIT_QUOTES = {'"': '"', "“": "”", "「": "」", "'": "'", "‘": "’"}
+# CJK 판정 (공홈 y) — 이 비율을 넘으면 조각 순서를 뒤집는다 (세로쓰기 순서)
+# ★범위는 번들 원문 그대로다 (구두점·히라가나·가타카나·전각·한자 상용/확장A).
+#   ★리터럴 대신 이스케이프로 적는다 — 눈으로 구별되지 않는 U+FF9F/U+FFEF 를 옮겨 적다
+#     한 번 어긋냈다. 값은 PeroPix3 backend/naitext.py 와 같아야 한다.
+NAIT_CJK_RE = re.compile(
+    "[　-〿぀-ゟ゠-ヿ＀-ﾟ一-龯㐀-䶿]")
+NAIT_CJK_RATIO = 0.3
+# 줄 묶기 문턱 (공홈 p·g) — 전체 y 폭과 가장 큰 y 간격
+NAIT_GAP_MAX = 0.1
+NAIT_SPAN_MAX = 0.15
+# split 이 구분자를 잃지 않도록 잠시 바꿔 두는 글자 (공홈이 쓰는 것 그대로)
+_NAIT_TMP_SEP = "\U000103b9"
+_NAIT_TMP_ESC = "\U00012137"
+
+
+def nait_split_parts(prompt: str) -> list:
+    """`|` 로 최대 6조각. `||` 는 이스케이프다 (공홈 Bk).
+
+    ★조각이 6개를 넘으면 **나머지를 마지막 조각에 다시 붙인다** — 잘라 버리지 않는다."""
+    swapped = _NAIT_TMP_ESC.join(
+        part.replace(NAIT_SEP, _NAIT_TMP_SEP) if i % 2 == 1 else part
+        for i, part in enumerate((prompt or "").split(NAIT_ESCAPED_SEP))
+    )
+    parts = swapped.split(NAIT_SEP)
+    out = parts[: NAIT_MAX_PARTS - 1]
+    if len(parts) > NAIT_MAX_PARTS - 1:
+        out.append(NAIT_SEP.join(parts[NAIT_MAX_PARTS - 1:]))
+    return [p.replace(_NAIT_TMP_SEP, NAIT_SEP).replace(_NAIT_TMP_ESC, NAIT_ESCAPED_SEP)
+            for p in out]
+
+
+def _nait_wordish(ch) -> bool:
+    """문자·숫자인가 (공홈 d) — `'` 가 아포스트로피인지 가르는 데 쓴다."""
+    return bool(ch) and (ch.isalpha() or ch.isdigit())
+
+
+def nait_quoted(text: str) -> list:
+    """따옴표로 감싼 조각을 순서대로 (공홈 f).
+
+    ★`'` 는 **앞 글자가 문자·숫자면** 여는 따옴표로 안 본다 (`don't` 의 아포스트로피).
+    ★짝이 없으면 그 문자는 버리고 다음으로 넘어간다."""
+    text = text or ""
+    out = []
+    i, n = 0, len(text)
+    while i < n:
+        close = NAIT_QUOTES.get(text[i])
+        if close is None or (text[i] == "'" and _nait_wordish(text[i - 1] if i else None)):
+            i += 1
+            continue
+        apostrophe = close in ("'", "’")
+        j = i + 1
+        while j < n and (
+            text[j] != close
+            or (apostrophe and _nait_wordish(text[j + 1] if j + 1 < n else None))
+        ):
+            j += 1
+        if j >= n:
+            i += 1
+            continue
+        inner = text[i + 1:j].strip()
+        if inner:
+            out.append(inner)
+        i = j + 1
+    return out
+
+
+def _nait_rows(chars: list) -> list:
+    """캐릭터를 **읽는 순서**로 (공홈 m/A) — y 로 줄을 묶고 줄 안에서 x 순."""
+    def cy(c):
+        return float((c.get("center") or {}).get("y", 0.5))
+
+    def cx(c):
+        return float((c.get("center") or {}).get("x", 0.5))
+
+    def group(items):
+        if len(items) <= 1:
+            return [items]
+        span = cy(items[-1]) - cy(items[0])
+        cut, widest = 1, -1.0
+        for k in range(1, len(items)):
+            gap = cy(items[k]) - cy(items[k - 1])
+            if gap > widest:
+                widest, cut = gap, k
+        if span <= NAIT_SPAN_MAX and widest <= NAIT_GAP_MAX:
+            return [items]
+        return group(items[:cut]) + group(items[cut:])
+
+    out = []
+    for row in group(sorted(chars, key=cy)):
+        out.extend(sorted(row, key=cx))
+    return out
+
+
+def nait_collect(base: str, chars: list, use_coords: bool) -> list:
+    """베이스와 캐릭터에서 따옴표 조각을 모은다 (공홈 v).
+
+    ★CJK 가 30% 를 넘으면 **각 출처의 조각 순서를 뒤집는다.**"""
+    live = [c for c in chars if (c.get("prompt") or "").strip()]
+    ordered = _nait_rows(live) if use_coords else live
+    groups = [nait_quoted(base)] + [nait_quoted(c.get("prompt") or "") for c in ordered]
+    joined = "".join(x for g in groups for x in g)
+    if joined and len(NAIT_CJK_RE.findall(joined)) / len(joined) > NAIT_CJK_RATIO:
+        for g in groups:
+            g.reverse()
+    return [x for g in groups for x in g]
+
+
+def nait_build(prompt: str, chars: list, use_coords: bool) -> str:
+    """프롬프트 끝에 `teXt:` 블록을 붙인다 (공홈 v2k). 붙일 게 없으면 그대로.
+
+    ★손으로 적은 `text:` 가 베이스나 **어느 캐릭터에라도** 있으면 아무것도 안 한다.
+    ★블록은 **첫 조각**(`|` 기준)의 끝에 붙는다."""
+    prompt = prompt or ""
+    live = [c for c in (chars or []) if (c.get("prompt") or "").strip()]
+    if NAI_TEXT_CLAUSE_RE.search(prompt) or any(
+            NAI_TEXT_CLAUSE_RE.search(c.get("prompt") or "") for c in live):
+        return prompt
+    parts = nait_split_parts(prompt)
+    found = nait_collect(parts[0] if parts else "", live, use_coords)
+    if not found:
+        return prompt
+    block = NAIT_AUTO_TAG + " " + "\n\n".join(found)
+    head = re.sub(r"[\s,]+$", "", parts[0] if parts else "")
+    parts[0] = (head + ", " + block) if head else block
+    return NAIT_SEP.join(parts)
+
+
+def nait_strip(prompt: str, chars: list, use_coords: bool) -> str:
+    """되읽을 때 그 블록을 **떼어낸다** (공홈 PA).
+
+    ★★**다시 만들어 보고 같을 때만** 뗀다 — 사람이 손으로 적은 `teXt:` 를 지우지 않으려는
+      것이다. 조금이라도 다르면 그 조각은 그대로 둔다."""
+    live = [c for c in (chars or []) if (c.get("prompt") or "").strip()]
+    out = []
+    for part in nait_split_parts(prompt or ""):
+        m = NAIT_AUTO_RE.search(part)
+        if not m:
+            out.append(part)
+            continue
+        head = part[: m.start()]
+        tail = part[m.start() + len(m.group(0)):].strip()
+        if tail != "\n\n".join(nait_collect(head, live, use_coords)):
+            out.append(part)
+            continue
+        out.append(re.sub(r"[\s,]+$", "", head))
+    return NAIT_SEP.join(out)
 
 
 # Vibe 캐시 디렉토리
@@ -1543,11 +1945,27 @@ async def call_nai_api(req: GenerateRequest):
     if not token:
         raise HTTPException(status_code=500, detail="NAI token not set. Go to Settings.")
 
+    # ★모델 능력표 — 바이브·스케줄러·Variety+·투명배경·캐릭터 상한이 전부 여기서 갈린다.
+    #   ★새 모델 분기를 이 표 밖에서 만들지 말 것 (NAI_MODEL_CAPS 주석 참조).
+    cap = nai_caps(req.nai_model)
+
     # ucPreset 은 모델별 프리셋 배열의 인덱스다 (공홈 동일). 그 모델에 없는 프리셋이면 폴백표를 탄다.
     uc_preset_value = nai_uc_preset_index(req.nai_model, req.uc_preset)
+    uc_preset_id_value = nai_uc_preset_id(req.nai_model, req.uc_preset)
 
-    # SMEA는 V3 모델에서만 지원, V4+에서는 비활성화
-    is_v4_model = "diffusion-4" in req.nai_model
+    # 퀄리티 프리셋: 새 요청은 id, 옛 요청(큐에 남은 것)은 켬/끔 불리언을 준다.
+    quality_pid = nai_quality_preset_id(
+        req.nai_model,
+        req.quality_preset or ("standard" if req.quality_tags else "none"),
+    )
+
+    # ★투명 배경은 능력이 있는 모델(V5)에서만. 없는 모델에서 켜져 있어도 무시한다.
+    transparent_bg = bool(req.transparent_bg) and cap["transparency"]
+
+    # SMEA는 V3 모델에서만 지원, V4+/V5 에서는 비활성화
+    # ★★`"diffusion-4" in model` 로 판정하지 말 것 — V5 는 그 문자열이 없는데도 같은
+    #   v4_prompt 구조를 쓴다. 그 검사로 두면 V5 요청에서 캐릭터 구조가 통째로 빠진다.
+    is_v4_model = nai_uses_v4_prompt(req.nai_model)
     sm = req.smea in ["SMEA", "SMEA+DYN"] and not is_v4_model
     sm_dyn = req.smea == "SMEA+DYN" and not is_v4_model
 
@@ -1568,16 +1986,19 @@ async def call_nai_api(req: GenerateRequest):
 
     # V4+ 모델에서만 클라이언트 태그 적용 (V3 이하는 NAI 서버가 처리)
     if is_v4_model:
-        # Quality Tags: 모델별 접미사 (공홈 ed()). `text:` 절이 있으면 그 앞에 넣는다.
-        if req.quality_tags:
-            prompt_for_nai = nai_append_prompt(prompt_for_nai, NAI_QUALITY_SUFFIX.get(
-                nai_base_model(req.nai_model), NAI_QUALITY_SUFFIX["nai-diffusion-4-5-full"]
-            ))
+        # Quality Tags: 모델별·프리셋별 접미사 (공홈 ed()/UM()). `text:` 절이 있으면 그 앞에 넣는다.
+        # ★투명 배경을 켜면 접미사 **앞에** "transparent background, " 가 끼어든다 (공홈 rr()).
+        #   퀄리티 프리셋이 none 이어도 이 한 마디는 붙는다.
+        q_suffix = nai_quality_suffix(req.nai_model, quality_pid)
+        if transparent_bg:
+            q_suffix = ", " + NAI_TRANSPARENT_BG_TAG + (q_suffix if q_suffix else "")
+        if q_suffix:
+            prompt_for_nai = nai_append_prompt(prompt_for_nai, q_suffix)
 
         # Enhance 전용 문구는 ★퀄리티 접미사 **뒤에** 온다 (공홈 generateEnhance 순서).
         # 프론트에서 베이스 프롬프트에 미리 끼워 넣으면 접미사보다 앞서게 돼 순서가 뒤집힌다.
         if (req.enhance_prompt_add
-                and "diffusion-4-5" in req.nai_model
+                and cap["enhance_prompt_add"]
                 and "upscaled, blurry" not in prompt_for_nai):
             prompt_for_nai = nai_append_prompt(prompt_for_nai, NAI_ENHANCE_PROMPT_ADD)
 
@@ -1610,8 +2031,15 @@ async def call_nai_api(req: GenerateRequest):
     if height <= 0:
         height = 1216
 
+    # ★스케줄러: 고를 수 없는 모델(V5)은 공홈이 전송 직전에 **karras 로 덮어쓴다**
+    #   (공홈 tL 생성자: `Jg(m)===v5 && (p.noise_schedule="karras")`). 사용자 선택을 무시한다.
+    if not cap["noise_schedule"] and nai_scheduler != "karras":
+        print(f"[NAI] {req.nai_model} 은 스케줄러를 고를 수 없다 — {nai_scheduler} -> karras (공홈 동일)")
+        nai_scheduler = "karras"
+
     params = {
-        "params_version": 3,
+        # ★2026-08-21 재배포로 공홈은 4 를 보낸다 (v4·v4.5 포함 전 모델).
+        "params_version": 4,
         "width": width,
         "height": height,
         "scale": req.cfg,
@@ -1619,8 +2047,13 @@ async def call_nai_api(req: GenerateRequest):
         "steps": req.steps,
         "seed": int(seed),
         "n_samples": 1,
+        # ★옛 필드(ucPreset/qualityToggle)와 새 필드(ucPresetId/qualityPresetId)를 **함께** 보낸다.
+        #   공홈은 새 것만 보내지만, 지금 것은 돌아가는 페이로드의 상위집합이라 퇴행이 없다.
+        #   (PeroPix 3.0 에서 V5 실연동으로 확인됨 — API 가 둘 다 받는다)
         "ucPreset": uc_preset_value,
-        "qualityToggle": req.quality_tags,
+        "ucPresetId": uc_preset_id_value,
+        "qualityToggle": quality_pid != "none",
+        "qualityPresetId": quality_pid,
         "sm": sm,
         "sm_dyn": sm_dyn,
         "dynamic_thresholding": False,
@@ -1641,6 +2074,20 @@ async def call_nai_api(req: GenerateRequest):
         "inpaintImg2ImgStrength": 1,
         "legacy_uc": False,
     }
+
+    # ★tag_hint_* 는 **전역 번호표**로 나간다 (공홈 Nb()). 목록 인덱스가 아니다 —
+    #   인덱스로 계산하면 조용히 틀린다 (V5 에서 heavy 는 0번째지만 번호는 2다).
+    #   근거 등급 A: 공홈 갤러리 서버 기록 76건 전부에 이 두 필드가 있다.
+    params["tag_hint_qt"] = NAI_TAG_HINT_ID.get(quality_pid, 0)
+    hint_uc = nai_tag_hint_uc(req.nai_model, req.uc_preset)
+    if hint_uc is not None:
+        params["tag_hint_uc_preset"] = hint_uc
+
+    # ★투명 배경 — transparency 능력이 있는 모델에서만 이 두 필드를 보낸다
+    #   (공홈은 능력이 없으면 전송 직전에 지운다).
+    if transparent_bg:
+        params["tag_hint_transparent_background"] = True
+        params["straight_alpha"] = bool(req.straight_alpha)
 
     # 웹 페이로드와 정렬: 모든 생성 요청에 항상 포함되는 base 파라미터 (6개 캡처 전부 공통).
     # ★공홈에서도 사용자가 끌 수 있는 토글이다 (Normalize Reference Strength Values, 기본 켜짐).
@@ -1683,6 +2130,30 @@ async def call_nai_api(req: GenerateRequest):
     if use_coords:
         print(f"[NAI] Character coords enabled: {[(c['prompt'][:20] + '...', c['coord']) for c in char_data]}")
 
+    # ★★모델마다 받는 캐릭터 수가 다르다 (V4.5 6명 · V5 32명). 넘겨도 400 이 아니라
+    #   **500 Internal Server Error** 가 오므로(실측: V4.5 에 7명) 여기서 자른다.
+    #   칸을 추가하는 것 자체는 막지 않는다 — 화면이 몇 개가 안 나가는지 미리 알린다.
+    char_limit = cap["max_characters"]
+    if len(char_data) > char_limit:
+        print(f"[NAI] 캐릭터 {len(char_data)}개 중 {char_limit}개만 보냅니다 — {req.nai_model} 상한")
+        char_data = char_data[:char_limit]
+
+    # ★좌표 스냅: 자유 배치가 아닌 모델(V4.5 이하)은 공홈이 전송 직전에 격자로 붙인다.
+    #   ★스냅이 걸리는 곳은 **v4_prompt 쪽 centers 뿐**이다 — characterPrompts[].center 는
+    #     공홈도 **날것 그대로** 보낸다. 둘을 같게 맞추지 말 것.
+    place = (lambda c: c) if cap["freeform_position"] else nai_snap_center
+    centers = [place(c["center"]) for c in char_data]
+
+    # ★따옴표 -> `teXt:` 자동 조립. 공홈은 이것을 **맨 마지막**에 한다 (퀄리티 접미사·uc 해결·
+    #   furry 접두 다음). 그래서 nsfw 판정도 uc 도 이 문구를 보지 않는다.
+    #   ★V5 전용이 아니다 — PE().text 는 V4.0 이상 전부 참이다.
+    if cap["text"]:
+        prompt_with_text = nait_build(prompt_for_nai, char_data, use_coords)
+        if prompt_with_text != prompt_for_nai:
+            print(f"[NAI] teXt: 자동 조립 — {prompt_with_text[len(prompt_for_nai):][:80]!r}")
+            prompt_for_nai = prompt_with_text
+            params["prompt"] = prompt_for_nai
+
     params["use_coords"] = use_coords
     params["characterPrompts"] = [{"prompt": c["prompt"], "uc": c["uc"], "center": c["center"], "enabled": True} for c in char_data] if char_data else []
     params["v4_prompt"] = {
@@ -1690,14 +2161,14 @@ async def call_nai_api(req: GenerateRequest):
         "use_order": True,
         "caption": {
             "base_caption": prompt_for_nai,
-            "char_captions": [{"char_caption": c["prompt"], "centers": [c["center"]]} for c in char_data] if char_data else []
+            "char_captions": [{"char_caption": c["prompt"], "centers": [ctr]} for c, ctr in zip(char_data, centers)] if char_data else []
         }
     }
     params["v4_negative_prompt"] = {
         "legacy_uc": False,
         "caption": {
             "base_caption": negative_for_nai,
-            "char_captions": [{"char_caption": c["uc"], "centers": [c["center"]]} for c in char_data] if char_data else []
+            "char_captions": [{"char_caption": c["uc"], "centers": [ctr]} for c, ctr in zip(char_data, centers)] if char_data else []
         }
     }
 
@@ -1711,10 +2182,13 @@ async def call_nai_api(req: GenerateRequest):
     #   기준값 cfgDelaySigma = V4.5 계열·custom 58 / V4.0 이하 19
     #   보정계수 = sqrt(floor(w/8) * floor(h/8) / 15808)  ← 832x1216 이 정확히 1.0
     # 19 고정으로 보내면 V4.5 에서 CFG 지연 구간이 3배 짧아져 Variety+ 가 거의 안 걸린다.
-    if req.variety_plus:
-        base_sigma = 58 if "diffusion-4-5" in req.nai_model else 19
+    # ★★V5 에는 Variety+ 자체가 없다 (cfgDelay 능력 꺼짐 → skip_cfg_above_sigma 삭제).
+    if req.variety_plus and cap["cfg_delay"]:
+        base_sigma = cap["cfg_delay_sigma"]
         factor = math.sqrt((width // 8) * (height // 8) / 15808)
         params["skip_cfg_above_sigma"] = base_sigma * factor
+    elif req.variety_plus:
+        print(f"[NAI] {req.nai_model} 은 Variety+ 를 지원하지 않습니다 — 미전송 (공홈 동일)")
     
     # k_euler_ancestral + non-native scheduler 조합에서 필수 파라미터
     if nai_sampler == "k_euler_ancestral" and nai_scheduler != "native":
@@ -1723,13 +2197,19 @@ async def call_nai_api(req: GenerateRequest):
 
     # Vibe Transfer - V4+ 모델은 /ai/encode-vibe로 사전 인코딩 필요
     # 파라미터는 vibe가 있을 때만 추가 (빈 배열 전송 방지)
-    if req.vibe_transfer and len(req.vibe_transfer) > 0:
+    # ★★V5 는 Vibe Transfer 를 지원하지 않는다 (공홈 FAQ: "post-launch additions").
+    #   보내면 무시되는 게 아니라 인코딩 비용만 나가므로 **여기서 끊는다.**
+    if req.vibe_transfer and not cap["vibe"]:
+        print(f"[NAI] {req.nai_model} 은 Vibe Transfer 를 지원하지 않습니다 — 미전송 (공홈 동일)")
+    elif req.vibe_transfer and len(req.vibe_transfer) > 0:
         vibe_images = []
         info_extracted_list = []
         strength_list = []
 
-        # V4+ 모델인지 확인
-        is_v4_plus = "diffusion-4" in req.nai_model
+        # V4+ 모델인지 확인 (인코딩 경로를 탈 것인가)
+        # ★★`"diffusion-4" in model` 로 판정하지 말 것 — V5 는 그 문자열이 없다.
+        #   (지금은 V5 가 바이브 자체를 안 쓰지만, 나중에 열리면 이 줄이 조용히 틀린다)
+        is_v4_plus = nai_uses_v4_prompt(req.nai_model)
 
         for i, v in enumerate(req.vibe_transfer):
             try:
@@ -1804,7 +2284,11 @@ async def call_nai_api(req: GenerateRequest):
 
     # Precise Reference (V4.5 only) - 여러 개 지원
     # 새 API: precise_references 배열 사용
-    if req.precise_references and len(req.precise_references) > 0:
+    # ★★V5 는 Precise Reference 도 지원하지 않는다 (director_reference_* 전부).
+    #   ★참조는 **개당 5 Anlas** 라 무시되는 것으로 끝나지 않는다 — 보내지 않는다.
+    if (req.precise_references or req.character_reference) and not cap["char_ref"]:
+        print(f"[NAI] {req.nai_model} 은 Precise Reference 를 지원하지 않습니다 — 미전송 (공홈 동일)")
+    elif req.precise_references and len(req.precise_references) > 0:
         ref_images_cached = []
         ref_info_extracted = []
         ref_strength_values = []
@@ -2898,6 +3382,9 @@ async def process_job(job):
             smea=req.smea,
             uc_preset=req.uc_preset,
             quality_tags=req.quality_tags,
+            quality_preset=req.quality_preset,
+            transparent_bg=req.transparent_bg,
+            straight_alpha=req.straight_alpha,
             furry_mode=req.furry_mode,
             cfg_rescale=req.cfg_rescale,
             variety_plus=req.variety_plus,
@@ -3046,6 +3533,12 @@ async def process_job(job):
                 # 사용자가 실제 선택한 값을 여기 저장해야 복원이 정확하다.
                 "uc_preset": req.uc_preset,
                 "quality_tags": req.quality_tags,
+                # ★퀄리티 프리셋은 켬/끔이 아니라 id 다 (standard/light/none) — 옛 켬/끔만
+                #   남기면 V5 의 light 로 뽑은 그림이 standard 로 되살아난다.
+                "quality_preset": (req.quality_preset
+                                   or ("standard" if req.quality_tags else "none")),
+                "transparent_bg": bool(req.transparent_bg),
+                "straight_alpha": bool(req.straight_alpha),
                 "slot_prompt": extra_prompt if extra_prompt else None,
                 "slot_prompt_target": prompt_target if extra_prompt else None
             }
@@ -4591,12 +5084,19 @@ async def get_nai_subscription():
                 subscription_anlas = 0
                 fixed_anlas = 0
 
+            # ★★V5 부터 Opus 무료가 **유한**하다. 서버가 실어 주는 잔량:
+            #     percent              남은 비율 0~100 (빚지면 음수)
+            #     timeUntilNextPercent 1% 회복까지 남은 **초**
+            #     isNegative           다 쓰고 더 쓴 상태 → 무료 판정이 꺼진다
+            #   ★없는 계정(구버전 응답)도 있으므로 그대로 통과시킨다 — 화면이 없으면 안 그린다.
+            usage = data.get("usage")
             return {
                 "anlas": total_anlas,
                 "subscription_anlas": subscription_anlas,
                 "fixed_anlas": fixed_anlas,
                 "tier": data.get("tier", 0),
-                "active": data.get("active", False)
+                "active": data.get("active", False),
+                "usage": usage if isinstance(usage, dict) else None
             }
     except Exception as e:
         return {"error": str(e), "anlas": None}
@@ -4617,18 +5117,24 @@ NAI_VIBE_ENCODE_COST = 2
 
 
 def nai_image_sample_cost(width: int, height: int, steps: int,
-                          smea: bool = False, smea_dyn: bool = False) -> int:
+                          smea: bool = False, smea_dyn: bool = False,
+                          model: str = "") -> float:
+    """장당 원가. ★**여기서 올림하지 않는다** — 부르는 쪽이 강도를 곱한 뒤에 올린다
+    (공홈 `E = max(ceil(M*strength), 2)`). 여기서 한 번 더 올리면 강도가 1 이 아닐 때 어긋난다."""
     px = width * height
     base = math.ceil(NAI_COST_A * px + NAI_COST_B * px * steps)
     mult = 1.4 if smea_dyn else (1.2 if smea else 1)
-    return math.ceil(base * mult)
+    # ★★V5 는 같은 해상도·스텝에서 V4.5 의 **1.5배**다 (공홈: `group===v5 && (M *= 1.5)`).
+    #   모델을 안 넘기면 배율이 1 이라 V5 표시가 실제의 2/3 이 된다.
+    return base * mult * (nai_caps(model)["anlas_multiplier"] if model else 1)
 
 
 def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = False,
                          vibe_count: int = 0, has_char_ref: bool = False,
                          strength: float = 1.0, precise_ref_count: int = 0,
                          vibe_encode_cost: int = 0,
-                         smea: bool = False, smea_dyn: bool = False) -> int:
+                         smea: bool = False, smea_dyn: bool = False,
+                         model: str = "", opus_exhausted: bool = False) -> int:
     """NAI 이미지 생성 Anlas 소모량 계산 (공홈 식)
 
     precise_ref_count: Precise Reference 개수 (새 API)
@@ -4642,7 +5148,8 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
 
     # 이미지 1장 원가 (공홈 chunks/pages/_app:696800 의 o()).
     # ★옛 근사식 ceil(MP*20) 은 28 steps 에서만 맞고 기본값 23 에서 15~18% 과다였다.
-    per_sample = nai_image_sample_cost(width, height, steps, smea=smea, smea_dyn=smea_dyn)
+    per_sample = nai_image_sample_cost(width, height, steps, smea=smea, smea_dyn=smea_dyn,
+                                       model=model)
     per_sample = max(math.ceil(per_sample * strength), 2)   # 공홈: Math.max(ceil(w*y), 2)
 
     # Opus 무료: **1MP 이하 + 28 steps 이하**면 1장이 공짜.
@@ -4650,7 +5157,12 @@ def calculate_anlas_cost(width: int, height: int, steps: int, is_opus: bool = Fa
     #   공홈 `eZ()` 에 `!characterRef` 조건이 있지만 **가격을 계산하는 쪽은 그 키를 안 넘긴다**
     #   (chunks/3811:1088111 은 params 만 넘긴다 → 언제나 undefined). 전송 경로만 이 키를 채운다.
     #   실측(2026-08-11): Opus·832x1216·28step·프리사이즈 1개 = **5** (무료가 살아 있고 참조비 5 만).
-    opus_free = is_opus and pixels <= NAI_OPUS_FREE_PIXELS and steps <= 28
+    # ★★V5 부터 **Opus 무료가 유한하다.** 잔량이 바닥나면(subscription.usage.isNegative)
+    #   무료가 꺼지고 정상 과금된다 (공홈 `D = PE(m).opusUsageLimit && (usage?.isNegative ?? false)`).
+    #   ★퍼센트가 낮다고 미리 끄지 않는다 — **바닥났을 때만**이다.
+    #   ★`opusUsageLimit` 능력이 있는 모델(V5)에만 걸린다. V4.5 는 잔량과 무관하게 옛 규칙 그대로다.
+    spent = bool(opus_exhausted) and nai_caps(model)["opus_usage_limit"]
+    opus_free = is_opus and not spent and pixels <= NAI_OPUS_FREE_PIXELS and steps <= 28
 
     total = 0 if opus_free else per_sample
 
@@ -4682,7 +5194,8 @@ async def calculate_cost(request: dict):
     model = request.get("model", "nai-diffusion-4-5-full")
     uncached_vibe_count = 0
 
-    if vibes and "diffusion-4" in model:
+    # ★★`"diffusion-4" in model` 로 판정하지 말 것 — V5 는 그 문자열이 없다.
+    if vibes and nai_uses_v4_prompt(model):
         base_model = model.replace("-inpainting", "")
         for v in vibes:
             # 이미 인코딩된 바이브: 모델 및 info_extracted 일치 여부 확인
@@ -4724,13 +5237,26 @@ async def calculate_cost(request: dict):
     #   결과적으로 except 의 2 를 쓰고 있었다 — 값만 우연히 맞았다.
     # ★캐릭터 참조가 하나라도 있거나 인페인트면 공홈은 vibe 비용을 아예 더하지 않는다
     #   (호출부 조건: vibes.length>0 && encodedVibes && !hasCharRefs && !mask).
+    # ★★능력이 없는 모델(V5)은 바이브·참조를 **보내지 않으므로** 값도 붙지 않는다.
+    #   생성 경로(call_nai_api)가 실제로 끊는 것과 표시가 어긋나면 안 된다.
+    cost_cap = nai_caps(model)
+    if not cost_cap["char_ref"]:
+        precise_ref_count, has_char_ref = 0, False
+    if not cost_cap["vibe"]:
+        vibe_count, uncached_vibe_count = 0, 0
+
     ref_count = precise_ref_count if precise_ref_count > 0 else (1 if has_char_ref else 0)
-    vibe_billable = ref_count == 0 and not has_mask
+    vibe_billable = ref_count == 0 and not has_mask and cost_cap["vibe"]
     vibe_encoding_cost = uncached_vibe_count * NAI_VIBE_ENCODE_COST if vibe_billable else 0
+
+    # ★Opus 무료 잔량이 바닥났나 (V5 부터 유한하다). 화면이 /api/nai/subscription 의
+    #   usage.isNegative 를 그대로 실어 보낸다.
+    opus_exhausted = bool(request.get("opus_exhausted", False))
 
     cost_per_image = calculate_anlas_cost(
         width, height, steps, is_opus, uncached_vibe_count, has_char_ref, strength,
-        precise_ref_count, vibe_encode_cost=0, smea=smea, smea_dyn=smea_dyn)
+        precise_ref_count, vibe_encode_cost=0, smea=smea, smea_dyn=smea_dyn,
+        model=model, opus_exhausted=opus_exhausted)
 
     # ★Opus 무료는 **요청 하나의 n_samples 에서 1장**이다. PeroPix 는 언제나 n_samples=1 로
     #   낱장 전송하므로(generate_nai_image) 배치의 **모든 장**이 무료다.
@@ -4749,7 +5275,7 @@ async def calculate_cost(request: dict):
     # ★1장 상한(140) 판정은 **참조비를 뺀 기본 생성비**로 한다 (공홈 `I > g.dZ ? -3 : I*v`).
     #   I 는 무료여도 언제나 계산된다 — 무료는 I 를 0 으로 만드는 게 아니라 곱하는 쪽을 깎는다.
     base_per_sample = max(math.ceil(
-        nai_image_sample_cost(width, height, steps, smea, smea_dyn) * strength), 2)
+        nai_image_sample_cost(width, height, steps, smea, smea_dyn, model=model) * strength), 2)
 
     return {
         "cost_per_image": cost_per_image,
