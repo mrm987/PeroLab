@@ -3692,9 +3692,9 @@ async def process_job(job):
             })
             return  # 이 잡 종료
         except Exception as e:
-            import traceback
-            print(f"[Error] Generation failed: {e}")
-            traceback.print_exc()
+            # ★파일 로그에도 남긴다 — print/print_exc 는 콘솔로만 나가서 cmd 창이 닫히면 원인이 함께
+            #   사라진다 (2026-08-21 유저 제보: 생성 중 백엔드가 종료됐는데 로그에 오류 흔적이 없었다)
+            logger.error(f"[Error] Generation failed: {e}", exc_info=True)
             image_idx += 1
             # 에러도 완료로 카운트 (프로그레스바 진행용)
             gen_queue.completed_images += 1
